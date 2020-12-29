@@ -11,7 +11,7 @@ export {highlightSpecialChars} from "./special-chars"
 export {highlightActiveLine} from "./active-line"
 export {placeholder} from "./placeholder"
 export {Rect} from "./dom"
-export {Range} from "@codemirror/next/rangeset"
+export {Range} from "@codemirror/rangeset"
 
 import {HeightMap, HeightOracle, MeasuredHeights, QueryType} from "./heightmap"
 import {ChangedRange} from "./extension"

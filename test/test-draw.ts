@@ -1,6 +1,6 @@
 import {tempEditor} from "./temp-editor"
-import {EditorSelection} from "@codemirror/next/state"
-import {EditorView} from "@codemirror/next/view"
+import {EditorSelection} from "@codemirror/state"
+import {EditorView} from "@codemirror/view"
 import ist from "ist"
 
 function domText(view: EditorView) {

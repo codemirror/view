@@ -3,7 +3,7 @@ import {ContentView} from "./contentview"
 import {inputHandler} from "./extension"
 import {selectionCollapsed, getSelection} from "./dom"
 import browser from "./browser"
-import {EditorSelection, Transaction, Annotation, Text} from "@codemirror/next/state"
+import {EditorSelection, Transaction, Annotation, Text} from "@codemirror/state"
 
 export function applyDOMChange(view: EditorView, start: number, end: number, typeOver: boolean) {
   let change: undefined | {from: number, to: number, insert: Text}, newSel

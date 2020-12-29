@@ -1,4 +1,4 @@
-import {Text as DocText} from "@codemirror/next/text"
+import {Text as DocText} from "@codemirror/text"
 import {ContentView, DOMPos} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
 import {Rect, flattenRect, tempRange} from "./dom"

@@ -1,4 +1,4 @@
-import {EditorSelection, EditorState, SelectionRange, Transaction} from "@codemirror/next/state"
+import {EditorSelection, EditorState, SelectionRange, Transaction} from "@codemirror/state"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"

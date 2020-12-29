@@ -1,5 +1,5 @@
-import {EditorView} from "@codemirror/next/view"
-import {EditorState, Extension} from "@codemirror/next/state"
+import {EditorView} from "@codemirror/view"
+import {EditorState, Extension} from "@codemirror/state"
 
 const workspace: HTMLElement = document.querySelector("#workspace")! as HTMLElement
 

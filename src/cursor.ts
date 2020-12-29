@@ -1,5 +1,5 @@
-import {EditorState, EditorSelection, SelectionRange, CharCategory} from "@codemirror/next/state"
-import {findColumn, countColumn, findClusterBreak} from "@codemirror/next/text"
+import {EditorState, EditorSelection, SelectionRange, CharCategory} from "@codemirror/state"
+import {findColumn, countColumn, findClusterBreak} from "@codemirror/text"
 import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
 import {WidgetView} from "./inlineview"

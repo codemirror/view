@@ -5,7 +5,7 @@ import {clientRectsFor, Rect} from "./dom"
 import {LineDecoration, WidgetType, BlockType} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
 import {themeClass} from "./theme"
-import {Text} from "@codemirror/next/state"
+import {Text} from "@codemirror/state"
 
 export interface BlockView extends ContentView {
   merge(from: number, to: number, source: ContentView | null, takeDeco: boolean, openStart: number, openEnd: number): boolean

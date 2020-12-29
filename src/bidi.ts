@@ -1,5 +1,5 @@
-import {Line, findClusterBreak} from "@codemirror/next/text"
-import {EditorSelection, SelectionRange} from "@codemirror/next/state"
+import {Line, findClusterBreak} from "@codemirror/text"
+import {EditorSelection, SelectionRange} from "@codemirror/state"
 
 /// Used to indicate [text direction](#view.EditorView.textDirection).
 export enum Direction {

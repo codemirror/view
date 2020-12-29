@@ -1,4 +1,4 @@
-import {EditorState, Transaction, ChangeSet, Facet, Extension} from "@codemirror/next/state"
+import {EditorState, Transaction, ChangeSet, Facet, Extension} from "@codemirror/state"
 import {StyleModule} from "style-mod"
 import {DecorationSet} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"

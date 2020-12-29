@@ -1,4 +1,4 @@
-import {Extension} from "@codemirror/next/state"
+import {Extension} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {Decoration, DecorationSet} from "./decoration"

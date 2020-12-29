@@ -1,6 +1,6 @@
 import {tempEditor} from "./temp-editor"
-import {StateField, EditorSelection} from "@codemirror/next/state"
-import {EditorView, Decoration, DecorationSet, WidgetType} from "@codemirror/next/view"
+import {StateField, EditorSelection} from "@codemirror/state"
+import {EditorView, Decoration, DecorationSet, WidgetType} from "@codemirror/view"
 import ist from "ist"
 
 function cur(head: number) { return EditorSelection.cursor(head) }

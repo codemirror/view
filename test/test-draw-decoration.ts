@@ -1,6 +1,6 @@
-import {EditorView, Decoration, DecorationSet, WidgetType, Range} from "@codemirror/next/view"
+import {EditorView, Decoration, DecorationSet, WidgetType, Range} from "@codemirror/view"
 import {tempEditor, requireFocus} from "./temp-editor"
-import {EditorSelection, StateEffect, StateField} from "@codemirror/next/state"
+import {EditorSelection, StateEffect, StateField} from "@codemirror/state"
 import ist from "ist"
 
 const filterDeco = StateEffect.define<(from: number, to: number, spec: any) => boolean>()

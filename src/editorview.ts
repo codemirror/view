@@ -1,6 +1,6 @@
 import {EditorState, Transaction, TransactionSpec, Extension, Prec, ChangeDesc,
-        EditorSelection, SelectionRange} from "@codemirror/next/state"
-import {Line} from "@codemirror/next/text"
+        EditorSelection, SelectionRange} from "@codemirror/state"
+import {Line} from "@codemirror/text"
 import {StyleModule, StyleSpec} from "style-mod"
 
 import {DocView} from "./docview"
