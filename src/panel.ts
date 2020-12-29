@@ -1,5 +1,5 @@
-import {EditorView, ViewPlugin, PluginField, ViewUpdate, themeClass} from "@codemirror/next/view"
-import {Facet, Extension} from "@codemirror/next/state"
+import {EditorView, ViewPlugin, PluginField, ViewUpdate, themeClass} from "@codemirror/view"
+import {Facet, Extension} from "@codemirror/state"
 
 type PanelConfig = {
   /// By default, panels will be placed inside the editor's DOM
