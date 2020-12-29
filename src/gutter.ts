@@ -1,5 +1,5 @@
 import {EditorView, ViewPlugin, PluginField, ViewUpdate, BlockType, BlockInfo, themeClass, Direction} from "@codemirror/view"
-import {Range, RangeValue, RangeSet, RangeCursor} from "@codemirror/rangeset"
+import {RangeValue, RangeSet, RangeCursor} from "@codemirror/rangeset"
 import {combineConfig, MapMode, Facet, Extension} from "@codemirror/state"
 
 /// A gutter marker represents a bit of information attached to a line
@@ -18,7 +18,7 @@ export abstract class GutterMarker extends RangeValue {
   toDOM(_view: EditorView): Node | null { return null }
 
   /// Create a range that places this marker at the given position.
-  at(pos: number) { return new Range(pos, pos, this) }
+  at(pos: number) { return this.range(pos) }
 
   /// This property can be used to add CSS classes to the gutter
   /// element that contains this marker.
