@@ -2,3 +2,5 @@
 /test
 /node_modules
 .tern-*
+rollup.config.js
+tsconfig.json
