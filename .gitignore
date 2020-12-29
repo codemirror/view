@@ -1,0 +1,10 @@
+/node_modules
+package-lock.json
+/dist
+/src/*.js
+/src/*.d.ts
+/src/*.d.ts.map
+/test/*.js
+/test/*.d.ts
+/test/*.d.ts.map
+.tern-*
