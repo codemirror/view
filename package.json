@@ -1,6 +1,6 @@
 {
   "name": "@codemirror/view",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "DOM view component for the CodeMirror code editor",
   "scripts": {
     "test": "echo 'Test runner in wrapper package'",
