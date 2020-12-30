@@ -221,7 +221,7 @@ export class EditorView {
       this.updateAttrs()
     } finally { this.updateState = UpdateState.Idle }
     if (redrawn || scrollTo || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
-    for (let listener of this.state.facet(updateListener)) listener(update)
+    if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
   }
 
   /// Reset the view to the given state. (This will cause the entire
@@ -296,7 +296,7 @@ export class EditorView {
         if (!updated) updated = update
         else updated.flags |= changed
         this.updateState = UpdateState.Updating
-        this.updatePlugins(update)
+        if (!update.empty) this.updatePlugins(update)
         this.updateAttrs()
         if (changed) this.docView.update(update)
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {
@@ -312,7 +312,7 @@ export class EditorView {
     } finally { this.updateState = UpdateState.Idle }
 
     this.measureScheduled = -1
-    if (updated) for (let listener of this.state.facet(updateListener)) listener(updated)
+    if (updated && !updated.empty) for (let listener of this.state.facet(updateListener)) listener(updated)
   }
 
   /// Get the CSS classes for the currently active editor themes.
