@@ -323,7 +323,7 @@ export class ViewUpdate {
     let focus = view.hasFocus
     if (focus != view.inputState.notifiedFocused) {
       view.inputState.notifiedFocused = focus
-      this.flags != UpdateFlag.Focus
+      this.flags |= UpdateFlag.Focus
     }
     if (this.docChanged) this.flags |= UpdateFlag.Height
   }
