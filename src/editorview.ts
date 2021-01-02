@@ -353,7 +353,7 @@ export class EditorView {
 
   /// Make sure plugins get a chance to measure the DOM layout before
   /// the next frame. Calling this is preferable reading DOM layout
-  /// directly from, for example, an even handler, because it'll make
+  /// directly from, for example, an event handler, because it'll make
   /// sure measuring and drawing done by other components is
   /// synchronized, avoiding unnecessary DOM layout computations.
   requestMeasure<T>(request?: MeasureRequest<T>) {
