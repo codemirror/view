@@ -11,7 +11,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
   if (start > -1 && (bounds = view.docView.domBoundsAround(start, end, 0))) {
     let {from, to} = bounds
     let selPoints = view.docView.impreciseHead || view.docView.impreciseAnchor ? [] : selectionPoints(view.contentDOM, view.root)
-    let reader = new DOMReader(selPoints, view.state.lineBreak)
+    let reader = new DOMReader(selPoints, view)
     reader.readRange(bounds.startDOM, bounds.endDOM)
     newSel = selectionFromPoints(selPoints, from)
 
@@ -117,7 +117,11 @@ function findDiff(a: string, b: string, preferredPos: number, preferredSide: str
 
 class DOMReader {
   text: string = ""
-  constructor(private points: DOMPoint[], private lineSep: string) {}
+  private lineBreak: string
+
+  constructor(private points: DOMPoint[], private view: EditorView) {
+    this.lineBreak = view.state.lineBreak
+  }
 
   readRange(start: Node | null, end: Node | null) {
     if (!start) return
@@ -130,7 +134,7 @@ class DOMReader {
       let view = ContentView.get(cur), nextView = ContentView.get(next!)
       if ((view ? view.breakAfter : isBlockElement(cur)) ||
           ((nextView ? nextView.breakAfter : isBlockElement(next!)) && !(cur.nodeName == "BR" && !(cur as any).cmIgnore)))
-        this.text += this.lineSep
+        this.text += this.lineBreak
       cur = next!
     }
     this.findPointBefore(parent, end)
@@ -141,13 +145,18 @@ class DOMReader {
     let view = ContentView.get(node)
     let fromView = view && view.overrideDOMText
     let text: string | undefined
-    if (fromView != null) text = fromView.sliceString(0, undefined, this.lineSep)
+    if (fromView != null) text = fromView.sliceString(0, undefined, this.lineBreak)
     else if (node.nodeType == 3) text = node.nodeValue!
-    else if (node.nodeName == "BR") text = node.nextSibling ? this.lineSep : ""
+    else if (node.nodeName == "BR") text = node.nextSibling ? this.lineBreak : ""
     else if (node.nodeType == 1) this.readRange(node.firstChild, null)
+
     if (text != null) {
       this.findPointIn(node, text.length)
       this.text += text
+      // Chrome inserts two newlines when pressing shift-enter at the
+      // end of a line. This drops one of those.
+      if (browser.chrome && this.view.inputState.lastKeyCode == 13 && !node.nextSibling && /\n\n$/.test(this.text))
+        this.text = this.text.slice(0, -1)
     }
   }
 
