@@ -80,7 +80,7 @@ export class TextView extends InlineView {
   }
 
   coordsAt(pos: number, side: number): Rect {
-    return textCoords(this.dom!, pos, side, this.length)
+    return textCoords(this.dom!, pos, side)
   }
 }
 
@@ -128,7 +128,9 @@ export class MarkView extends InlineView {
   }
 }
 
-function textCoords(text: Node, pos: number, side: number, length: number): Rect {
+function textCoords(text: Node, pos: number, side: number): Rect {
+  let length = text.nodeValue!.length
+  if (pos > length) pos = length
   let from = pos, to = pos, flatten = 0
   if (pos == 0 && side < 0 || pos == length && side >= 0) {
     if (!(browser.chrome || browser.gecko)) { // These browsers reliably return valid rectangles for empty ranges
@@ -230,7 +232,7 @@ export class CompositionView extends WidgetView {
 
   get overrideDOMText() { return null }
 
-  coordsAt(pos: number, side: number) { return textCoords(this.widget.text, pos, side, this.length) }
+  coordsAt(pos: number, side: number) { return textCoords(this.widget.text, pos, side) }
 }
 
 export function mergeInlineChildren(parent: ContentView & {children: InlineView[]},

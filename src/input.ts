@@ -75,12 +75,19 @@ export class InputState {
 
   runCustomHandlers(type: string, view: EditorView, event: Event): boolean {
     for (let set of this.customHandlers) {
-      let handler = set.handlers[type]
+      let handler = set.handlers[type], handled: boolean | void = false
       if (handler) {
         try {
-          if (handler.call(set.plugin, event as any, view) || event.defaultPrevented) return true
+          handled = handler.call(set.plugin, event as any, view)
         } catch (e) {
           logException(view.state, e)
+        }
+        if (handled || event.defaultPrevented) {
+          // Chrome for Android often applies a bunch of nonsensical
+          // DOM changes after an enter press, even when
+          // preventDefault-ed. This tries to ignore those.
+          if (browser.android && type == "keydown" && (event as any).keyCode == 13) view.observer.flushSoon()
+          return true
         }
       }
     }
@@ -121,7 +128,7 @@ export class InputState {
   }
 
   mustFlushObserver(event: Event) {
-    return event.type == "keydown" || event.type == "compositionend"
+    return (event.type == "keydown" && (event as any).keyCode != 229) || event.type == "compositionend"
   }
 
   startMouseSelection(view: EditorView, event: MouseEvent, style: MouseSelectionStyle) {
