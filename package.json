@@ -4,7 +4,7 @@
   "description": "DOM view component for the CodeMirror code editor",
   "scripts": {
     "test": "echo 'Test runner in wrapper package'",
-    "prepare": "tsc && rollup -c"
+    "prepare": "tsc -p tsconfig.local.json && rollup -c"
   },
   "keywords": [
     "editor",
