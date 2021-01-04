@@ -23,7 +23,11 @@ export class InputState {
     handlers: DOMEventHandlers<any>
   }[] = []
 
-  composing = false
+  // -1 means not in a composition. Otherwise, this counts the number
+  // of changes made during the composition. The count is used to
+  // avoid treating the start state of the composition, before any
+  // changes have been made, as part of the composition.
+  composing = -1
   compositionEndedAt = 0
 
   mouseSelection: MouseSelection | null = null
@@ -95,7 +99,7 @@ export class InputState {
 
   ignoreDuringComposition(event: Event): boolean {
     if (!/^key/.test(event.type)) return false
-    if (this.composing) return true
+    if (this.composing > 0) return true
     // See https://www.stum.de/2016/06/24/handling-ime-events-in-javascript/.
     // On some input method editors (IMEs), the Enter key is used to
     // confirm character selection. On Safari, when Enter is pressed,
@@ -551,20 +555,20 @@ function forceClearComposition(view: EditorView) {
 }
 
 handlers.compositionstart = handlers.compositionupdate = view => {
-  if (!view.inputState.composing) {
+  if (view.inputState.composing < 0) {
     if (view.docView.compositionDeco.size) {
       view.observer.flush()
       forceClearComposition(view)
     }
     // FIXME possibly set a timeout to clear it again on Android
-    view.inputState.composing = true
+    view.inputState.composing = 0
   }
 }
 
 handlers.compositionend = view => {
-  view.inputState.composing = false
+  view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
   setTimeout(() => {
-    if (!view.inputState.composing) forceClearComposition(view)
+    if (view.inputState.composing < 0) forceClearComposition(view)
   }, 50)
 }

@@ -63,6 +63,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     if (view.state.facet(inputHandler).some(h => h(view, change!.from, change!.to, text)))
       return
 
+    if (view.inputState.composing >= 0) view.inputState.composing++
     let tr
     if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3) {
       let before = sel.from < change.from ? startState.sliceDoc(sel.from, change.from) : ""

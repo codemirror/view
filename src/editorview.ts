@@ -90,7 +90,7 @@ export class EditorView {
 
   /// Indicates whether the user is currently composing text via
   /// [IME](https://developer.mozilla.org/en-US/docs/Mozilla/IME_handling_guide).
-  get composing() { return this.inputState.composing }
+  get composing() { return this.inputState.composing > 0 }
   
   private _dispatch: (tr: Transaction) => void
 
@@ -165,9 +165,9 @@ export class EditorView {
       this.inputState.runScrollHandlers(this, event)
       this.measure()
     })
+    this.inputState = new InputState(this)
     this.docView = new DocView(this)
 
-    this.inputState = new InputState(this)
     this.mountStyles()
     this.updateAttrs()
     this.updateState = UpdateState.Idle

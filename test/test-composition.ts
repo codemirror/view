@@ -42,7 +42,7 @@ function compose(cm: EditorView, start: () => Text,
   if (options.end) options.end(node)
   cm.observer.flush()
   cm.update([])
-  ist(!cm.inputState.composing)
+  ist(!cm.composing)
   ist(!hasCompositionDeco(cm))
 }
 
@@ -259,7 +259,7 @@ describe("Composition", () => {
     ist(hasCompositionDeco(cm))
     ist(getSelection()!.focusNode, two)
     ist(getSelection()!.focusOffset, 4)
-    ist(cm.inputState.composing)
+    ist(cm.composing)
     event(cm, "compositionend")
     cm.observer.flush()
     ist(cm.state.doc.toString(), "one!!\ntwo.")

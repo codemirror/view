@@ -68,7 +68,7 @@ export class DocView extends ContentView {
       }
     }
 
-    if (!this.view.inputState?.composing) this.compositionDeco = Decoration.none
+    if (this.view.inputState.composing < 0) this.compositionDeco = Decoration.none
     else if (update.transactions.length) this.compositionDeco = computeCompositionDeco(this.view, update.changes)
 
     // When the DOM nodes around the selection are moved to another
