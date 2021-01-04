@@ -16,8 +16,10 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     newSel = selectionFromPoints(selPoints, from)
 
     let preferredPos = sel.from, preferredSide = null
-    // Prefer anchoring to end when Backspace is pressed
-    if (view.inputState.lastKeyCode === 8 && view.inputState.lastKeyTime > Date.now() - 100) {
+    // Prefer anchoring to end when Backspace is pressed (or, on
+    // Android, when something was deleted)
+    if (view.inputState.lastKeyCode === 8 && view.inputState.lastKeyTime > Date.now() - 100 ||
+        browser.android && reader.text.length < to - from) {
       preferredPos = sel.to
       preferredSide = "end"
     }
