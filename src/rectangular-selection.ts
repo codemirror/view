@@ -74,8 +74,8 @@ function rectangleSelectionStyle(view: EditorView, event: MouseEvent) {
 /// that was dragged over will be selected, as one selection
 /// [range](#state.SelectionRange) per line.
 export function rectangularSelection(options?: {
-  // A custom predicate function, which takes a `mousedown` event and
-  // returns true if it should be used for rectangular selection.
+  /// A custom predicate function, which takes a `mousedown` event and
+  /// returns true if it should be used for rectangular selection.
   eventFilter?: (event: MouseEvent) => boolean
 }): Extension {
   let filter = options?.eventFilter || (e => e.altKey && e.button == 0)
