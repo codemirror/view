@@ -1,3 +1,9 @@
+## 0.17.3 (2021-01-06)
+
+### New features
+
+The package now also exports a CommonJS module.
+
 ## 0.17.2 (2021-01-04)
 
 ### Bug fixes
