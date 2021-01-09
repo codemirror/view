@@ -69,6 +69,13 @@ class Piece {
     return elt
   }
 
+  adjust(elt: HTMLElement) {
+    elt.style.left = this.left + "px"
+    elt.style.top = this.top + "px"
+    if (this.width >= 0) elt.style.width = this.width + "px"
+    elt.style.height = this.height + "px"
+  }
+
   eq(p: Piece) {
     return this.left == p.left && this.top == p.top && this.width == p.width && this.height == p.height &&
       this.className == p.className
@@ -128,8 +135,15 @@ const drawSelectionPlugin = ViewPlugin.fromClass(class {
       this.rangePieces = rangePieces
     }
     if (cursors.length != this.cursors.length || cursors.some((c, i) => !c.eq(this.cursors[i]))) {
-      this.cursorLayer.textContent = ""
-      for (let c of cursors) this.cursorLayer.appendChild(c.draw())
+      let oldCursors = Array.from(this.cursorLayer.children)
+      cursors.forEach((c, idx) => {
+        if (oldCursors[idx]) c.adjust(oldCursors[idx] as HTMLElement)
+        else this.cursorLayer.appendChild(c.draw())
+      })
+      while (oldCursors.length > cursors.length) {
+        let old = oldCursors.pop()
+        if (old) this.cursorLayer.removeChild(old)
+      }
       this.cursors = cursors
     }
   }
