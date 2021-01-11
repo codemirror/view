@@ -135,16 +135,13 @@ const drawSelectionPlugin = ViewPlugin.fromClass(class {
       this.rangePieces = rangePieces
     }
     if (cursors.length != this.cursors.length || cursors.some((c, i) => !c.eq(this.cursors[i]))) {
-      let oldCursors = Array.from(this.cursorLayer.children)
+      let oldCursors = this.cursorLayer.children
       if (oldCursors.length !== cursors.length) {
         this.cursorLayer.textContent = ""
         for (const c of cursors)
           this.cursorLayer.appendChild(c.draw())
       } else {
-        cursors.forEach((c, idx) => {
-          if (oldCursors[idx]) c.adjust(oldCursors[idx] as HTMLElement)
-          else this.cursorLayer.appendChild(c.draw())
-        })
+        cursors.forEach((c, idx) => c.adjust(oldCursors[idx] as HTMLElement))
       }
       this.cursors = cursors
     }
