@@ -62,10 +62,7 @@ class Piece {
   draw() {
     let elt = document.createElement("div")
     elt.className = this.className
-    elt.style.left = this.left + "px"
-    elt.style.top = this.top + "px"
-    if (this.width >= 0) elt.style.width = this.width + "px"
-    elt.style.height = this.height + "px"
+    this.adjust(elt)
     return elt
   }
 
