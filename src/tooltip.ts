@@ -1,6 +1,10 @@
 import {EditorView, ViewPlugin, ViewUpdate, themeClass, Direction} from "@codemirror/view"
 import {StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
 
+const ios = typeof navigator != "undefined" &&
+  !/Edge\/(\d+)/.exec(navigator.userAgent) && /Apple Computer/.test(navigator.vendor) &&
+  (/Mobile\/\w+/.test(navigator.userAgent) || navigator.maxTouchPoints > 2)
+
 type Rect = {left: number, right: number, top: number, bottom: number}
 
 type Measured = {
@@ -87,8 +91,14 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       if (!tooltip.strictSide &&
           (above ? pos.top - (size.bottom - size.top) < 0 : pos.bottom + (size.bottom - size.top) > measured.innerHeight))
         above = !above
-      dom.style.top = (above ? pos.top - height : pos.bottom) + "px"
-      dom.style.left = left + "px"
+      if (ios) {
+        dom.style.top = ((above ? pos.top - height : pos.bottom) - editor.top) + "px"
+        dom.style.left = (left - editor.left) + "px"
+        dom.style.position = "absolute"
+      } else {
+        dom.style.top = (above ? pos.top - height : pos.bottom) + "px"
+        dom.style.left = left + "px"
+      }
       dom.classList.toggle("cm-tooltip-above", above)
       dom.classList.toggle("cm-tooltip-below", !above)
       if (tView.positioned) tView.positioned()
