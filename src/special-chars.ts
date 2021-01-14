@@ -1,10 +1,10 @@
 import {Decoration, DecorationSet, WidgetType} from "./decoration"
-import {Range} from "@codemirror/rangeset"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {EditorView} from "./editorview"
+import {themeClass} from "./theme"
+import {MatchDecorator} from "./matchdecorator"
 import {combineConfig, Facet, Extension} from "@codemirror/state"
 import {countColumn, codePointAt} from "@codemirror/text"
-import {StyleModule} from "style-mod"
 
 interface SpecialCharConfig {
   /// An optional function that renders the placeholder elements.
@@ -22,14 +22,15 @@ interface SpecialCharConfig {
   /// the character visually.
   render?: ((code: number, description: string | null, placeholder: string) => HTMLElement) | null
   /// Regular expression that matches the special characters to
-  /// highlight.
+  /// highlight. Must have its 'g'/global flag set.
   specialChars?: RegExp
   /// Regular expression that can be used to add characters to the
   /// default set of characters to highlight.
   addSpecialChars?: RegExp | null
 }
 
-const Specials = /[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200c\u200e\u200f\u2028\u2029\ufeff\ufff9-\ufffc]/gu
+const UnicodeRegexpSupport = /x/.unicode != null ? "gu" : "g"
+const Specials = new RegExp("[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200c\u200e\u200f\u2028\u2029\ufeff\ufff9-\ufffc]", UnicodeRegexpSupport)
 
 const Names: {[key: number]: string} = {
   0: "null",
@@ -59,8 +60,6 @@ function supportsTabSize() {
   return _supportsTabSize || false
 }
 
-const UnicodeRegexpSupport = /x/.unicode != null ? "gu" : "g"
-
 const specialCharConfig = Facet.define<SpecialCharConfig, Required<SpecialCharConfig> & {replaceTabs?: boolean}>({
   combine(configs) {
     let config: Required<SpecialCharConfig> & {replaceTabs?: boolean} = combineConfig(configs, {
@@ -85,58 +84,52 @@ export function highlightSpecialChars(
   /// Configuration options.
   config: SpecialCharConfig = {}
 ): Extension {
-  let ext = [specialCharConfig.of(config), specialCharPlugin]
-  if (!supportsTabSize()) ext.push(tabStyle)
-  return ext
+  return [specialCharConfig.of(config), specialCharPlugin()]
 }
 
-const specialCharPlugin = ViewPlugin.fromClass(class {
-  decorations: DecorationSet = Decoration.none
-  decorationCache: {[char: number]: Decoration} = Object.create(null)
+let _plugin: Extension | null = null
+function specialCharPlugin() {
+  return _plugin || (_plugin = ViewPlugin.fromClass(class {
+    decorations: DecorationSet = Decoration.none
+    decorationCache: {[char: number]: Decoration} = Object.create(null)
+    decorator: MatchDecorator
 
-  constructor(public view: EditorView) {
-    this.recompute()
-  }
-
-  update(update: ViewUpdate) {
-    let confChange = update.startState.facet(specialCharConfig) != update.state.facet(specialCharConfig)
-    if (confChange) this.decorationCache = Object.create(null)
-    if (confChange || update.changes.length || update.viewportChanged) this.recompute()
-  }
-
-  recompute() {
-    let decorations: Range<Decoration>[] = []
-    for (let {from, to} of this.view.visibleRanges)
-      this.getDecorationsFor(from, to, decorations)
-    this.decorations = Decoration.set(decorations)
-  }
-
-  getDecorationsFor(from: number, to: number, target: Range<Decoration>[]) {
-    let config = this.view.state.facet(specialCharConfig)
-
-    let {doc} = this.view.state
-    for (let pos = from, cursor = doc.iterRange(from, to), m; !cursor.next().done;) {
-      if (!cursor.lineBreak) {
-        while (m = config.specialChars.exec(cursor.value)) {
-          let code = codePointAt(m[0], 0), deco
-          if (code == null) continue
-          if (code == 9) {
-            let line = doc.lineAt(pos + m.index)
-            let size = this.view.state.tabSize, col = countColumn(doc.sliceString(line.from, pos + m.index), 0, size)
-            deco = Decoration.replace({widget: new TabWidget((size - (col % size)) * this.view.defaultCharacterWidth)})
-          } else {
-            deco = this.decorationCache[code] ||
-              (this.decorationCache[code] = Decoration.replace({widget: new SpecialCharWidget(config, code)}))
-          }
-          target.push(deco.range(pos + m.index, pos + m.index + m[0].length))
-        }
-      }
-      pos += cursor.value.length
+    constructor(public view: EditorView) {
+      this.decorator = this.makeDecorator(view.state.facet(specialCharConfig))
+      this.decorations = this.decorator.createDeco(view)
     }
-  }
-}, {
-  decorations: v => v.decorations
-})
+
+    makeDecorator(conf: Required<SpecialCharConfig> & {replaceTabs?: boolean}) {
+      return new MatchDecorator({
+        regexp: conf.specialChars,
+        decoration: (m, view, pos) => {
+          let {doc} = view.state
+          let code = codePointAt(m[0], 0)
+          if (code == 9) {
+            let line = doc.lineAt(pos)
+            let size = view.state.tabSize, col = countColumn(doc.sliceString(line.from, pos), 0, size)
+            return Decoration.replace({widget: new TabWidget((size - (col % size)) * this.view.defaultCharacterWidth)})
+          }
+          return this.decorationCache[code] ||
+            (this.decorationCache[code] = Decoration.replace({widget: new SpecialCharWidget(conf, code)}))
+        },
+        boundary: conf.replaceTabs ? undefined : /[^]/
+      })
+    }
+
+    update(update: ViewUpdate) {
+      let conf = update.state.facet(specialCharConfig)
+      if (update.startState.facet(specialCharConfig) != conf) {
+        this.decorator = this.makeDecorator(conf)
+        this.decorations = this.decorator.createDeco(update.view)
+      } else {
+        this.decorations = this.decorator.updateDeco(update, this.decorations)
+      }
+    }
+  }, {
+    decorations: v => v.decorations
+  }))
+}
 
 const DefaultPlaceholder = "\u2022"
 
@@ -163,7 +156,7 @@ class SpecialCharWidget extends WidgetType {
     span.textContent = ph
     span.title = desc
     span.setAttribute("aria-label", desc)
-    span.style.color = "red"
+    span.className = themeClass("specialChar")
     return span
   }
 
@@ -178,18 +171,10 @@ class TabWidget extends WidgetType {
   toDOM() {
     let span = document.createElement("span")
     span.textContent = "\t"
-    span.className = tab
+    span.className = themeClass("tab")
     span.style.width = this.width + "px"
     return span
   }
 
   ignoreEvent(): boolean { return false }
 }
-
-const tab = StyleModule.newName(), tabStyle = EditorView.styleModule.of(new StyleModule({
-  ["." + tab]: {
-    display: "inline-block",
-    overflow: "hidden",
-    verticalAlign: "bottom"
-  }
-}))

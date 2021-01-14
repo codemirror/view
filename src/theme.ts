@@ -147,6 +147,15 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "$$light $activeLine": { backgroundColor: "#f3f9ff" },
   "$$dark $activeLine": { backgroundColor: "#223039" },
 
+  "$$light $specialChar": { color: "red" },
+  "$$dark $specialChar": { color: "#f78" },
+
+  "$tab": {
+    display: "inline-block",
+    overflow: "hidden",
+    verticalAlign: "bottom"
+  },
+
   $placeholder: {
     color: "#888",
     display: "inline-block"
