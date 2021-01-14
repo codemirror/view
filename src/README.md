@@ -69,3 +69,5 @@ replace content with an alternative representation.
 @WidgetType
 
 @Range
+
+@MatchDecorator
