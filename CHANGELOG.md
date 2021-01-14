@@ -1,3 +1,15 @@
+## 0.17.4 (2021-01-14)
+
+### Bug fixes
+
+The `drawSelection` extension will now reuse cursor DOM nodes when the number of cursors stays the same, allowing some degree of cursor transition animation.
+
+Makes highlighted special characters styleable (``) and fix their default look in dark themes to have appropriate contrast.
+
+### New features
+
+Adds a new `MatchDecorator` helper class which can be used to easily maintain decorations on content that matches a regular expression.
+
 ## 0.17.3 (2021-01-06)
 
 ### New features
