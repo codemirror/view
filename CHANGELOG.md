@@ -1,3 +1,9 @@
+## 0.17.5 (2021-01-15)
+
+### Bug fixes
+
+Fix a bug that would create space-filling placeholders with incorrect height when document is very large.
+
 ## 0.17.4 (2021-01-14)
 
 ### Bug fixes
