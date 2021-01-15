@@ -421,8 +421,8 @@ class BlockGapWidget extends WidgetType {
   eq(other: BlockGapWidget) { return other.height == this.height }
 
   updateDOM(elt: HTMLElement) {
+    while (elt.lastChild) elt.lastChild.remove()
     if (this.height < MaxNodeHeight) {
-      while (elt.lastChild) elt.lastChild.remove()
       elt.style.height = this.height + "px"
     } else {
       elt.style.height = ""
