@@ -98,7 +98,14 @@ export class PluginField<T> {
 
   /// This field can be used by plugins to provide
   /// [decorations](#view.Decoration).
-  // FIXME somehow ensure that no replacing decorations end up in here
+  ///
+  /// **Note**: For reasons of data flow (plugins are only updated
+  /// after the viewport is computed), decorations produced by plugins
+  /// are _not_ taken into account when predicting the vertical
+  /// layout structure of the editor. Thus, things like large widgets
+  /// or big replacements (i.e. code folding) should be provided
+  /// through the state-level [`decorations`
+  /// facet](#view.EditorView^decorations), not this plugin field.
   static decorations = PluginField.define<DecorationSet>()
 
   /// Plugins can provide additional scroll margins (space around the
@@ -124,7 +131,9 @@ export interface PluginSpec<V extends PluginValue> {
 
   /// Allow the plugin to provide decorations. When given, this should
   /// a function that take the plugin value and return a [decoration
-  /// set](#view.DecorationSet).
+  /// set](#view.DecorationSet). See also the caveat about
+  /// [layout-changing decorations](#view.PluginField^decorations)
+  /// from plugins.
   decorations?: (value: V) => DecorationSet
 
   /// Specify that the plugin provides [plugin
