@@ -11,7 +11,7 @@ type SelectionConfig = {
   /// The length of a full cursor blink cycle, in milliseconds.
   /// Defaults to 1200. Can be set to 0 to disable blinking.
   cursorBlinkRate?: number
-  /// Whether to show a the cursor for non-empty ranges. Defaults to
+  /// Whether to show a cursor for non-empty ranges. Defaults to
   /// true.
   drawRangeCursor?: boolean
 }

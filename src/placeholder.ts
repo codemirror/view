@@ -22,7 +22,7 @@ class Placeholder extends WidgetType {
   ignoreEvent() { return false }
 }
 
-/// Extension that enables a placeholder—a piece of extample content
+/// Extension that enables a placeholder—a piece of example content
 /// to show when the editor is empty.
 export function placeholder(content: string | HTMLElement): Extension {
   return ViewPlugin.fromClass(class {

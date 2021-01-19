@@ -95,7 +95,7 @@ export class ViewState {
   contentWidth = 0
 
   heightOracle: HeightOracle = new HeightOracle
-  heightMap: HeightMap = HeightMap.empty()
+  heightMap: HeightMap
 
   scrollTo: SelectionRange | null = null
   // Briefly set to true when printing, to disable viewport limiting
@@ -117,8 +117,8 @@ export class ViewState {
   mustEnforceCursorAssoc = false
 
   constructor(public state: EditorState) {
-    this.heightMap = this.heightMap.applyChanges(state.facet(decorations), Text.empty, this.heightOracle.setDoc(state.doc),
-                                                 [new ChangedRange(0, 0, 0, state.doc.length)])
+    this.heightMap = HeightMap.empty().applyChanges(state.facet(decorations), Text.empty, this.heightOracle.setDoc(state.doc),
+                                                    [new ChangedRange(0, 0, 0, state.doc.length)])
     this.viewport = this.getViewport(0, null)
     this.lineGaps = this.ensureLineGaps([])
     this.lineGapDeco = Decoration.set(this.lineGaps.map(gap => gap.draw(false)))
