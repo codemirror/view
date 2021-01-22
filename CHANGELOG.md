@@ -1,3 +1,9 @@
+## 0.17.6 (2021-01-22)
+
+### Bug fixes
+
+Avoid creating very high scroll containers for large documents so that we don't overflow the DOM's fixed-precision numbers.
+
 ## 0.17.5 (2021-01-15)
 
 ### Bug fixes
