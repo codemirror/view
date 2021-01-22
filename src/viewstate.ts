@@ -106,7 +106,12 @@ export class ViewState {
   // Briefly set to true when printing, to disable viewport limiting
   printing = false
 
+  // The main viewport for the visible part of the document
   viewport: Viewport
+  // If the main selection starts or ends outside of the main
+  // viewport, extra single-line viewports are created for these
+  // points, so that the DOM selection doesn't fall in a gap.
+  viewports!: readonly Viewport[]
   visibleRanges: readonly {from: number, to: number}[] = []
   lineGaps: readonly LineGap[]
   lineGapDeco: DecorationSet
@@ -125,15 +130,25 @@ export class ViewState {
     this.heightMap = HeightMap.empty().applyChanges(state.facet(decorations), Text.empty, this.heightOracle.setDoc(state.doc),
                                                     [new ChangedRange(0, 0, 0, state.doc.length)])
     this.viewport = this.getViewport(0, null)
-    this.updateScaler()
+    this.updateForViewport()
     this.lineGaps = this.ensureLineGaps([])
     this.lineGapDeco = Decoration.set(this.lineGaps.map(gap => gap.draw(false)))
     this.computeVisibleRanges()
   }
 
-  updateScaler() {
+  updateForViewport() {
+    let viewports = [this.viewport], {main} = this.state.selection
+    for (let i = 0; i <= 1; i++) {
+      let pos = i ? main.head : main.anchor
+      if (!viewports.some(({from, to}) => pos >= from && pos <= to)) {
+        let {from, to} = this.lineAt(pos, 0)
+        viewports.push(new Viewport(from, to))
+      }
+    }
+    this.viewports = viewports.sort((a, b) => a.from - b.from)
+
     this.scaler = this.heightMap.height <= VP.MaxDOMHeight ? IdScaler :
-      new BigScaler(this.heightOracle.doc, this.heightMap, this.viewport)
+      new BigScaler(this.heightOracle.doc, this.heightMap, this.viewports)
   }
 
   update(update: ViewUpdate, scrollTo: SelectionRange | null = null) {
@@ -155,7 +170,7 @@ export class ViewState {
       this.viewport = viewport
       update.flags |= UpdateFlag.Viewport
     }
-    this.updateScaler()
+    this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.MinViewPort)
       update.flags |= this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
     this.computeVisibleRanges()
@@ -221,7 +236,7 @@ export class ViewState {
         result |= UpdateFlag.Viewport
       }
     }
-    this.updateScaler()
+    this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.MinViewPort)
       result |= this.updateLineGaps(this.ensureLineGaps(refresh ? [] : this.lineGaps))
     this.computeVisibleRanges()
@@ -462,37 +477,46 @@ const IdScaler: YScaler = {
 }
 
 // When the height is too big (> VP.MaxDOMHeight), scale down the
-// regions outside the viewport so that the total height is
+// regions outside the viewports so that the total height is
 // VP.MaxDOMHeight.
 class BigScaler implements YScaler {
   scale: number
-  vpFrom: number; vpTo: number
-  vpTop: number; vpBottom: number
-  vpTopDOM: number; vpBottomDOM: number
+  viewports: {from: number, to: number, top: number, bottom: number, domTop: number, domBottom: number}[]
 
-  constructor(doc: Text, heightMap: HeightMap, viewport: Viewport) {
-    this.vpFrom = viewport.from
-    this.vpTo = viewport.to
-    this.vpTop = heightMap.lineAt(viewport.from, QueryType.ByPos, doc, 0, 0).top
-    this.vpBottom = heightMap.lineAt(viewport.to, QueryType.ByPos, doc, 0, 0).bottom
-    let vpHeight = this.vpBottom - this.vpTop
+  constructor(doc: Text, heightMap: HeightMap, viewports: readonly Viewport[]) {
+    let vpHeight = 0, base = 0, domBase = 0
+    this.viewports = viewports.map(({from, to}) => {
+      let top = heightMap.lineAt(from, QueryType.ByPos, doc, 0, 0).top
+      let bottom = heightMap.lineAt(to, QueryType.ByPos, doc, 0, 0).bottom
+      vpHeight += bottom - top
+      return {from, to, top, bottom, domTop: 0, domBottom: 0}
+    })
     this.scale = (VP.MaxDOMHeight - vpHeight) / (heightMap.height - vpHeight)
-    this.vpTopDOM = this.vpTop * this.scale
-    this.vpBottomDOM = this.vpTopDOM + vpHeight
+    for (let obj of this.viewports) {
+      obj.domTop = domBase + (obj.top - base) * this.scale
+      domBase = obj.domBottom = obj.domTop + (obj.bottom - obj.top)
+      base = obj.bottom
+    }
   }
 
   toDOM(n: number, top: number) {
     n -= top
-    if (n < this.vpTop) return n * this.scale + top
-    if (n < this.vpBottom) return this.vpTopDOM + (n - this.vpTop) + top
-    return this.vpBottomDOM + (n - this.vpBottom) * this.scale + top
+    for (let i = 0, base = 0, domBase = 0;; i++) {
+      let vp = i < this.viewports.length ? this.viewports[i] : null
+      if (!vp || n < vp.top) return domBase + (n - base) * this.scale + top
+      if (n <= vp.bottom) return vp.domTop + (n - vp.top) + top
+      base = vp.bottom; domBase = vp.domBottom
+    }
   }
-
+  
   fromDOM(n: number, top: number) {
     n -= top
-    if (n < this.vpTopDOM) return n / this.scale + top
-    if (n < this.vpBottomDOM) return this.vpTop + (n - this.vpTopDOM) + top
-    return this.vpBottom + (n - this.vpBottomDOM) / this.scale + top
+    for (let i = 0, base = 0, domBase = 0;; i++) {
+      let vp = i < this.viewports.length ? this.viewports[i] : null
+      if (!vp || n < vp.domTop) return base + (n - domBase) / this.scale + top
+      if (n <= vp.domBottom) return vp.top + (n - vp.domTop) + top
+      base = vp.bottom; domBase = vp.domBottom
+    }
   }
 }
 

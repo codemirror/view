@@ -4,7 +4,6 @@ import {ContentView, ChildCursor, Dirty, DOMPos} from "./contentview"
 import {BlockView, LineView} from "./blockview"
 import {InlineView, CompositionView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
-import {Viewport} from "./viewstate"
 import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./decoration"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView, getSelection, hasSelection} from "./dom"
@@ -12,11 +11,8 @@ import {ViewUpdate, PluginField, decorations as decorationsFacet,
         UpdateFlag, editable, ChangedRange} from "./extension"
 import {EditorView} from "./editorview"
 
-const none = [] as any
-
 export class DocView extends ContentView {
   children!: BlockView[]
-  viewports: Viewport[] = none
 
   compositionDeco = Decoration.none
   decorations: readonly DecorationSet[] = []
@@ -349,24 +345,12 @@ export class DocView extends ContentView {
   }
 
   computeBlockGapDeco(): DecorationSet {
-    let visible = this.view.viewState.viewport, viewports: Viewport[] = [visible]
-    let {head, anchor} = this.view.state.selection.main
-    if (head < visible.from || head > visible.to) {
-      let {from, to} = this.view.viewState.lineAt(head, 0)
-      viewports.push(new Viewport(from, to))
-    }
-    if (!viewports.some(({from, to}) => anchor >= from && anchor <= to)) {
-      let {from, to} = this.view.viewState.lineAt(anchor, 0)
-      viewports.push(new Viewport(from, to))
-    }
-    this.viewports = viewports.sort((a, b) => a.from - b.from)
-
-    let deco = []
+    let deco = [], vs = this.view.viewState
     for (let pos = 0, i = 0;; i++) {
-      let next = i == viewports.length ? null : viewports[i]
+      let next = i == vs.viewports.length ? null : vs.viewports[i]
       let end = next ? next.from - 1 : this.length
       if (end > pos) {
-        let height = this.view.viewState.lineAt(end, 0).bottom - this.view.viewState.lineAt(pos, 0).top
+        let height = vs.lineAt(end, 0).bottom - vs.lineAt(pos, 0).top
         deco.push(Decoration.replace({widget: new BlockGapWidget(height), block: true, inclusive: true}).range(pos, end))
       }
       if (!next) break
