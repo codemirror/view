@@ -434,7 +434,7 @@ export class EditorView {
 
   /// The editor's total content height.
   get contentHeight() {
-    return this.viewState.heightMap.height + this.viewState.paddingTop + this.viewState.paddingBottom
+    return this.viewState.contentHeight
   }
 
   /// Move a cursor position by [grapheme

@@ -107,7 +107,7 @@ export class DocView extends ContentView {
       // messes with the scroll position during DOM mutation (though
       // no relayout is triggered and I cannot imagine how it can
       // recompute the scroll position without a layout)
-      this.dom.style.height = this.view.viewState.heightMap.height + "px"
+      this.dom.style.height = this.view.viewState.domHeight + "px"
       this.dom.style.minWidth = this.minWidth ? this.minWidth + "px" : ""
       // Chrome will sometimes, when DOM mutations occur directly
       // around the selection, get confused and report a different
@@ -403,12 +403,6 @@ export class DocView extends ContentView {
   }
 }
 
-// Browsers appear to reserve a fixed amount of bits for height
-// styles, and ignore or clip heights above that. For Chrome and
-// Firefox, this is in the 20 million range, so we try to stay below
-// that.
-const MaxNodeHeight = 1e7
-
 class BlockGapWidget extends WidgetType {
   constructor(readonly height: number) { super() }
 
@@ -421,16 +415,7 @@ class BlockGapWidget extends WidgetType {
   eq(other: BlockGapWidget) { return other.height == this.height }
 
   updateDOM(elt: HTMLElement) {
-    while (elt.lastChild) elt.lastChild.remove()
-    if (this.height < MaxNodeHeight) {
-      elt.style.height = this.height + "px"
-    } else {
-      elt.style.height = ""
-      for (let remaining = this.height; remaining > 0; remaining -= MaxNodeHeight) {
-        let fill = elt.appendChild(document.createElement("div"))
-        fill.style.height = Math.min(remaining, MaxNodeHeight) + "px"
-      }
-    }
+    elt.style.height = this.height + "px"
     return true
   }
 
