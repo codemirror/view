@@ -1,3 +1,9 @@
+## 0.17.7 (2021-01-25)
+
+### New features
+
+Add an `EditorView.announce` state effect that can be used to conveniently provide screen reader announcements.
+
 ## 0.17.6 (2021-01-22)
 
 ### Bug fixes
