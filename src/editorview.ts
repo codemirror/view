@@ -1,5 +1,5 @@
 import {EditorState, Transaction, TransactionSpec, Extension, Prec, ChangeDesc,
-        EditorSelection, SelectionRange} from "@codemirror/state"
+        EditorSelection, SelectionRange, StateEffect} from "@codemirror/state"
 import {Line} from "@codemirror/text"
 import {StyleModule, StyleSpec} from "style-mod"
 
@@ -112,6 +112,8 @@ export class EditorView {
   /// [decorations](#view.Decoration) to style it.
   readonly contentDOM: HTMLElement
 
+  private announceDOM: HTMLElement
+
   /// @internal
   inputState!: InputState
 
@@ -150,7 +152,12 @@ export class EditorView {
     this.scrollDOM.className = themeClass("scroller")
     this.scrollDOM.appendChild(this.contentDOM)
 
+    this.announceDOM = document.createElement("div")
+    this.announceDOM.style.cssText = "position: absolute; top: -10000px"
+    this.announceDOM.setAttribute("aria-live", "polite")
+
     this.dom = document.createElement("div")
+    this.dom.appendChild(this.announceDOM)
     this.dom.appendChild(this.scrollDOM)
 
     this._dispatch = config.dispatch || ((tr: Transaction) => this.update([tr]))
@@ -219,6 +226,7 @@ export class EditorView {
       redrawn = this.docView.update(update)
       if (this.state.facet(styleModule) != this.styleModules) this.mountStyles()
       this.updateAttrs()
+      this.showAnnouncements(transactions)
     } finally { this.updateState = UpdateState.Idle }
     if (redrawn || scrollTo || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
@@ -338,6 +346,16 @@ export class EditorView {
     })
     updateAttrs(this.contentDOM, this.contentAttrs, contentAttrs)
     this.contentAttrs = contentAttrs
+  }
+
+  private showAnnouncements(trs: readonly Transaction[]) {
+    let first = true
+    for (let tr of trs) for (let effect of tr.effects) if (effect.is(EditorView.announce)) {
+      if (first) this.announceDOM.textContent = ""
+      first = false
+      let div = this.announceDOM.appendChild(document.createElement("div"))
+      div.textContent = effect.value
+    }
   }
 
   private mountStyles() {
@@ -707,6 +725,14 @@ export class EditorView {
   /// Facet that provides DOM attributes for the editor's outer
   /// element.
   static editorAttributes = editorAttributes
+
+  /// State effect used to include screen reader announcements in a
+  /// transaction. These will be added to the DOM in a visually hidden
+  /// element with `aria-live="polite"` set, and should be used to
+  /// describe effects that are visually obvious but may not be
+  /// noticed by screen reader users (such as moving to the next
+  /// search match).
+  static announce = StateEffect.define<string>()
 }
 
 /// Helper type that maps event names to event object types, or the
