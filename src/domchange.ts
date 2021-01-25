@@ -1,6 +1,6 @@
 import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
-import {inputHandler} from "./extension"
+import {inputHandler, editable} from "./extension"
 import {selectionCollapsed, getSelection} from "./dom"
 import browser from "./browser"
 import {EditorSelection, Transaction, Annotation, Text} from "@codemirror/state"
@@ -27,7 +27,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
                         preferredPos - from, preferredSide)
     if (diff) change = {from: from + diff.from, to: from + diff.toA,
                         insert: view.state.toText(reader.text.slice(diff.from, diff.toB))}
-  } else if (view.hasFocus) {
+  } else if (view.hasFocus || !view.state.facet(editable)) {
     let domSel = getSelection(view.root)
     let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
     let head = iHead && iHead.node == domSel.focusNode && iHead.offset == domSel.focusOffset ? view.state.selection.main.head

@@ -1,6 +1,7 @@
 import browser from "./browser"
 import {ContentView, Dirty} from "./contentview"
 import {EditorView} from "./editorview"
+import {editable} from "./extension"
 import {hasSelection, getSelection, DOMSelection, isEquivalentPosition} from "./dom"
 
 const observeOptions = {
@@ -24,7 +25,6 @@ export class DOMObserver {
   delayedFlush = -1
   queue: MutationRecord[] = []
 
-  onSelectionChange: any
   onCharData: any
 
   scrollTargets: HTMLElement[] = []
@@ -59,23 +59,7 @@ export class DOMObserver {
         this.flushSoon()
       }
 
-    this.onSelectionChange = (event: Event) => {
-      if (this.view.root.activeElement != this.dom) return
-      let sel = getSelection(this.view.root)
-      let context = sel.anchorNode && this.view.docView.nearest(sel.anchorNode)
-      if (context && context.ignoreEvent(event)) return
-
-      // Deletions on IE11 fire their events in the wrong order, giving
-      // us a selection change event before the DOM changes are
-      // reported.
-      // (Selection.isCollapsed isn't reliable on IE)
-      if (browser.ie && browser.ie_version <= 11 && !this.view.state.selection.main.empty &&
-          sel.focusNode && isEquivalentPosition(sel.focusNode, sel.focusOffset, sel.anchorNode, sel.anchorOffset))
-        this.flushSoon()
-      else
-        this.flush()
-    }
-
+    this.onSelectionChange = this.onSelectionChange.bind(this)
     this.start()
 
     this.onScroll = this.onScroll.bind(this)
@@ -98,6 +82,24 @@ export class DOMObserver {
       this.flush()
       this.onScrollChanged(e)
     }
+  }
+
+  onSelectionChange(event: Event) {
+    let {view} = this, sel = getSelection(view.root)
+    if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(view.dom, sel))
+      return
+    let context = sel.anchorNode && view.docView.nearest(sel.anchorNode)
+    if (context && context.ignoreEvent(event)) return
+
+    // Deletions on IE11 fire their events in the wrong order, giving
+    // us a selection change event before the DOM changes are
+    // reported.
+    // (Selection.isCollapsed isn't reliable on IE)
+    if (browser.ie && browser.ie_version <= 11 && !view.state.selection.main.empty &&
+      sel.focusNode && isEquivalentPosition(sel.focusNode, sel.focusOffset, sel.anchorNode, sel.anchorOffset))
+      this.flushSoon()
+    else
+      this.flush()
   }
 
   listenForScroll() {
