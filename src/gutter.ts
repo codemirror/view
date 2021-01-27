@@ -1,6 +1,6 @@
 import {EditorView, ViewPlugin, PluginField, ViewUpdate, BlockType, BlockInfo, themeClass, Direction} from "@codemirror/view"
 import {RangeValue, RangeSet, RangeCursor} from "@codemirror/rangeset"
-import {combineConfig, MapMode, Facet, Extension} from "@codemirror/state"
+import {combineConfig, MapMode, Facet, Extension, EditorState} from "@codemirror/state"
 
 /// A gutter marker represents a bit of information attached to a line
 /// in a specific gutter. Your own custom markers have to extend this
@@ -332,7 +332,7 @@ function sameMarkers(a: readonly GutterMarker[], b: readonly GutterMarker[]): bo
 interface LineNumberConfig {
   /// How to display line numbers. Defaults to simply converting them
   /// to string.
-  formatNumber?: (lineNo: number) => string
+  formatNumber?: (lineNo: number, state: EditorState) => string
   /// Supply event handlers for DOM events on this gutter.
   domEventHandlers?: Handlers
 }
@@ -356,14 +356,17 @@ const lineNumberConfig = Facet.define<LineNumberConfig, Required<LineNumberConfi
 })
 
 class NumberMarker extends GutterMarker {
-  constructor(readonly number: number) { super() }
+  constructor(readonly number: string) { super() }
 
   eq(other: NumberMarker) { return this.number == other.number }
 
-  toDOM(view: EditorView) {
-    let config = view.state.facet(lineNumberConfig)
-    return document.createTextNode(config.formatNumber(this.number))
+  toDOM() {
+    return document.createTextNode(this.number)
   }
+}
+
+function formatNumber(view: EditorView, number: number) {
+  return view.state.facet(lineNumberConfig).formatNumber(number, view.state)
 }
 
 const lineNumberGutter = gutter({
@@ -371,13 +374,13 @@ const lineNumberGutter = gutter({
   markers(view: EditorView) { return view.state.facet(lineNumberMarkers) },
   lineMarker(view, line, others) {
     if (others.length) return null
-    return new NumberMarker(view.state.doc.lineAt(line.from).number)
+    return new NumberMarker(formatNumber(view, view.state.doc.lineAt(line.from).number))
   },
   initialSpacer(view: EditorView) {
-    return new NumberMarker(maxLineNumber(view.state.doc.lines))
+    return new NumberMarker(formatNumber(view, maxLineNumber(view.state.doc.lines)))
   },
   updateSpacer(spacer: GutterMarker, update: ViewUpdate) {
-    let max = maxLineNumber(update.view.state.doc.lines)
+    let max = formatNumber(update.view, maxLineNumber(update.view.state.doc.lines))
     return max == (spacer as NumberMarker).number ? spacer : new NumberMarker(max)
   }
 })
