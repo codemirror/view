@@ -30,7 +30,7 @@ interface SpecialCharConfig {
 }
 
 const UnicodeRegexpSupport = /x/.unicode != null ? "gu" : "g"
-const Specials = new RegExp("[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200c\u200e\u200f\u2028\u2029\ufeff\ufff9-\ufffc]", UnicodeRegexpSupport)
+const Specials = new RegExp("[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u00ad\u061c\u200b\u200e\u200f\u2028\u2029\ufeff\ufff9-\ufffc]", UnicodeRegexpSupport)
 
 const Names: {[key: number]: string} = {
   0: "null",
