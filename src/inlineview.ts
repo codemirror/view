@@ -144,7 +144,8 @@ function textCoords(text: Node, pos: number, side: number): Rect {
   range.setEnd(text, to)
   range.setStart(text, from)
   let rects = range.getClientRects(), rect = rects[(flatten ? flatten < 0 : side >= 0) ? 0 : rects.length - 1]
-  if (browser.safari && !flatten && rect.width == 0) rect = Array.prototype.find.call(rects, r => r.width) || rect
+  // Safari can return an empty `rects` list in certain cases if the Node is hidden, so we check for existence of `rect` before accessing `.width`
+  if (browser.safari && !flatten && rect?.width == 0) rect = Array.prototype.find.call(rects, r => r.width) || rect
   return flatten ? flattenRect(rect!, flatten < 0) : rect!
 }
 
