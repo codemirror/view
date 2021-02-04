@@ -1,7 +1,7 @@
 import {Text as DocText} from "@codemirror/text"
 import {ContentView, DOMPos} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
-import {Rect, flattenRect, tempRange} from "./dom"
+import {Rect, Rect0, flattenRect, tempRange} from "./dom"
 import {CompositionWidget} from "./docview"
 import browser from "./browser"
 
@@ -143,7 +143,9 @@ function textCoords(text: Node, pos: number, side: number): Rect {
   let range = tempRange()
   range.setEnd(text, to)
   range.setStart(text, from)
-  let rects = range.getClientRects(), rect = rects[(flatten ? flatten < 0 : side >= 0) ? 0 : rects.length - 1]
+  let rects = range.getClientRects()
+  if (!rects.length) return Rect0
+  let rect = rects[(flatten ? flatten < 0 : side >= 0) ? 0 : rects.length - 1]
   if (browser.safari && !flatten && rect.width == 0) rect = Array.prototype.find.call(rects, r => r.width) || rect
   return flatten ? flattenRect(rect!, flatten < 0) : rect!
 }
@@ -209,6 +211,7 @@ export class WidgetView extends InlineView {
 
   coordsAt(pos: number, side: number): Rect | null {
     let rects = this.dom!.getClientRects(), rect: Rect | null = null
+    if (!rects.length) return Rect0
     for (let i = pos > 0 ? rects.length - 1 : 0;; i += (pos > 0 ? -1 : 1)) {
       rect = rects[i]
       if (pos > 0 ? i == 0 : i == rects.length - 1 || rect.top < rect.bottom) break

@@ -83,6 +83,8 @@ export interface Rect {
   readonly bottom: number
 }
 
+export const Rect0 = {left: 0, right: 0, top: 0, bottom: 0}
+
 export function flattenRect(rect: Rect, left: boolean) {
   let x = left ? rect.left : rect.right
   return {left: x, right: x, top: rect.top, bottom: rect.bottom}
