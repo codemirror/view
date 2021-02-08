@@ -686,13 +686,13 @@ export class EditorView {
   /// names. So for example `$content` targets the editor's [content
   /// element](#view.EditorView.contentDOM).
   ///
-  /// Because the selectors will be prefixed with a scope class,
-  /// directly matching the editor's [wrapper
-  /// element](#view.EditorView.dom), which is the element on which
-  /// the scope class will be added, needs to be explicitly
-  /// differentiated by adding an additional `$` to the front of the
-  /// pattern. For example `$$focused $panel` will expand to something
-  /// like `.[scope].cm-focused .cm-panel`.
+  /// Because the selectors will be prefixed with a scope class, rule
+  /// that directly match the editor's [wrapper
+  /// element](#view.EditorView.dom)—to which the scope
+  /// class will be added—need to be explicitly differentiated by
+  /// adding an additional `$` to the front of the pattern. For
+  /// example `$$focused $panel` will expand to something like
+  /// `.[scope].cm-focused .cm-panel`.
   ///
   /// When `dark` is set to true, the theme will be marked as dark,
   /// which will add the `$dark` selector to the wrapper element (as
