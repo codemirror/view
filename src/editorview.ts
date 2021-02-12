@@ -149,6 +149,7 @@ export class EditorView {
     this.contentDOM = document.createElement("div")
 
     this.scrollDOM = document.createElement("div")
+    this.scrollDOM.tabIndex = -1
     this.scrollDOM.className = themeClass("scroller")
     this.scrollDOM.appendChild(this.contentDOM)
 
