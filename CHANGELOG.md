@@ -1,3 +1,13 @@
+## 0.17.8 (2021-02-16)
+
+### Bug fixes
+
+Fix a problem where the DOM selection and the editor state could get out of sync in non-editable mode.
+
+Fix a crash when the editor was hidden on Safari, due to `getClientRects` returning an empty list.
+
+Prevent Firefox from making the scrollable element keyboard-focusable.
+
 ## 0.17.7 (2021-01-25)
 
 ### New features
