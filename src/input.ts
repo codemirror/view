@@ -293,11 +293,15 @@ function doPaste(view: EditorView, input: string) {
   let byLine = text.lines == state.selection.ranges.length
   let linewise = lastLinewiseCopy && state.selection.ranges.every(r => r.empty) && lastLinewiseCopy == text.toString()
   if (linewise) {
-    changes = {
-      changes: state.selection.ranges.map(r => state.doc.lineAt(r.from))
-        .filter((l, i, a) => i == 0 || a[i - 1] != l)
-        .map(line => ({from: line.from, insert: (byLine ? text.line(i++).text : input) + state.lineBreak}))
-    }
+    let lastLine = -1
+    changes = state.changeByRange(range => {
+      let line = state.doc.lineAt(range.from)
+      if (line.from == lastLine) return {range}
+      lastLine = line.from
+      let insert = state.toText((byLine ? text.line(i++).text : input) + state.lineBreak)
+      return {changes: {from: line.from, insert},
+              range: EditorSelection.cursor(range.from + insert.length)}
+    })
   } else if (byLine) {
     changes = state.changeByRange(range => {
       let line = text.line(i++)
