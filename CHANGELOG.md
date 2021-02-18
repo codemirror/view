@@ -1,3 +1,9 @@
+## 0.17.9 (2021-02-18)
+
+### Bug fixes
+
+Fix an issue where pasting linewise at the start of a line left the cursor before the inserted content.
+
 ## 0.17.8 (2021-02-16)
 
 ### Bug fixes
