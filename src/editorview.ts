@@ -717,7 +717,7 @@ export class EditorView {
 
   /// An extension that enables line wrapping in the editor (by
   /// setting CSS `white-space` to `pre-wrap` in the content).
-  static lineWrapping = EditorView.theme({$content: {whiteSpace: "pre-wrap"; overflowWrap: "anywhere"}})
+  static lineWrapping = EditorView.theme({$content: {whiteSpace: "pre-wrap", overflowWrap: "anywhere"}})
 
   /// Facet that provides additional DOM attributes for the editor's
   /// editable DOM element.
