@@ -1,3 +1,11 @@
+## 0.17.10 (2021-02-22)
+
+### Bug fixes
+
+Long words without spaces, when line-wrapping is enabled, are now properly broken.
+
+Fix the horizontal position of selections drawn by `drawSelection` in right-to-left editors with a scrollbar.
+
 ## 0.17.9 (2021-02-18)
 
 ### Bug fixes
