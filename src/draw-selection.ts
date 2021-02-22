@@ -163,7 +163,8 @@ const selectionClass = themeClass("selectionBackground")
 
 function getBase(view: EditorView) {
   let rect = view.scrollDOM.getBoundingClientRect()
-  return {left: rect.left - view.scrollDOM.scrollLeft, top: rect.top - view.scrollDOM.scrollTop}
+  let left = view.textDirection == Direction.LTR ? rect.left : rect.right - view.scrollDOM.clientWidth
+  return {left: left - view.scrollDOM.scrollLeft, top: rect.top - view.scrollDOM.scrollTop}
 }
 
 function wrappedLine(view: EditorView, pos: number, inside: {from: number, to: number}) {
