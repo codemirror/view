@@ -190,10 +190,10 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
     visualEnd = wrappedLine(view, to, visualEnd)
   }
   if (visualStart.from == visualEnd.from) {
-    return pieces(drawForLine(range.from, range.to))
+    return pieces(drawForLine(range.from, range.to, visualStart))
   } else {
-    let top = drawForLine(range.from, null)
-    let bottom = drawForLine(null, range.to)
+    let top = drawForLine(range.from, null, visualStart)
+    let bottom = drawForLine(null, range.to, visualEnd)
     let between = []
     if (visualStart.to < visualEnd.from - 1)
       between.push(piece(leftSide, top.bottom, rightSide, bottom.top))
@@ -213,10 +213,11 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
   }
 
   // Gets passed from/to in line-local positions
-  function drawForLine(from: null | number, to: null | number) {
+  function drawForLine(from: null | number, to: null | number, line: {from: number, to: number}) {
     let top = 1e9, bottom = -1e9, horizontal: number[] = []
     function addSpan(from: number, fromOpen: boolean, to: number, toOpen: boolean, dir: Direction) {
-      let fromCoords = view.coordsAtPos(from, 1)!, toCoords = view.coordsAtPos(to, -1)!
+      let fromCoords = view.coordsAtPos(from, from == line.to ? -1 : 1)!
+      let toCoords = view.coordsAtPos(to, to == line.from ? 1 : -1)!
       top = Math.min(fromCoords.top, toCoords.top, top)
       bottom = Math.max(fromCoords.bottom, toCoords.bottom, bottom)
       if (dir == Direction.LTR)
@@ -227,8 +228,7 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
                         !ltr && fromOpen ? rightSide : fromCoords.right)
     }
 
-    let start = from ?? view.moveToLineBoundary(EditorSelection.cursor(to!, 1), false).head
-    let end = to ?? view.moveToLineBoundary(EditorSelection.cursor(from!, -1), true).head
+    let start = from ?? line.from, end = to ?? line.to
     // Split the range by visible range and document line
     for (let r of view.visibleRanges) if (r.to > start && r.from < end) {
       for (let pos = Math.max(r.from, start), endPos = Math.min(r.to, end);;) {
