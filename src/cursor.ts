@@ -224,7 +224,7 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
     let rect = view.dom.getBoundingClientRect()
     let goal = start.goalColumn ?? startCoords.left - rect.left
     let resolvedGoal = rect.left + goal
-    let dist = distance ?? 5
+    let dist = distance ?? (view.defaultLineHeight >> 1)
     for (let startY = dir < 0 ? startCoords.top : startCoords.bottom, extra = 0; extra < 50; extra += 10) {
       let pos = posAtCoords(view, {x: resolvedGoal, y: startY + (dist + extra) * dir}, dir)
       if (pos == null) break
