@@ -1,3 +1,15 @@
+## 0.17.11 (2021-02-25)
+
+### Bug fixes
+
+Fix vertical cursor motion on Safari with a larger line-height.
+
+Fix incorrect selection drawing (with `drawSelection`) when the selection spans to just after a soft wrap point.
+
+Fix an issue where compositions on Safari were inappropriately aborted in some circumstances.
+
+The view will now redraw when the `EditorView.phrases` facet changes, to make sure translated text is properly updated.
+
 ## 0.17.10 (2021-02-22)
 
 ### Bug fixes
