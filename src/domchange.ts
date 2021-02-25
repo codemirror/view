@@ -67,7 +67,8 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
 
     if (view.inputState.composing >= 0) view.inputState.composing++
     let tr
-    if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3) {
+    if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3 &&
+        (!newSel || newSel.main.empty && newSel.main.from == change.from + change.insert.length)) {
       let before = sel.from < change.from ? startState.sliceDoc(sel.from, change.from) : ""
       let after = sel.to > change.to ? startState.sliceDoc(change.to, sel.to) : ""
       tr = startState.replaceSelection(view.state.toText(before + change.insert.sliceString(0, undefined, view.state.lineBreak) +
