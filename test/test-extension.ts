@@ -1,5 +1,5 @@
 import {tempEditor} from "./temp-editor"
-import {Text} from "@codemirror/state"
+import {Text, EditorState, tagExtension} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
 import ist from "ist"
 
@@ -59,5 +59,22 @@ describe("EditorView extension", () => {
     let cm = tempEditor("", [EditorView.editorAttributes.of({class: "something"})])
     ist(cm.dom.classList.contains("something"))
     ist(cm.dom.classList.contains("cm-wrap"))
+  })
+
+  it("redraws the view when phrases change", () => {
+    let plugin = ViewPlugin.fromClass(class {
+      elt: HTMLElement
+      constructor(view: EditorView) {
+        let elt = this.elt = view.dom.appendChild(document.createElement("div"))
+        elt.textContent = view.state.phrase("Hello")
+        elt.style.position = "absolute"
+        elt.className = "greeting"
+      }
+      destroy() { this.elt.remove() }
+    })
+    let cm = tempEditor("one", [plugin, tagExtension("lang", [])])
+    ist(cm.dom.querySelector(".greeting")!.textContent, "Hello")
+    cm.dispatch({reconfigure: {lang: EditorState.phrases.of({Hello: "Bonjour"})}})
+    ist(cm.dom.querySelector(".greeting")!.textContent, "Bonjour")
   })
 })

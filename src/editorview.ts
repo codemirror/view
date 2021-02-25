@@ -211,15 +211,19 @@ export class EditorView {
       throw new Error("Calls to EditorView.update are not allowed while an update is in progress")
 
     let redrawn = false, update: ViewUpdate
-    this.updateState = UpdateState.Updating
+    let state = this.state
+    for (let tr of transactions) {
+      if (tr.startState != state)
+        throw new RangeError("Trying to update state with a transaction that doesn't start from the previous state.")
+      state = tr.state
+    }
+    // When the phrases change, redraw the editor
+    if (state.facet(EditorState.phrases) != this.state.facet(EditorState.phrases))
+      return this.setState(state)
+
+    update = new ViewUpdate(this, state, transactions)
     try {
-      let state = this.state
-      for (let tr of transactions) {
-        if (tr.startState != state)
-          throw new RangeError("Trying to update state with a transaction that doesn't start from the previous state.")
-        state = tr.state
-      }
-      update = new ViewUpdate(this, state, transactions)
+      this.updateState = UpdateState.Updating
       let scrollTo = transactions.some(tr => tr.scrollIntoView) ? state.selection.main : null
       this.viewState.update(update, scrollTo)
       this.bidiCache = CachedOrder.update(this.bidiCache, update.changes)
