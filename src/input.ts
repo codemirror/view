@@ -334,11 +334,24 @@ handlers.keydown = (view, event: KeyboardEvent) => {
   view.inputState.setSelectionOrigin("keyboardselection")
 }
 
-handlers.touchdown = handlers.touchmove = view => {
+let lastTouch = 0
+
+function mouseLikeTouchEvent(e: TouchEvent) {
+  return e.touches.length == 1 && e.touches[0].radiusX <= 1 && e.touches[0].radiusY <= 1
+}
+
+handlers.touchstart = (view, e) => {
+  if (!mouseLikeTouchEvent(e)) lastTouch = Date.now()
+  view.inputState.setSelectionOrigin("pointerselection")
+}
+
+handlers.touchmove = view => {
   view.inputState.setSelectionOrigin("pointerselection")
 }
 
 handlers.mousedown = (view, event: MouseEvent) => {
+  view.observer.flush()
+  if (lastTouch < Date.now() - 10) return // Ignore touch interaction
   let style: MouseSelectionStyle | null = null
   for (let makeStyle of view.state.facet(mouseSelectionStyle)) {
     style = makeStyle(view, event)
