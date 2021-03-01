@@ -24,8 +24,8 @@ export function buildTheme(main: string, spec: {[name: string]: StyleSpec}) {
     extend(template, sel) {
       template = expandThemeClasses(template)
       return sel.slice(0, main.length + 1) == main + " "
-        ? main + " " + template.replace(/&/, sel.slice(main.length + 1))
-        : template.replace(/&/, sel)
+        ? main + " " + template.replace(/&/g, sel.slice(main.length + 1))
+        : template.replace(/&/g, sel)
     }
   })
 }
