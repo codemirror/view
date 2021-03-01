@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, PluginField, ViewUpdate, BlockType, BlockInfo, themeClass, Direction} from "@codemirror/view"
+import {EditorView, ViewPlugin, PluginField, ViewUpdate, BlockType, BlockInfo, Direction} from "@codemirror/view"
 import {RangeValue, RangeSet, RangeCursor} from "@codemirror/rangeset"
 import {combineConfig, MapMode, Facet, Extension, EditorState} from "@codemirror/state"
 
@@ -31,10 +31,9 @@ GutterMarker.prototype.mapMode = MapMode.TrackBefore
 type Handlers = {[event: string]: (view: EditorView, line: BlockInfo, event: any) => boolean}
 
 interface GutterConfig {
-  /// The theme class for the gutter's wrapping DOM element. Will
-  /// be prefixed with `"gutter."` for the gutter wrapper, and then
-  /// suffixed with `"Element"` for the individual line elements.
-  style?: string
+  /// An extra CSS class to be added to the wrapper (`cm-gutter`)
+  /// element.
+  class?: string
   /// Controls whether empty gutter elements should be rendered.
   /// Defaults to false.
   renderEmptyElements?: boolean
@@ -53,7 +52,7 @@ interface GutterConfig {
 }
 
 const defaults = {
-  style: "",
+  class: "",
   renderEmptyElements: false,
   elementStyle: "",
   markers: () => RangeSet.empty,
@@ -72,25 +71,25 @@ export function gutter(config: GutterConfig): Extension {
 }
 
 const baseTheme = EditorView.baseTheme({
-  $gutters: {
+  ".cm-gutters": {
     display: "flex",
     height: "100%",
     boxSizing: "border-box",
     left: 0
   },
 
-  "$$light $gutters": {
+  "&light .cm-gutters": {
     backgroundColor: "#f5f5f5",
     color: "#999",
     borderRight: "1px solid #ddd"
   },
 
-  "$$dark $gutters": {
+  "&dark .cm-gutters": {
     backgroundColor: "#333338",
     color: "#ccc"
   },
 
-  $gutter: {
+  ".cm-gutter": {
     display: "flex !important", // Necessary -- prevents margin collapsing
     flexDirection: "column",
     flexShrink: 0,
@@ -99,11 +98,11 @@ const baseTheme = EditorView.baseTheme({
     overflow: "hidden"
   },
 
-  $gutterElement: {
+  ".cm-gutterElement": {
     boxSizing: "border-box"
   },
 
-  "$gutterElement.lineNumber": {
+  ".cm-lineNumbers .cm-gutterElement": {
     padding: "0 3px 0 5px",
     minWidth: "20px",
     textAlign: "right",
@@ -139,7 +138,7 @@ const gutterView = ViewPlugin.fromClass(class {
 
   constructor(readonly view: EditorView) {
     this.dom = document.createElement("div")
-    this.dom.className = themeClass("gutters")
+    this.dom.className = "cm-gutters"
     this.dom.setAttribute("aria-hidden", "true")
     this.gutters = view.state.facet(activeGutters).map(conf => new SingleGutterView(view, conf))
     for (let gutter of this.gutters) this.dom.appendChild(gutter.dom)
@@ -235,7 +234,7 @@ class UpdateContext {
 
     let above = line.top - this.height
     if (this.i == gutter.elements.length) {
-      let newElt = new GutterElement(view, line.height, above, this.localMarkers, gutter.elementClass)
+      let newElt = new GutterElement(view, line.height, above, this.localMarkers)
       gutter.elements.push(newElt)
       gutter.dom.appendChild(newElt.dom)
     } else {
@@ -244,7 +243,7 @@ class UpdateContext {
         markers = elt.markers
         this.localMarkers.length = 0
       }
-      elt.update(view, line.height, above, markers, gutter.elementClass)
+      elt.update(view, line.height, above, markers)
     }
     this.height = line.bottom
     this.i++
@@ -261,12 +260,10 @@ class SingleGutterView {
   elements: GutterElement[] = []
   markers: readonly RangeSet<GutterMarker>[]
   spacer: GutterElement | null = null
-  elementClass!: string
 
   constructor(public view: EditorView, public config: Required<GutterConfig>) {
     this.dom = document.createElement("div")
-    this.dom.className = themeClass("gutter" + (this.config.style ? "." + this.config.style : ""))
-    this.elementClass = themeClass("gutterElement" + (this.config.style ? "." + this.config.style : ""))
+    this.dom.className = "cm-gutter" + (this.config.class ? " " + this.config.class : "")
     for (let prop in config.domEventHandlers) {
       this.dom.addEventListener(prop, (event: Event) => {
         let line = view.visualLineAtHeight((event as MouseEvent).clientY, view.contentDOM.getBoundingClientRect().top)
@@ -275,7 +272,7 @@ class SingleGutterView {
     }
     this.markers = asArray(config.markers(view))
     if (config.initialSpacer) {
-      this.spacer = new GutterElement(view, 0, 0, [config.initialSpacer(view)], this.elementClass)
+      this.spacer = new GutterElement(view, 0, 0, [config.initialSpacer(view)])
       this.dom.appendChild(this.spacer.dom)
       this.spacer.dom.style.cssText += "visibility: hidden; pointer-events: none"
     }
@@ -286,7 +283,7 @@ class SingleGutterView {
     this.markers = asArray(this.config.markers(update.view))
     if (this.spacer && this.config.updateSpacer) {
       let updated = this.config.updateSpacer(this.spacer.markers[0], update)
-      if (updated != this.spacer.markers[0]) this.spacer.update(update.view, 0, 0, [updated], this.elementClass)
+      if (updated != this.spacer.markers[0]) this.spacer.update(update.view, 0, 0, [updated])
     }
     return this.markers != prevMarkers
   }
@@ -298,12 +295,12 @@ class GutterElement {
   above: number = 0
   markers!: readonly GutterMarker[]
 
-  constructor(view: EditorView, height: number, above: number, markers: readonly GutterMarker[], eltClass: string) {
+  constructor(view: EditorView, height: number, above: number, markers: readonly GutterMarker[]) {
     this.dom = document.createElement("div")
-    this.update(view, height, above, markers, eltClass)
+    this.update(view, height, above, markers)
   }
 
-  update(view: EditorView, height: number, above: number, markers: readonly GutterMarker[], cssClass: string) {
+  update(view: EditorView, height: number, above: number, markers: readonly GutterMarker[]) {
     if (this.height != height)
       this.dom.style.height = (this.height = height) + "px"
     if (this.above != above)
@@ -311,7 +308,7 @@ class GutterElement {
     if (this.markers != markers) {
       this.markers = markers
       for (let ch; ch = this.dom.lastChild;) ch.remove()
-      let cls = cssClass
+      let cls = "cm-gutterElement"
       for (let m of markers) {
         let dom = m.toDOM(view)
         if (dom) this.dom.appendChild(dom)
@@ -370,7 +367,7 @@ function formatNumber(view: EditorView, number: number) {
 }
 
 const lineNumberGutter = gutter({
-  style: "lineNumber",
+  class: "cm-lineNumbers",
   markers(view: EditorView) { return view.state.facet(lineNumberMarkers) },
   lineMarker(view, line, others) {
     if (others.length) return null
