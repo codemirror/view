@@ -4,7 +4,6 @@ import {InlineView, TextView, WidgetView, mergeInlineChildren, inlineDOMAtPos, j
 import {clientRectsFor, Rect} from "./dom"
 import {LineDecoration, WidgetType, BlockType} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
-import {themeClass} from "./theme"
 import {Text} from "@codemirror/state"
 
 export interface BlockView extends ContentView {
@@ -14,8 +13,6 @@ export interface BlockView extends ContentView {
   type: BlockType
   dom: HTMLElement | null
 }
-
-const LineClass = themeClass("line")
 
 export class LineView extends ContentView implements BlockView {
   children: InlineView[] = []
@@ -90,12 +87,12 @@ export class LineView extends ContentView implements BlockView {
   sync(track?: {node: Node, written: boolean}) {
     if (!this.dom) {
       this.setDOM(document.createElement("div"))
-      this.dom!.className = LineClass
+      this.dom!.className = "cm-line"
       this.prevAttrs = this.attrs ? null : undefined
     }
     if (this.prevAttrs !== undefined) {
       updateAttrs(this.dom!, this.prevAttrs, this.attrs)
-      this.dom!.classList.add(LineClass)
+      this.dom!.classList.add("cm-line")
       this.prevAttrs = undefined
     }
     super.sync(track)

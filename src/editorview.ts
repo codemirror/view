@@ -14,7 +14,7 @@ import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
         decorations, MeasureRequest, UpdateFlag, editable, inputHandler} from "./extension"
-import {themeClass, theme, darkTheme, buildTheme, baseThemeID, baseTheme} from "./theme"
+import {theme, darkTheme, buildTheme, baseThemeID, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
 import browser from "./browser"
@@ -150,7 +150,7 @@ export class EditorView {
 
     this.scrollDOM = document.createElement("div")
     this.scrollDOM.tabIndex = -1
-    this.scrollDOM.className = themeClass("scroller")
+    this.scrollDOM.className = "cm-scroller"
     this.scrollDOM.appendChild(this.contentDOM)
 
     this.announceDOM = document.createElement("div")
@@ -337,14 +337,14 @@ export class EditorView {
 
   private updateAttrs() {
     let editorAttrs = combineAttrs(this.state.facet(editorAttributes), {
-      class: themeClass("wrap") + (this.hasFocus ? " cm-focused " : " ") + this.themeClasses
+      class: "cm-wrap" + (this.hasFocus ? " cm-focused " : " ") + this.themeClasses
     })
     updateAttrs(this.dom, this.editorAttrs, editorAttrs)
     this.editorAttrs = editorAttrs
     let contentAttrs = combineAttrs(this.state.facet(contentAttributes), {
       spellcheck: "false",
       contenteditable: String(this.state.facet(editable)),
-      class: themeClass("content"),
+      class: "cm-content",
       style: `${browser.tabSize}: ${this.state.tabSize}`,
       role: "textbox",
       "aria-multiline": "true"
@@ -684,24 +684,16 @@ export class EditorView {
   /// style spec providing the styles for the theme. These will be
   /// prefixed with a generated class for the style.
   ///
-  /// It is highly recommended you use _theme classes_, rather than
-  /// regular CSS classes, in your selectors. These are prefixed with
-  /// a `$` instead of a `.`, and will be expanded (as with
-  /// [`themeClass`](#view.themeClass)) to one or more prefixed class
-  /// names. So for example `$content` targets the editor's [content
-  /// element](#view.EditorView.contentDOM).
-  ///
   /// Because the selectors will be prefixed with a scope class, rule
   /// that directly match the editor's [wrapper
-  /// element](#view.EditorView.dom)—to which the scope
-  /// class will be added—need to be explicitly differentiated by
-  /// adding an additional `$` to the front of the pattern. For
-  /// example `$$focused $panel` will expand to something like
-  /// `.[scope].cm-focused .cm-panel`.
+  /// element](#view.EditorView.dom)—to which the scope class will be
+  /// added—need to be explicitly differentiated by adding an `&` to
+  /// the selector for that element—for example
+  /// `&.cm-focused`.
   ///
   /// When `dark` is set to true, the theme will be marked as dark,
-  /// which will add the `$dark` selector to the wrapper element (as
-  /// opposed to `$light` when a light theme is active).
+  /// which will add the `cm-dark` class to the wrapper element (as
+  /// opposed to `cm-light` when a light theme is active).
   static theme(spec: {[selector: string]: StyleSpec}, options?: {dark?: boolean}): Extension {
     let prefix = StyleModule.newName()
     let result = [theme.of(prefix), styleModule.of(buildTheme(`.${baseThemeID}.${prefix}`, spec))]
@@ -712,16 +704,12 @@ export class EditorView {
   /// Create an extension that adds styles to the base theme. The
   /// given object works much like the one passed to
   /// [`theme`](#view.EditorView^theme). You'll often want to qualify
-  /// base styles with `$dark` or `$light` so they only apply when
-  /// there is a dark or light theme active. For example `"$$dark
-  /// $myHighlight"`.
+  /// base styles with `".cm-dark"` or `".cm-light"` so they only
+  /// apply when there is a dark or light theme active. For example
+  /// `"&.cm-dark .cm-myHighlight"`.
   static baseTheme(spec: {[selector: string]: StyleSpec}): Extension {
     return Prec.fallback(styleModule.of(buildTheme("." + baseThemeID, spec)))
   }
-
-  /// An extension that enables line wrapping in the editor (by
-  /// setting CSS `white-space` to `pre-wrap` in the content).
-  static lineWrapping = EditorView.theme({$content: {whiteSpace: "pre-wrap", overflowWrap: "anywhere"}})
 
   /// Facet that provides additional DOM attributes for the editor's
   /// editable DOM element.
@@ -730,6 +718,10 @@ export class EditorView {
   /// Facet that provides DOM attributes for the editor's outer
   /// element.
   static editorAttributes = editorAttributes
+
+  /// An extension that enables line wrapping in the editor (by
+  /// setting CSS `white-space` to `pre-wrap` in the content).
+  static lineWrapping = EditorView.contentAttributes.of({"class": "cm-lineWrapping"})
 
   /// State effect used to include screen reader announcements in a
   /// transaction. These will be added to the DOM in a visually hidden

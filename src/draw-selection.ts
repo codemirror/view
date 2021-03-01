@@ -1,7 +1,6 @@
 import {EditorSelection, SelectionRange, Extension, Facet, combineConfig, Prec} from "@codemirror/state"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {EditorView} from "./editorview"
-import {themeClass} from "./theme"
 import {Direction} from "./bidi"
 import browser from "./browser"
 
@@ -30,9 +29,9 @@ const selectionConfig = Facet.define<SelectionConfig, Required<SelectionConfig>>
 
 /// Returns an extension that hides the browser's native selection and
 /// cursor, replacing the selection with a background behind the text
-/// (labeled with the `$selectionBackground` theme class), and the
+/// (with the `cm-selectionBackground` class), and the
 /// cursors with elements overlaid over the code (using
-/// `$cursor.primary` and `$cursor.secondary`).
+/// `cm-cursor-primary` and `cm-cursor-secondary`).
 ///
 /// This allows the editor to display secondary selection ranges, and
 /// tends to produce a type of selection more in line with that users
@@ -89,10 +88,10 @@ const drawSelectionPlugin = ViewPlugin.fromClass(class {
   constructor(readonly view: EditorView) {
     this.measureReq = {read: this.readPos.bind(this), write: this.drawSel.bind(this)}
     this.selectionLayer = view.scrollDOM.appendChild(document.createElement("div"))
-    this.selectionLayer.className = themeClass("selectionLayer")
+    this.selectionLayer.className = "cm-selectionLayer"
     this.selectionLayer.setAttribute("aria-hidden", "true")
     this.cursorLayer = view.scrollDOM.appendChild(document.createElement("div"))
-    this.cursorLayer.className = themeClass("cursorLayer")
+    this.cursorLayer.className = "cm-cursorLayer"
     this.cursorLayer.setAttribute("aria-hidden", "true")
     view.requestMeasure(this.measureReq)
     this.setBlinkRate()
@@ -151,15 +150,15 @@ const drawSelectionPlugin = ViewPlugin.fromClass(class {
 })
 
 const themeSpec = {
-  $line: {
+  ".cm-line": {
     "& ::selection": {backgroundColor: "transparent !important"},
     "&::selection": {backgroundColor: "transparent !important"}
   }
 }
-if (CanHidePrimary) (themeSpec as any).$line.caretColor = "transparent !important"
+if (CanHidePrimary) (themeSpec as any)[".cm-line"].caretColor = "transparent !important"
 const hideNativeSelection = Prec.override(EditorView.theme(themeSpec))
 
-const selectionClass = themeClass("selectionBackground")
+
 
 function getBase(view: EditorView) {
   let rect = view.scrollDOM.getBoundingClientRect()
@@ -203,7 +202,7 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
   }
 
   function piece(left: number, top: number, right: number, bottom: number) {
-    return new Piece(left - base.left, top - base.top, right - left, bottom - top, selectionClass)
+    return new Piece(left - base.left, top - base.top, right - left, bottom - top, "cm-selectionBackground")
   }
   function pieces({top, bottom, horizontal}: {top: number, bottom: number, horizontal: number[]}) {
     let pieces = []
@@ -254,13 +253,10 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
   }
 }
 
-const primaryCursorClass = themeClass("cursor.primary")
-const cursorClass = themeClass("cursor.secondary")
-
 function measureCursor(view: EditorView, cursor: SelectionRange, primary: boolean): Piece | null {
   let pos = view.coordsAtPos(cursor.head, cursor.assoc || 1)
   if (!pos) return null
   let base = getBase(view)
   return new Piece(pos.left - base.left, pos.top - base.top, -1, pos.bottom - pos.top,
-                   primary ? primaryCursorClass : cursorClass)
+                   primary ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary")
 }

@@ -1,7 +1,6 @@
 import {Decoration, DecorationSet, WidgetType} from "./decoration"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {EditorView} from "./editorview"
-import {themeClass} from "./theme"
 import {MatchDecorator} from "./matchdecorator"
 import {combineConfig, Facet, Extension} from "@codemirror/state"
 import {countColumn, codePointAt} from "@codemirror/text"
@@ -156,7 +155,7 @@ class SpecialCharWidget extends WidgetType {
     span.textContent = ph
     span.title = desc
     span.setAttribute("aria-label", desc)
-    span.className = themeClass("specialChar")
+    span.className = "cm-specialChar"
     return span
   }
 
@@ -171,7 +170,7 @@ class TabWidget extends WidgetType {
   toDOM() {
     let span = document.createElement("span")
     span.textContent = "\t"
-    span.className = themeClass("tab")
+    span.className = "cm-tab"
     span.style.width = this.width + "px"
     return span
   }

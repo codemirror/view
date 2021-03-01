@@ -2,15 +2,14 @@ import {Extension} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {Decoration, DecorationSet} from "./decoration"
-import {themeClass} from "./theme"
 
-/// Mark lines that have a cursor on them with the `$activeLine`
-/// theme class.
+/// Mark lines that have a cursor on them with the `"cm-activeLine"`
+/// DOM class.
 export function highlightActiveLine(): Extension {
   return activeLineHighlighter
 }
 
-const lineDeco = Decoration.line({attributes: {class: themeClass("activeLine")}})
+const lineDeco = Decoration.line({attributes: {class: "cm-activeLine"}})
 
 const activeLineHighlighter = ViewPlugin.fromClass(class {
   decorations: DecorationSet

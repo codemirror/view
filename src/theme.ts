@@ -7,22 +7,12 @@ export const darkTheme = Facet.define<boolean, boolean>({combine: values => valu
 
 export const baseThemeID = StyleModule.newName()
 
-function expandThemeClasses(sel: string) {
-  return sel.replace(/\$\w[\w\.]*/g, cls => {
-    let parts = cls.slice(1).split("."), result = ""
-    for (let i = 1; i <= parts.length; i++) result += ".cm-" + parts.slice(0, i).join("-")
-    return result
-  })
-}
-
 export function buildTheme(main: string, spec: {[name: string]: StyleSpec}) {
   return new StyleModule(spec, {
     process(sel) {
-      sel = expandThemeClasses(sel)
-      return /\$/.test(sel) ? sel.replace(/\$/, main) : main + " " + sel
+      return /&/.test(sel) ? sel.replace(/&/g, main) : main + " " + sel
     },
     extend(template, sel) {
-      template = expandThemeClasses(template)
       return sel.slice(0, main.length + 1) == main + " "
         ? main + " " + template.replace(/&/g, sel.slice(main.length + 1))
         : template.replace(/&/g, sel)
@@ -30,28 +20,11 @@ export function buildTheme(main: string, spec: {[name: string]: StyleSpec}) {
   })
 }
 
-/// Create a set of CSS class names for the given theme class, which
-/// can be added to a DOM element within an editor to make themes able
-/// to style it. Theme classes can be single words or words separated
-/// by dot characters. In the latter case, the returned classes
-/// combine those that match the full name and those that match some
-/// prefix—for example `"panel.search"` will match both the theme
-/// styles specified as `"panel.search"` and those with just
-/// `"panel"`. More specific theme classes (with more dots) take
-/// precedence over less specific ones.
-export function themeClass(selector: string): string {
-  if (selector.indexOf(".") < 0) return "cm-" + selector
-  let parts = selector.split("."), result = ""
-  for (let i = 1; i <= parts.length; i++)
-    result += (result ? " " : "") + "cm-" + parts.slice(0, i).join("-")
-  return result
-}    
-
 export const baseTheme = buildTheme("." + baseThemeID, {
-  $: {
+  "&": {
     position: "relative !important",
     boxSizing: "border-box",
-    "&$focused": {
+    "&.cm-focused": {
       // FIXME it would be great if we could directly use the browser's
       // default focus outline, but it appears we can't, so this tries to
       // approximate that
@@ -62,7 +35,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     flexDirection: "column"
   },
 
-  $scroller: {
+  ".cm-scroller": {
     display: "flex !important",
     alignItems: "flex-start !important",
     fontFamily: "monospace",
@@ -73,7 +46,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     zIndex: 0
   },
 
-  $content: {
+  ".cm-content": {
     margin: 0,
     flexGrow: 2,
     minHeight: "100%",
@@ -85,41 +58,46 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     outline: "none"
   },
 
-  "$$light $content": { caretColor: "black" },
-  "$$dark $content": { caretColor: "white" },
+  ".cm-lineWrapping": {
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere"
+  },
 
-  $line: {
+  "&.cm-light .cm-content": { caretColor: "black" },
+  "&.cm-dark .cm-content": { caretColor: "white" },
+
+  ".cm-line": {
     display: "block",
     padding: "0 2px 0 4px"
   },
 
-  $selectionLayer: {
+  ".cm-selectionLayer": {
     zIndex: -1,
     contain: "size style"
   },
 
-  $selectionBackground: {
+  ".cm-selectionBackground": {
     position: "absolute",
   },
-  "$$light $selectionBackground": {
+  "&.cm-light .cm-selectionBackground": {
     background: "#d9d9d9"
   },
-  "$$dark $selectionBackground": {
+  "&.cm-dark .cm-selectionBackground": {
     background: "#222"
   },
-  "$$focused$light $selectionBackground": {
+  "&.cm-focused.cm-light .cm-selectionBackground": {
     background: "#d7d4f0"
   },
-  "$$focused$dark $selectionBackground": {
+  "&.cm-focused.cm-dark .cm-selectionBackground": {
     background: "#233"
   },
 
-  $cursorLayer: {
+  ".cm-cursorLayer": {
     zIndex: 100,
     contain: "size style",
     pointerEvents: "none"
   },
-  "$$focused $cursorLayer": {
+  "&.cm-focused .cm-cursorLayer": {
     animation: "steps(1) cm-blink 1.2s infinite"
   },
 
@@ -129,39 +107,39 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "@keyframes cm-blink": {"0%": {}, "50%": {visibility: "hidden"}, "100%": {}},
   "@keyframes cm-blink2": {"0%": {}, "50%": {visibility: "hidden"}, "100%": {}},
 
-  $cursor: {
+  ".cm-cursor": {
     position: "absolute",
     borderLeft: "1.2px solid black",
     marginLeft: "-0.6px",
     pointerEvents: "none",
     display: "none"
   },
-  "$$dark $cursor": {
+  "&.cm-dark .cm-cursor": {
     borderLeftColor: "#444"
   },
 
-  "$$focused $cursor": {
+  "&.cm-focused .cm-cursor": {
     display: "block"
   },
 
-  "$$light $activeLine": { backgroundColor: "#f3f9ff" },
-  "$$dark $activeLine": { backgroundColor: "#223039" },
+  "&.cm-light .cm-activeLine": { backgroundColor: "#f3f9ff" },
+  "&.cm-dark .cm-activeLine": { backgroundColor: "#223039" },
 
-  "$$light $specialChar": { color: "red" },
-  "$$dark $specialChar": { color: "#f78" },
+  "&.cm-light .cm-specialChar": { color: "red" },
+  "&.cm-dark .cm-specialChar": { color: "#f78" },
 
-  "$tab": {
+  ".cm-tab": {
     display: "inline-block",
     overflow: "hidden",
     verticalAlign: "bottom"
   },
 
-  $placeholder: {
+  ".cm-placeholder": {
     color: "#888",
     display: "inline-block"
   },
 
-  $button: {
+  ".cm-button": {
     verticalAlign: "middle",
     color: "inherit",
     fontSize: "70%",
@@ -169,7 +147,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     borderRadius: "3px"
   },
 
-  "$$light $button": {
+  "&.cm-light .cm-button": {
     backgroundImage: "linear-gradient(#eff1f5, #d9d9df)",
     border: "1px solid #888",
     "&:active": {
@@ -177,15 +155,15 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     }
   },
 
-  "$$dark $button": {
-    backgroundImage: "linear-gradient(#555, #111)",
+  "&.cm-dark .cm-button": {
+    backgroundImage: "linear-gradient(#393939, #111)",
     border: "1px solid #888",
     "&:active": {
       backgroundImage: "linear-gradient(#111, #333)"
     }
   },
 
-  $textfield: {
+  ".cm-textfield": {
     verticalAlign: "middle",
     color: "inherit",
     fontSize: "70%",
@@ -193,11 +171,11 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     padding: ".2em .5em"
   },
 
-  "$$light $textfield": {
+  "&.cm-light .cm-textfield": {
     backgroundColor: "white"
   },
 
-  "$$dark $textfield": {
+  "&.cm-dark .cm-textfield": {
     border: "1px solid #555",
     backgroundColor: "inherit"
   }

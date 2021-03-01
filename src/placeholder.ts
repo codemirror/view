@@ -2,14 +2,13 @@ import {Extension} from "@codemirror/state"
 import {ViewPlugin} from "./extension"
 import {Decoration, DecorationSet, WidgetType} from "./decoration"
 import {EditorView} from "./editorview"
-import {themeClass} from "./theme"
 
 class Placeholder extends WidgetType {
   constructor(readonly content: string | HTMLElement) { super() }
 
   toDOM() {
     let wrap = document.createElement("span")
-    wrap.className = themeClass("placeholder")
+    wrap.className = "cm-placeholder"
     wrap.style.pointerEvents = "none"
     wrap.appendChild(typeof this.content == "string" ? document.createTextNode(this.content) : this.content)
     if (typeof this.content == "string")
