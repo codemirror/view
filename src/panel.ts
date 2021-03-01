@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, PluginField, ViewUpdate, themeClass} from "@codemirror/view"
+import {EditorView, ViewPlugin, PluginField, ViewUpdate} from "@codemirror/view"
 import {Facet, Extension} from "@codemirror/state"
 
 type PanelConfig = {
@@ -36,10 +36,9 @@ export interface Panel {
   mount?(): void
   /// Update the DOM for a given view update.
   update?(update: ViewUpdate): void
-  /// An optional theme class. By default, panels are themed as
-  /// `$panel`. If you pass `"foo"` here, your panel is themed as
-  /// `$panel.foo`.
-  style?: string,
+  /// An optional extra class to add to the panel container element.
+  /// (By default, panels get class `"cm-panel"`.)
+  class?: string,
   /// Whether the panel should be at the top or bottom of the editor.
   /// Defaults to false.
   top?: boolean
@@ -78,7 +77,8 @@ const panelPlugin = ViewPlugin.fromClass(class {
     this.top.sync(this.panels.filter(p => p.top))
     this.bottom.sync(this.panels.filter(p => !p.top))
     for (let p of this.panels) {
-      p.dom.className += " " + panelClass(p)
+      p.dom.classList.add("cm-panel")
+      if (p.class) p.dom.classList.add(p.class)
       if (p.mount) p.mount()
     }
   }
@@ -115,7 +115,8 @@ const panelPlugin = ViewPlugin.fromClass(class {
       this.top.sync(top)
       this.bottom.sync(bottom)
       for (let p of mount) {
-        p.dom.className += " " + panelClass(p)
+        p.dom.classList.add("cm-panel")
+        if (p.class) p.dom.classList.add(p.class)
         if (p.mount) p.mount!()
       }
     } else {
@@ -130,10 +131,6 @@ const panelPlugin = ViewPlugin.fromClass(class {
 }, { 
   provide: PluginField.scrollMargins.from(value => ({top: value.top.scrollMargin(), bottom: value.bottom.scrollMargin()}))
 })
-
-function panelClass(panel: Panel) {
-  return themeClass(panel.style ? `panel.${panel.style}` : "panel")
-}
 
 class PanelGroup {
   dom: HTMLElement | undefined = undefined
@@ -160,7 +157,7 @@ class PanelGroup {
 
     if (!this.dom) {
       this.dom = document.createElement("div")
-      this.dom.className = themeClass(this.top ? "panels.top" : "panels.bottom")
+      this.dom.className = this.top ? "cm-panels cm-panels-top" : "cm-panels cm-panels-bottom"
       this.dom.style[this.top ? "top" : "bottom"] = "0"
       let parent = this.container || this.view.dom
       parent.insertBefore(this.dom, this.top ? parent.firstChild : null)
@@ -198,23 +195,23 @@ function rm(node: ChildNode) {
 }
 
 const baseTheme = EditorView.baseTheme({
-  $panels: {
+  ".cm-panels": {
     boxSizing: "border-box",
     position: "sticky",
     left: 0,
     right: 0
   },
-  "$$light $panels": {
+  "&light .cm-panels": {
     backgroundColor: "#f5f5f5",
     color: "black"
   },
-  "$$light $panels.top": {
+  "&light .cm-panels-top": {
     borderBottom: "1px solid #ddd"
   },
-  "$$light $panels.bottom": {
+  "&light .cm-panels-bottom": {
     borderTop: "1px solid #ddd"
   },
-  "$$dark $panels": {
+  "&dark .cm-panels": {
     backgroundColor: "#333338",
     color: "white"
   }
