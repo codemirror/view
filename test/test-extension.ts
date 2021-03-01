@@ -1,5 +1,5 @@
 import {tempEditor} from "./temp-editor"
-import {Text, EditorState, tagExtension} from "@codemirror/state"
+import {Text, EditorState, Compartment} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
 import ist from "ist"
 
@@ -72,9 +72,10 @@ describe("EditorView extension", () => {
       }
       destroy() { this.elt.remove() }
     })
-    let cm = tempEditor("one", [plugin, tagExtension("lang", [])])
+    let lang = new Compartment
+    let cm = tempEditor("one", [plugin, lang.of([])])
     ist(cm.dom.querySelector(".greeting")!.textContent, "Hello")
-    cm.dispatch({reconfigure: {lang: EditorState.phrases.of({Hello: "Bonjour"})}})
+    cm.dispatch({effects: lang.reconfigure(EditorState.phrases.of({Hello: "Bonjour"}))})
     ist(cm.dom.querySelector(".greeting")!.textContent, "Bonjour")
   })
 })
