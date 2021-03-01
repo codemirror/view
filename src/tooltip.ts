@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, ViewUpdate, themeClass, Direction} from "@codemirror/view"
+import {EditorView, ViewPlugin, ViewUpdate, Direction} from "@codemirror/view"
 import {StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
 
 const ios = typeof navigator != "undefined" &&
@@ -54,7 +54,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   createTooltip(tooltip: Tooltip) {
     let tooltipView = tooltip.create(this.view)
-    tooltipView.dom.className = themeClass("tooltip" + (tooltip.style ? "." + tooltip.style : ""))
+    tooltipView.dom.classList.add("cm-tooltip")
+    if (tooltip.class) tooltipView.dom.classList.add(tooltip.class)
     this.view.dom.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
     return tooltipView
@@ -118,7 +119,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 })
 
 const baseTheme = EditorView.baseTheme({
-  $tooltip: {
+  ".cm-tooltip": {
     position: "fixed",
     border: "1px solid #ddd",
     backgroundColor: "#f5f5f5",
@@ -145,10 +146,9 @@ export interface Tooltip {
   /// A constructor function that creates the tooltip's [DOM
   /// representation](#tooltip.TooltipView).
   create(view: EditorView): TooltipView
-  /// An extra theme class to use for the tooltip. By default,
-  /// it'll be themed as `"tooltip"`, but you can pass a name, say
-  /// `"mine"`, to style it as `"tooltip.mine"` instead.
-  style?: string
+  /// An extra class to add to the tooltip element. By default,
+  /// it'll get only `"cm-tooltip"`.
+  class?: string
   /// Whether the tooltip should be shown above or below the target
   /// position. Defaults to false.
   above?: boolean
