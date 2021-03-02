@@ -198,7 +198,14 @@ export class DocView extends ContentView {
     let main = this.view.state.selection.main
     // FIXME need to handle the case where the selection falls inside a block range
     let anchor = this.domAtPos(main.anchor)
-    let head = this.domAtPos(main.head)
+    let head = main.empty ? anchor : this.domAtPos(main.head)
+
+    if (browser.gecko && main.empty && betweenUneditable(anchor)) {
+      let dummy = document.createTextNode("")
+      this.view.observer.ignore(() => anchor.node.insertBefore(dummy, anchor.node.childNodes[anchor.offset] || null))
+      anchor = head = new DOMPos(dummy, 0)
+      force = true
+    }
 
     let domSel = getSelection(this.root)
     // If the selection is already here, or in an equivalent position, don't touch it
@@ -385,6 +392,12 @@ export class DocView extends ContentView {
       right: rect.right + mRight, bottom: rect.bottom + mBottom
     })
   }
+}
+
+function betweenUneditable(pos: DOMPos) {
+  return pos.node.nodeType == 1 && pos.node.firstChild &&
+    (pos.offset == 0 || (pos.node.childNodes[pos.offset - 1] as HTMLElement).contentEditable == "false") &&
+    (pos.offset < pos.node.childNodes.length || (pos.node.childNodes[pos.offset] as HTMLElement).contentEditable == "false")
 }
 
 class BlockGapWidget extends WidgetType {
