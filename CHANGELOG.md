@@ -1,3 +1,11 @@
+## 0.17.12 (2021-03-02)
+
+### Bug fixes
+
+Avoid interfering with touch events, to allow native selection behavior.
+
+Fix a bug that broke sub-selectors with multiple `&` placeholders in themes.
+
 ## 0.17.11 (2021-02-25)
 
 ### Bug fixes
