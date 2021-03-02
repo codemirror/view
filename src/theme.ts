@@ -9,13 +9,8 @@ export const baseThemeID = StyleModule.newName()
 
 export function buildTheme(main: string, spec: {[name: string]: StyleSpec}) {
   return new StyleModule(spec, {
-    process(sel) {
-      return /&/.test(sel) ? sel.replace(/&/g, main) : main + " " + sel
-    },
-    extend(template, sel) {
-      return sel.slice(0, main.length + 1) == main + " "
-        ? main + " " + template.replace(/&/g, sel.slice(main.length + 1))
-        : template.replace(/&/g, sel)
+    finish(sel) {
+      return /&/.test(sel) ? sel.replace(/&/, main) : main + " " + sel
     }
   })
 }
