@@ -14,7 +14,7 @@ import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
         decorations, MeasureRequest, UpdateFlag, editable, inputHandler} from "./extension"
-import {theme, darkTheme, buildTheme, baseThemeID, baseTheme} from "./theme"
+import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
 import browser from "./browser"
@@ -331,7 +331,7 @@ export class EditorView {
   /// Get the CSS classes for the currently active editor themes.
   get themeClasses() {
     return baseThemeID + " " +
-      (this.state.facet(darkTheme) ? "cm-dark" : "cm-light") + " " +
+      (this.state.facet(darkTheme) ? baseDarkID : baseLightID) + " " +
       this.state.facet(theme)
   }
 
@@ -692,23 +692,23 @@ export class EditorView {
   /// `&.cm-focused`.
   ///
   /// When `dark` is set to true, the theme will be marked as dark,
-  /// which will add the `cm-dark` class to the wrapper element (as
-  /// opposed to `cm-light` when a light theme is active).
+  /// which will cause the `&dark` rules from [base
+  /// themes](#view.EditorView^baseTheme) to be used (as opposed to
+  /// `&light` when a light theme is active).
   static theme(spec: {[selector: string]: StyleSpec}, options?: {dark?: boolean}): Extension {
     let prefix = StyleModule.newName()
-    let result = [theme.of(prefix), styleModule.of(buildTheme(`.${baseThemeID}.${prefix}`, spec))]
+    let result = [theme.of(prefix), styleModule.of(buildTheme(`.${prefix}`, spec))]
     if (options && options.dark) result.push(darkTheme.of(true))
     return result
   }
 
-  /// Create an extension that adds styles to the base theme. The
-  /// given object works much like the one passed to
-  /// [`theme`](#view.EditorView^theme). You'll often want to qualify
-  /// base styles with `".cm-dark"` or `".cm-light"` so they only
-  /// apply when there is a dark or light theme active. For example
-  /// `"&.cm-dark .cm-myHighlight"`.
+  /// Create an extension that adds styles to the base theme. Like
+  /// with [`theme`](#view.EditorView^theme), use `&` to indicate the
+  /// place of the editor wrapper element when directly targeting
+  /// that. You can also use `&dark` or `&light` instead to only
+  /// target editors with a dark or light theme.
   static baseTheme(spec: {[selector: string]: StyleSpec}): Extension {
-    return Prec.fallback(styleModule.of(buildTheme("." + baseThemeID, spec)))
+    return Prec.fallback(styleModule.of(buildTheme("." + baseThemeID, spec, lightDarkIDs)))
   }
 
   /// Facet that provides additional DOM attributes for the editor's

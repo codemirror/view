@@ -5,12 +5,18 @@ export const theme = Facet.define<string, string>({combine: strs => strs.join(" 
 
 export const darkTheme = Facet.define<boolean, boolean>({combine: values => values.indexOf(true) > -1})
 
-export const baseThemeID = StyleModule.newName()
+export const baseThemeID = StyleModule.newName(), baseLightID = StyleModule.newName(), baseDarkID = StyleModule.newName()
 
-export function buildTheme(main: string, spec: {[name: string]: StyleSpec}) {
+export const lightDarkIDs = {"&light": "." + baseLightID, "&dark": "." + baseDarkID}
+
+export function buildTheme(main: string, spec: {[name: string]: StyleSpec}, scopes?: {[name: string]: string}) {
   return new StyleModule(spec, {
     finish(sel) {
-      return /&/.test(sel) ? sel.replace(/&/, main) : main + " " + sel
+      return /&/.test(sel) ? sel.replace(/&\w*/, m => {
+        if (m == "&") return main
+        if (!scopes || !scopes[m]) throw new RangeError(`Unsupported selector: ${m}`)
+        return scopes[m]
+      }) : main + " " + sel
     }
   })
 }
@@ -58,8 +64,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     overflowWrap: "anywhere"
   },
 
-  "&.cm-light .cm-content": { caretColor: "black" },
-  "&.cm-dark .cm-content": { caretColor: "white" },
+  "&light .cm-content": { caretColor: "black" },
+  "&dark .cm-content": { caretColor: "white" },
 
   ".cm-line": {
     display: "block",
@@ -74,16 +80,16 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   ".cm-selectionBackground": {
     position: "absolute",
   },
-  "&.cm-light .cm-selectionBackground": {
+  "&light .cm-selectionBackground": {
     background: "#d9d9d9"
   },
-  "&.cm-dark .cm-selectionBackground": {
+  "&dark .cm-selectionBackground": {
     background: "#222"
   },
-  "&.cm-focused.cm-light .cm-selectionBackground": {
+  "&light.cm-focused .cm-selectionBackground": {
     background: "#d7d4f0"
   },
-  "&.cm-focused.cm-dark .cm-selectionBackground": {
+  "&dark.cm-focused .cm-selectionBackground": {
     background: "#233"
   },
 
@@ -109,7 +115,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     pointerEvents: "none",
     display: "none"
   },
-  "&.cm-dark .cm-cursor": {
+  "&dark .cm-cursor": {
     borderLeftColor: "#444"
   },
 
@@ -117,11 +123,11 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     display: "block"
   },
 
-  "&.cm-light .cm-activeLine": { backgroundColor: "#f3f9ff" },
-  "&.cm-dark .cm-activeLine": { backgroundColor: "#223039" },
+  "&light .cm-activeLine": { backgroundColor: "#f3f9ff" },
+  "&dark .cm-activeLine": { backgroundColor: "#223039" },
 
-  "&.cm-light .cm-specialChar": { color: "red" },
-  "&.cm-dark .cm-specialChar": { color: "#f78" },
+  "&light .cm-specialChar": { color: "red" },
+  "&dark .cm-specialChar": { color: "#f78" },
 
   ".cm-tab": {
     display: "inline-block",
@@ -142,7 +148,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     borderRadius: "3px"
   },
 
-  "&.cm-light .cm-button": {
+  "&light .cm-button": {
     backgroundImage: "linear-gradient(#eff1f5, #d9d9df)",
     border: "1px solid #888",
     "&:active": {
@@ -150,7 +156,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     }
   },
 
-  "&.cm-dark .cm-button": {
+  "&dark .cm-button": {
     backgroundImage: "linear-gradient(#393939, #111)",
     border: "1px solid #888",
     "&:active": {
@@ -166,12 +172,12 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     padding: ".2em .5em"
   },
 
-  "&.cm-light .cm-textfield": {
+  "&light .cm-textfield": {
     backgroundColor: "white"
   },
 
-  "&.cm-dark .cm-textfield": {
+  "&dark .cm-textfield": {
     border: "1px solid #555",
     backgroundColor: "inherit"
   }
-})
+}, lightDarkIDs)
