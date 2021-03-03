@@ -1,3 +1,13 @@
+## 0.18.0 (2021-03-03)
+
+### Breaking changes
+
+The `themeClass` function and ``-style selectors in themes are no longer supported (prefixing with `cm-` should be done manually now).
+
+Themes must now use `&` (instead of an extra `$`) to target the editor wrapper element.
+
+The editor no longer adds `cm-light` or `cm-dark` classes. Targeting light or dark configurations in base themes should now be done by using a `&light` or `&dark` top-level selector.
+
 ## 0.17.13 (2021-03-03)
 
 ### Bug fixes

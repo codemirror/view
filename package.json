@@ -1,6 +1,6 @@
 {
   "name": "@codemirror/view",
-  "version": "0.17.13",
+  "version": "0.18.0",
   "description": "DOM view component for the CodeMirror code editor",
   "scripts": {
     "test": "echo 'Test runner in wrapper package'",
@@ -26,9 +26,9 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/rangeset": "^0.17.0",
-    "@codemirror/state": "^0.17.0",
-    "@codemirror/text": "^0.17.0",
+    "@codemirror/rangeset": "^0.18.0",
+    "@codemirror/state": "^0.18.0",
+    "@codemirror/text": "^0.18.0",
     "style-mod": "^4.0.0",
     "w3c-keyname": "^2.2.4"
   },
