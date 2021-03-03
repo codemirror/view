@@ -1,3 +1,11 @@
+## 0.17.13 (2021-03-03)
+
+### Bug fixes
+
+Work around a Firefox bug where it won't draw the cursor when it is between uneditable elements.
+
+Fix a bug that broke built-in mouse event handling.
+
 ## 0.17.12 (2021-03-02)
 
 ### Bug fixes
