@@ -173,18 +173,29 @@ export interface TooltipView {
 /// Behavior by which an extension can provide a tooltip to be shown.
 export const showTooltip = Facet.define<Tooltip>()
 
-const HoverTime = 750, HoverMaxDist = 10
+const HoverTime = 750, HoverMaxDist = 6
 
 class HoverPlugin {
   lastMouseMove: MouseEvent | null = null
   hoverTimeout = -1
+  restartTimeout = -1
+  pending: {pos: number} | null = null
+
   constructor(readonly view: EditorView,
-              readonly source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null,
+              readonly source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
               readonly field: StateField<Tooltip | null>,
               readonly setHover: StateEffectType<Tooltip | null>) {
     this.checkHover = this.checkHover.bind(this)
     view.dom.addEventListener("mouseleave", this.mouseleave = this.mouseleave.bind(this))
     view.dom.addEventListener("mousemove", this.mousemove = this.mousemove.bind(this))
+  }
+
+  update() {
+    if (this.pending) {
+      this.pending = null
+      clearTimeout(this.restartTimeout)
+      this.restartTimeout = setTimeout(() => this.startHover(), 20)
+    }
   }
 
   get active() {
@@ -195,11 +206,15 @@ class HoverPlugin {
     this.hoverTimeout = -1
     if (this.active) return
     let now = Date.now(), lastMove = this.lastMouseMove!
-    if (now - lastMove.timeStamp < HoverTime) {
+    if (now - lastMove.timeStamp < HoverTime)
       this.hoverTimeout = setTimeout(this.checkHover, HoverTime - (now - lastMove.timeStamp))
-      return
-    }
+    else
+      this.startHover()
+  }
 
+  startHover() {
+    clearTimeout(this.restartTimeout)
+    let lastMove = this.lastMouseMove!
     let coords = {x: lastMove.clientX, y: lastMove.clientY}
     let pos = this.view.contentDOM.contains(lastMove.target as HTMLElement)
       ? this.view.posAtCoords(coords) : null
@@ -211,18 +226,30 @@ class HoverPlugin {
     let bidi = this.view.bidiSpans(this.view.state.doc.lineAt(pos)).find(s => s.from <= pos! && s.to >= pos!)
     let rtl = bidi && bidi.dir == Direction.RTL ? -1 : 1
     let open = this.source(this.view, pos, (coords.x < posCoords.left ? -rtl : rtl) as -1 | 1)
-    if (open) this.view.dispatch({effects: this.setHover.of(open)})
+    if ((open as any)?.then) {
+      let pending = this.pending = {pos}
+      ;(open as Promise<Tooltip | null>).then(result => {
+        if (this.pending == pending) {
+          this.pending = null
+          if (result) this.view.dispatch({effects: this.setHover.of(result)})
+        }
+      })
+    } else if (open) {
+      this.view.dispatch({effects: this.setHover.of(open as Tooltip)})
+    }
   }
 
   mousemove(event: MouseEvent) {
     this.lastMouseMove = event
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, HoverTime)
     let tooltip = this.active
-    if (tooltip && !isInTooltip(event.target as HTMLElement)) {
-      let {pos} = tooltip, end = tooltip.end ?? pos
+    if (tooltip && !isInTooltip(event.target as HTMLElement) || this.pending) {
+      let {pos} = tooltip || this.pending!, end = tooltip?.end ?? pos
       if ((pos == end ? this.view.posAtCoords({x: event.clientX, y: event.clientY}) != pos
-           : !isOverRange(this.view, pos, end, event.clientX, event.clientY, HoverMaxDist)))
+           : !isOverRange(this.view, pos, end, event.clientX, event.clientY, HoverMaxDist))) {
         this.view.dispatch({effects: this.setHover.of(null)})
+        this.pending = null
+      }
     }
   }
 
@@ -262,14 +289,14 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
 }
 
 /// Enable a hover tooltip, which shows up when the pointer hovers
-/// over ranges of text. The callback is called when the mouse overs
+/// over ranges of text. The callback is called when the mouse hovers
 /// over the document text. It should, if there is a tooltip
-/// associated with position `pos` return the tooltip description. The
-/// `side` argument indicates on which side of the position the
-/// pointer is—it will be -1 if the pointer is before
-/// the position, 1 if after the position.
+/// associated with position `pos` return the tooltip description
+/// (either directly or in a promise). The `side` argument indicates
+/// on which side of the position the pointer is—it will be -1 if the
+/// pointer is before the position, 1 if after the position.
 export function hoverTooltip(
-  source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null,
+  source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
   options: {hideOnChange?: boolean} = {}
 ): Extension {
   const setHover = StateEffect.define<Tooltip | null>()
