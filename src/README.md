@@ -3,8 +3,6 @@ component that displays the editor state and allows text input.
 
 @EditorView
 
-@themeClass
-
 @BlockType
 
 @BlockInfo
