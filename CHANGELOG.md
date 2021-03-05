@@ -1,3 +1,9 @@
+## 0.18.1 (2021-03-05)
+
+### Bug fixes
+
+Fix an issue where, on iOS, some types of IME would cause the composed content to be deleted when confirming a composition.
+
 ## 0.18.0 (2021-03-03)
 
 ### Breaking changes
