@@ -42,8 +42,14 @@ export class DOMObserver {
       for (let mut of mutations) this.queue.push(mut)
       // IE11 will sometimes (on typing over a selection or
       // backspacing out a single character text node) call the
-      // observer callback before actually updating the DOM
-      if (browser.ie && browser.ie_version <= 11 &&
+      // observer callback before actually updating the DOM.
+      //
+      // Unrelatedly, iOS Safari will, when ending a composition,
+      // sometimes first clear it, deliver the mutations, and then
+      // reinsert the finished text. CodeMirror's handling of the
+      // deletion will prevent the reinsertion from happening,
+      // breaking composition.
+      if ((browser.ie && browser.ie_version <= 11 || browser.ios && view.composing) &&
           mutations.some(m => m.type == "childList" && m.removedNodes.length ||
                          m.type == "characterData" && m.oldValue!.length > m.target.nodeValue!.length))
         this.flushSoon()
