@@ -4,7 +4,7 @@
   "description": "DOM view component for the CodeMirror code editor",
   "scripts": {
     "test": "echo 'Test runner in wrapper package'",
-    "prepare": "tsc -p tsconfig.local.json && rollup -c"
+    "prepare": "cm-buildhelper src/index.ts"
   },
   "keywords": [
     "editor",
@@ -33,9 +33,7 @@
     "w3c-keyname": "^2.2.4"
   },
   "devDependencies": {
-    "rollup": "^2.35.1",
-    "rollup-plugin-dts": "^2.0.1",
-    "typescript": "^4.1.3",
+    "@codemirror/buildhelper": "^0.1.0",
     "@types/mocha": "^5.2.0",
     "ist": "^1.1.6",
     "mocha": "^7.1.1"
