@@ -370,9 +370,9 @@ function rangeForClick(view: EditorView, pos: number, bias: -1 | 1, type: number
   } else if (type == 2) { // Double click
     return groupAt(view.state, pos, bias)
   } else { // Triple click
-    let line = LineView.find(view.docView, pos)
-    if (line) return EditorSelection.range(line.posAtStart, line.posAtEnd)
-    let {from, to} = view.state.doc.lineAt(pos)
+    let visual = LineView.find(view.docView, pos), line = view.state.doc.lineAt(visual ? visual.posAtEnd : pos)
+    let from = visual ? visual.posAtStart : line.from, to = visual ? visual.posAtEnd : line.to
+    if (to < view.state.doc.length && to == line.to) to++
     return EditorSelection.range(from, to)
   }
 }
