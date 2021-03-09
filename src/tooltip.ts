@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, ViewUpdate, Direction} from "@codemirror/view"
+import {EditorView, ViewPlugin, ViewUpdate, Direction, logException} from "@codemirror/view"
 import {StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
 
 const ios = typeof navigator != "undefined" &&
@@ -233,7 +233,7 @@ class HoverPlugin {
           this.pending = null
           if (result) this.view.dispatch({effects: this.setHover.of(result)})
         }
-      })
+      }, e => logException(this.view.state, e, "hover tooltip"))
     } else if (open) {
       this.view.dispatch({effects: this.setHover.of(open as Tooltip)})
     }
