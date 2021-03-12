@@ -38,7 +38,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
 
   ".cm-scroller": {
     display: "flex !important",
-    alignItems: "flex-start !important",
+    alignItems: "stretch !important",
     fontFamily: "monospace",
     lineHeight: 1.4,
     height: "100%",
