@@ -73,7 +73,7 @@ export function gutter(config: GutterConfig): Extension {
 const baseTheme = EditorView.baseTheme({
   ".cm-gutters": {
     display: "flex",
-    height: "100%",
+    alignItems: "stretch",
     boxSizing: "border-box",
     left: 0
   },
@@ -94,7 +94,6 @@ const baseTheme = EditorView.baseTheme({
     flexDirection: "column",
     flexShrink: 0,
     boxSizing: "border-box",
-    height: "100%",
     overflow: "hidden"
   },
 
@@ -167,7 +166,6 @@ const gutterView = ViewPlugin.fromClass(class {
       for (let cx of contexts) cx.line(this.view, text)
     }, 0)
     for (let cx of contexts) cx.finish()
-    this.dom.style.minHeight = this.view.contentHeight + "px"
     if (update.state.facet(unfixGutters) != !this.fixed) {
       this.fixed = !this.fixed
       this.dom.style.position = this.fixed ? "sticky" : ""
