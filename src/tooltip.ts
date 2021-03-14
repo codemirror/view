@@ -56,7 +56,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     let tooltipView = tooltip.create(this.view)
     tooltipView.dom.classList.add("cm-tooltip")
     if (tooltip.class) tooltipView.dom.classList.add(tooltip.class)
-    tooltip.style.top = Outside
+    tooltipView.dom.style.top = Outside
     this.view.dom.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
     return tooltipView
