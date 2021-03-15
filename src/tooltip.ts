@@ -18,6 +18,7 @@ type Measured = {
 const Outside = "-10000px"
 
 const tooltipPlugin = ViewPlugin.fromClass(class {
+  input: readonly (Tooltip | null)[]
   tooltips: readonly Tooltip[]
   tooltipViews: TooltipView[]
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
@@ -25,19 +26,25 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   constructor(readonly view: EditorView) {
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
-    this.tooltips = view.state.facet(showTooltip)
+    this.input = view.state.facet(showTooltip)
+    this.tooltips = this.input.filter(t => t) as Tooltip[]
     this.tooltipViews = this.tooltips.map(tp => this.createTooltip(tp))
   }
 
   update(update: ViewUpdate) {
-    let tooltips = update.state.facet(showTooltip)
-    if (tooltips == this.tooltips) {
+    let input = update.state.facet(showTooltip)
+    if (input == this.input) {
       for (let t of this.tooltipViews) if (t.update) t.update(update)
     } else {
+      let tooltips = input.filter(x => x) as Tooltip[]
       let views = []
       for (let i = 0; i < tooltips.length; i++) {
         let tip = tooltips[i], known = -1
-        for (let i = 0; i < this.tooltips.length; i++) if (this.tooltips[i].create == tip.create) known = i
+        if (!tip) continue
+        for (let i = 0; i < this.tooltips.length; i++) {
+          let other = this.tooltips[i]
+          if (other && other.create == tip.create) known = i
+        }
         if (known < 0) {
           views[i] = this.createTooltip(tip)
         } else {
@@ -46,6 +53,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         }
       }
       for (let t of this.tooltipViews) if (views.indexOf(t) < 0) t.dom.remove()
+      this.input = input
       this.tooltips = tooltips
       this.tooltipViews = views
       this.maybeMeasure()
@@ -175,7 +183,7 @@ export interface TooltipView {
 }
 
 /// Behavior by which an extension can provide a tooltip to be shown.
-export const showTooltip = Facet.define<Tooltip>({
+export const showTooltip = Facet.define<Tooltip | null>({
   enables: [tooltipPlugin, baseTheme]
 })
 
@@ -323,7 +331,7 @@ export function hoverTooltip(
       return value
     },
 
-    provide: f => showTooltip.computeN([f], s => { let val = s.field(f); return val ? [val] : [] })
+    provide: f => showTooltip.from(f)
   })
 
   return [
