@@ -28,15 +28,13 @@ export function panels(config?: PanelConfig): Extension {
 
 /// Object that describes an active panel.
 export interface Panel {
-  /// The element representing this panel.
+  /// The element representing this panel. The library will add the
+  /// `"cm-panel"` DOM class to this.
   dom: HTMLElement,
   /// Optionally called after the panel has been added to the editor.
   mount?(): void
   /// Update the DOM for a given view update.
   update?(update: ViewUpdate): void
-  /// An optional extra class to add to the panel container element.
-  /// (By default, panels get class `"cm-panel"`.)
-  class?: string,
   /// Whether the panel should be at the top or bottom of the editor.
   /// Defaults to false.
   top?: boolean
@@ -71,7 +69,8 @@ const panelPlugin = ViewPlugin.fromClass(class {
     this.bottom.sync(this.panels.filter(p => !p.top))
     for (let p of this.panels) {
       p.dom.classList.add("cm-panel")
-      if (p.class) p.dom.classList.add(p.class)
+      // FIXME drop on next breaking release
+      if ((p as any).class) p.dom.classList.add((p as any).class)
       if (p.mount) p.mount()
     }
   }
@@ -109,7 +108,8 @@ const panelPlugin = ViewPlugin.fromClass(class {
       this.bottom.sync(bottom)
       for (let p of mount) {
         p.dom.classList.add("cm-panel")
-        if (p.class) p.dom.classList.add(p.class)
+        // FIXME drop on next breaking release
+        if ((p as any).class) p.dom.classList.add((p as any).class)
         if (p.mount) p.mount!()
       }
     } else {
