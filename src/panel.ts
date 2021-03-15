@@ -47,20 +47,22 @@ export interface Panel {
 /// Get the active panel created by the given constructor, if any.
 /// This can be useful when you need access to your panels' DOM
 /// structure.
-export function getPanel(view: EditorView, panel: (view: EditorView) => Panel) {
+export function getPanel(view: EditorView, panel: PanelConstructor) {
   let plugin = view.plugin(panelPlugin)
-  let index = view.state.facet(showPanel).indexOf(panel)
-  return plugin && index > -1 ? plugin.panels[index] : null
+  let index = plugin ? plugin.specs.indexOf(panel) : -1
+  return index > -1 ? plugin!.panels[index] : null
 }
 
 const panelPlugin = ViewPlugin.fromClass(class {
-  specs: readonly ((view: EditorView) => Panel)[]
+  input: readonly (null | PanelConstructor)[]
+  specs: readonly PanelConstructor[]
   panels: Panel[]
   top: PanelGroup
   bottom: PanelGroup
 
   constructor(view: EditorView) {
-    this.specs = view.state.facet(showPanel)
+    this.input = view.state.facet(showPanel)
+    this.specs = this.input.filter(s => s) as PanelConstructor[]
     this.panels = this.specs.map(spec => spec(view))
     let conf = view.state.facet(panelConfig)
     this.top = new PanelGroup(view, true, conf.topContainer)
@@ -87,8 +89,9 @@ const panelPlugin = ViewPlugin.fromClass(class {
     }
     this.top.syncClasses()
     this.bottom.syncClasses()
-    let specs = update.state.facet(showPanel)
-    if (specs != this.specs) {
+    let input = update.state.facet(showPanel)
+    if (input != this.input) {
+      let specs = input.filter(x => x) as PanelConstructor[]
       let panels = [], top: Panel[] = [], bottom: Panel[] = [], mount = []
       for (let spec of specs) {
         let known = this.specs.indexOf(spec), panel
@@ -210,9 +213,13 @@ const baseTheme = EditorView.baseTheme({
   }
 })
 
+/// A function that initializes a panel. Used in
+/// [`showPanel`](#panel.showPanel).
+export type PanelConstructor = (view: EditorView) => Panel
+
 /// Opening a panel is done by providing a constructor function for
 /// the panel through this facet. (The panel is closed again when its
-/// constructor is no longer provided.)
-export const showPanel = Facet.define<(view: EditorView) => Panel>({
+/// constructor is no longer provided.) Values of `null` are ignored.
+export const showPanel = Facet.define<PanelConstructor | null>({
   enables: [panelPlugin, baseTheme]
 })
