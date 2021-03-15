@@ -134,11 +134,10 @@ const baseTheme = EditorView.baseTheme({
   }
 })
 
-/// Supporting extension for displaying tooltips. Allows
-/// [`showTooltip`](#tooltip.showTooltip) to be used to create
-/// tooltips.
+// FIXME backward-compat shim. Delete on next major version.
+/// @internal
 export function tooltips(): Extension {
-  return [tooltipPlugin, baseTheme]
+  return []
 }
 
 /// Describes a tooltip. Values of this type, when provided through
@@ -178,7 +177,9 @@ export interface TooltipView {
 }
 
 /// Behavior by which an extension can provide a tooltip to be shown.
-export const showTooltip = Facet.define<Tooltip>()
+export const showTooltip = Facet.define<Tooltip>({
+  enables: [tooltipPlugin, baseTheme]
+})
 
 const HoverTime = 750, HoverMaxDist = 6
 
@@ -329,7 +330,6 @@ export function hoverTooltip(
 
   return [
     hoverState,
-    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover)),
-    tooltips()
+    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover))
   ]
 }
