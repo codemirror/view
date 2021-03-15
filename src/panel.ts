@@ -21,11 +21,9 @@ const panelConfig = Facet.define<PanelConfig, PanelConfig>({
   }
 })
 
-/// Enables the panel-managing extension.
+/// Configures the panel-managing extension.
 export function panels(config?: PanelConfig): Extension {
-  let ext = [panelPlugin, baseTheme]
-  if (config) ext.push(panelConfig.of(config))
-  return ext
+  return config ? [panelConfig.of(config)] : []
 }
 
 /// Object that describes an active panel.
@@ -47,11 +45,6 @@ export interface Panel {
   /// come first. Defaults to 0.
   pos?: number
 }
-
-/// Opening a panel is done by providing a constructor function for
-/// the panel through this facet. (The panel is closed again when its
-/// constructor is no longer provided.)
-export const showPanel = Facet.define<(view: EditorView) => Panel>()
 
 /// Get the active panel created by the given constructor, if any.
 /// This can be useful when you need access to your panels' DOM
@@ -215,4 +208,11 @@ const baseTheme = EditorView.baseTheme({
     backgroundColor: "#333338",
     color: "white"
   }
+})
+
+/// Opening a panel is done by providing a constructor function for
+/// the panel through this facet. (The panel is closed again when its
+/// constructor is no longer provided.)
+export const showPanel = Facet.define<(view: EditorView) => Panel>({
+  enables: [panelPlugin, baseTheme]
 })
