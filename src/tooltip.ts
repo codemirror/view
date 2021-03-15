@@ -55,7 +55,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   createTooltip(tooltip: Tooltip) {
     let tooltipView = tooltip.create(this.view)
     tooltipView.dom.classList.add("cm-tooltip")
-    if (tooltip.class) tooltipView.dom.classList.add(tooltip.class)
+    // FIXME drop this on the next breaking release
+    if ((tooltip as any).class) tooltipView.dom.classList.add((tooltip as any).class)
     tooltipView.dom.style.top = Outside
     this.view.dom.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
@@ -152,9 +153,6 @@ export interface Tooltip {
   /// A constructor function that creates the tooltip's [DOM
   /// representation](#tooltip.TooltipView).
   create(view: EditorView): TooltipView
-  /// An extra class to add to the tooltip element. By default,
-  /// it'll get only `"cm-tooltip"`.
-  class?: string
   /// Whether the tooltip should be shown above or below the target
   /// position. Defaults to false.
   above?: boolean
