@@ -122,9 +122,15 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 const baseTheme = EditorView.baseTheme({
   ".cm-tooltip": {
     position: "fixed",
-    border: "1px solid #ddd",
-    backgroundColor: "#f5f5f5",
     zIndex: 100
+  },
+  "&light .cm-tooltip": {
+    border: "1px solid #ddd",
+    backgroundColor: "#f5f5f5"
+  },
+  "&dark .cm-tooltip": {
+    backgroundColor: "#333338",
+    color: "white"
   }
 })
 
