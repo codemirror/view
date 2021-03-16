@@ -31,6 +31,8 @@ export function placeholder(content: string | HTMLElement): Extension {
       this.placeholder = Decoration.set([Decoration.widget({widget: new Placeholder(content), side: 1}).range(0)])
     }
 
+    update!: () => void // Kludge to convince TypeScript that this is a plugin value
+
     get decorations() { return this.view.state.doc.length ? Decoration.none : this.placeholder }
-  } as any, {decorations: v => (v as any).decorations})
+  }, {decorations: v => v.decorations})
 }
