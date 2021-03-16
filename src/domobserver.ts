@@ -75,7 +75,8 @@ export class DOMObserver {
         if (this.parentCheck < 0) this.parentCheck = setTimeout(this.listenForScroll.bind(this), 1000)
         if (entries[entries.length - 1].intersectionRatio > 0 != this.intersecting) {
           this.intersecting = !this.intersecting
-          this.onScrollChanged(document.createEvent("Event"))
+          if (this.intersecting != this.view.inView)
+            this.onScrollChanged(document.createEvent("Event"))
         }
       }, {})
       this.intersection.observe(this.dom)
