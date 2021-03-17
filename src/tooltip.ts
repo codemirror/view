@@ -87,7 +87,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   writeMeasure(measured: Measured) {
     let {editor} = measured
-    for (let i = 0; i < this.tooltipViews.length; i++) {
+    let others = []
+    for (let i = 0; i < this.tooltips.length; i++) {
       let tooltip = this.tooltips[i], tView = this.tooltipViews[i], {dom} = tView
       let pos = measured.pos[i], size = measured.size[i]
       // Hide tooltips that are outside of the editor.
@@ -102,14 +103,18 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       if (!tooltip.strictSide &&
           (above ? pos.top - (size.bottom - size.top) < 0 : pos.bottom + (size.bottom - size.top) > measured.innerHeight))
         above = !above
+      let top = above ? pos.top - height : pos.bottom, right = left + width
+      for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
+        top = above ? r.top - height : r.bottom
       if (ios) {
-        dom.style.top = ((above ? pos.top - height : pos.bottom) - editor.top) + "px"
+        dom.style.top = (top - editor.top) + "px"
         dom.style.left = (left - editor.left) + "px"
         dom.style.position = "absolute"
       } else {
-        dom.style.top = (above ? pos.top - height : pos.bottom) + "px"
+        dom.style.top = top + "px"
         dom.style.left = left + "px"
       }
+      others.push({left, top, right, bottom: top + height})
       dom.classList.toggle("cm-tooltip-above", above)
       dom.classList.toggle("cm-tooltip-below", !above)
       if (tView.positioned) tView.positioned()
