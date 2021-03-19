@@ -100,6 +100,7 @@ function domPosAtCoords(parent: HTMLElement, x: number, y: number): {node: Node,
 
 function domPosInText(node: Text, x: number, y: number): {node: Node, offset: number} {
   let len = node.nodeValue!.length, range = tempRange()
+  let closestOffset = -1, closestDY = 1e9, generalSide = 0
   for (let i = 0; i < len; i++) {
     range.setEnd(node, i + 1)
     range.setStart(node, i)
@@ -107,8 +108,9 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
     for (let j = 0; j < rects.length; j++) {
       let rect = rects[j]
       if (rect.top == rect.bottom) continue
-      if (rect.left - 1 <= x && rect.right + 1 >= x &&
-          rect.top - 1 <= y && rect.bottom + 1 >= y) {
+      if (!generalSide) generalSide = x - rect.left
+      let dy = (rect.top > y ? rect.top - y : y - rect.bottom) - 1
+      if (rect.left - 1 <= x && rect.right + 1 >= x && dy < closestDY) {
         let right = x >= (rect.left + rect.right) / 2, after = right
         if (browser.chrome || browser.gecko) {
           // Check for RTL on browsers that support getting client
@@ -117,11 +119,13 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
           let rectBefore = range.getBoundingClientRect()
           if (rectBefore.left == rect.right) after = !right
         }
-        return {node, offset: i + (after ? 1 : 0)}
+        if (dy <= 0) return {node, offset: i + (after ? 1 : 0)}
+        closestOffset = i + (after ? 1 : 0)
+        closestDY = dy
       }
     }
   }
-  return {node, offset: 0}
+  return {node, offset: closestOffset > -1 ? closestOffset : generalSide > 0 ? node.nodeValue!.length : 0}
 }
 
 export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bias: -1 | 1 = -1): number | null {
