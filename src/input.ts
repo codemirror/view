@@ -128,7 +128,8 @@ export class InputState {
   }
 
   mustFlushObserver(event: Event) {
-    return (event.type == "keydown" && (event as any).keyCode != 229) || event.type == "compositionend"
+    return (event.type == "keydown" && (event as any).keyCode != 229) ||
+      event.type == "compositionend" && !browser.ios
   }
 
   startMouseSelection(view: EditorView, event: MouseEvent, style: MouseSelectionStyle) {
