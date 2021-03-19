@@ -4,7 +4,7 @@ import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
 import {WidgetView} from "./inlineview"
 import {LineView} from "./blockview"
-import {clientRectsFor, tempRange} from "./dom"
+import {clientRectsFor, textRange} from "./dom"
 import {moveVisually, movedOver, Direction} from "./bidi"
 import browser from "./browser"
 
@@ -99,12 +99,10 @@ function domPosAtCoords(parent: HTMLElement, x: number, y: number): {node: Node,
 }
 
 function domPosInText(node: Text, x: number, y: number): {node: Node, offset: number} {
-  let len = node.nodeValue!.length, range = tempRange()
+  let len = node.nodeValue!.length
   let closestOffset = -1, closestDY = 1e9, generalSide = 0
   for (let i = 0; i < len; i++) {
-    range.setEnd(node, i + 1)
-    range.setStart(node, i)
-    let rects = range.getClientRects()
+    let rects = textRange(node, i, i + 1).getClientRects()
     for (let j = 0; j < rects.length; j++) {
       let rect = rects[j]
       if (rect.top == rect.bottom) continue
@@ -115,8 +113,7 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
         if (browser.chrome || browser.gecko) {
           // Check for RTL on browsers that support getting client
           // rects for empty ranges.
-          range.setEnd(node, i)
-          let rectBefore = range.getBoundingClientRect()
+          let rectBefore = textRange(node, i).getBoundingClientRect()
           if (rectBefore.left == rect.right) after = !right
         }
         if (dy <= 0) return {node, offset: i + (after ? 1 : 0)}

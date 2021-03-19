@@ -424,7 +424,7 @@ export function computeCompositionDeco(view: EditorView, changes: ChangeSet): De
   let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
   if (!textNode) return Decoration.none
   let cView = view.docView.nearest(textNode)
-  let from: number, to: number, topNode = textNode
+  let from: number, to: number, topNode: Node = textNode
   if (cView instanceof InlineView) {
     while (cView.parent instanceof InlineView) cView = cView.parent
     from = cView.posAtStart
@@ -453,7 +453,7 @@ export function computeCompositionDeco(view: EditorView, changes: ChangeSet): De
 }
 
 export class CompositionWidget extends WidgetType {
-  constructor(readonly top: Node, readonly text: Node) { super() }
+  constructor(readonly top: Node, readonly text: Text) { super() }
 
   eq(other: CompositionWidget) { return this.top == other.top && this.text == other.text }
 
@@ -464,9 +464,9 @@ export class CompositionWidget extends WidgetType {
   get customView() { return CompositionView }
 }
 
-function nearbyTextNode(node: Node, offset: number, side: number): Node | null {
+function nearbyTextNode(node: Node, offset: number, side: number): Text | null {
   for (;;) {
-    if (node.nodeType == 3) return node
+    if (node.nodeType == 3) return node as Text
     if (node.nodeType == 1 && offset > 0 && side <= 0) {
       node = node.childNodes[offset - 1]
       offset = maxOffset(node)

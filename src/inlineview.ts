@@ -1,7 +1,7 @@
 import {Text as DocText} from "@codemirror/text"
 import {ContentView, DOMPos} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
-import {Rect, Rect0, flattenRect, tempRange} from "./dom"
+import {Rect, Rect0, flattenRect, textRange} from "./dom"
 import {CompositionWidget} from "./docview"
 import browser from "./browser"
 
@@ -128,7 +128,7 @@ export class MarkView extends InlineView {
   }
 }
 
-function textCoords(text: Node, pos: number, side: number): Rect {
+function textCoords(text: Text, pos: number, side: number): Rect {
   let length = text.nodeValue!.length
   if (pos > length) pos = length
   let from = pos, to = pos, flatten = 0
@@ -140,10 +140,7 @@ function textCoords(text: Node, pos: number, side: number): Rect {
   } else {
     if (side < 0) from--; else to++
   }
-  let range = tempRange()
-  range.setEnd(text, to)
-  range.setStart(text, from)
-  let rects = range.getClientRects()
+  let rects = textRange(text, from, to).getClientRects()
   if (!rects.length) return Rect0
   let rect = rects[(flatten ? flatten < 0 : side >= 0) ? 0 : rects.length - 1]
   if (browser.safari && !flatten && rect.width == 0) rect = Array.prototype.find.call(rects, r => r.width) || rect

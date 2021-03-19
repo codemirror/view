@@ -25,17 +25,13 @@ export function hasSelection(dom: HTMLElement, selection: Selection): boolean {
   }
 }
 
-export function clientRectsFor(dom: Node): DOMRectList {
-  if (dom.nodeType == 3) {
-    let range = tempRange()
-    range.setEnd(dom, dom.nodeValue!.length)
-    range.setStart(dom, 0)
-    return range.getClientRects() as DOMRectList
-  } else if (dom.nodeType == 1) {
-    return (dom as HTMLElement).getClientRects() as DOMRectList
-  } else {
+export function clientRectsFor(dom: Node) {
+  if (dom.nodeType == 3)
+    return textRange(dom as Text, 0, dom.nodeValue!.length).getClientRects()
+  else if (dom.nodeType == 1)
+    return (dom as HTMLElement).getClientRects()
+  else
     return [] as any as DOMRectList
-  }
 }
 
 // Scans forward and backward through DOM positions equivalent to the
@@ -200,4 +196,9 @@ export function focusPreventScroll(dom: HTMLElement) {
 
 let scratchRange: Range | null
 
-export function tempRange() { return scratchRange || (scratchRange = document.createRange()) }
+export function textRange(node: Text, from: number, to = from) {
+  let range = scratchRange || (scratchRange = document.createRange())
+  range.setEnd(node, to)
+  range.setStart(node, from)
+  return range
+}
