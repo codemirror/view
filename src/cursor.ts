@@ -158,7 +158,10 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bi
       if (pos) ({offsetNode: node, offset} = pos)
     } else if (root.caretRangeFromPoint) {
       let range = root.caretRangeFromPoint(x, y)
-      if (range) ({startContainer: node, startOffset: offset} = range)
+      if (range) {
+        ;({startContainer: node, startOffset: offset} = range)
+        if (browser.safari && isSuspiciousCaretResult(node, offset, x)) node = undefined
+      }
     }
   }
 
@@ -168,6 +171,18 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bi
     ;({node, offset} = domPosAtCoords(line.dom!, x, y))
   }
   return view.docView.posFromDOM(node, offset)
+}
+
+// In case of a high line height, Safari's caretRangeFromPoint treats
+// the space between lines as belonging to the last character of the
+// line before. This is used to detect such a result so that it can be
+// ignored (issue #401).
+function isSuspiciousCaretResult(node: Node, offset: number, x: number) {
+  let len
+  if (node.nodeType != 3 || offset != (len = node.nodeValue!.length)) return false
+  for (let next = node.nextSibling; next; next = node.nextSibling)
+    if (next.nodeType != 1 || next.nodeName != "BR") return false
+  return textRange(node as Text, len - 1, len).getBoundingClientRect().left > x
 }
 
 export function moveToLineBoundary(view: EditorView, start: SelectionRange, forward: boolean, includeWrap: boolean) {
