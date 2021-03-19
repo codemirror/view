@@ -1,3 +1,13 @@
+## 0.18.2 (2021-03-19)
+
+### Bug fixes
+
+Triple-clicking now selects the line break after the clicked line (if any).
+
+Fix an issue where the `drawSelection` plugin would fail to draw the top line of the selection when it started in an empty line.
+
+Fix an issue where, at the end of a specific type of composition on iOS, the editor read the DOM before the browser was done updating it.
+
 ## 0.18.1 (2021-03-05)
 
 ### Bug fixes
