@@ -337,7 +337,8 @@ export class EditorView {
 
   private updateAttrs() {
     let editorAttrs = combineAttrs(this.state.facet(editorAttributes), {
-      class: "cm-wrap" + (this.hasFocus ? " cm-focused " : " ") + this.themeClasses
+      // FIXME drop cm-wrap in next major release
+      class: "cm-editor cm-wrap" + (this.hasFocus ? " cm-focused " : " ") + this.themeClasses
     })
     updateAttrs(this.dom, this.editorAttrs, editorAttrs)
     this.editorAttrs = editorAttrs
