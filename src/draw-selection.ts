@@ -243,11 +243,7 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
         if (pos >= endPos) break
       }
     }
-    if (horizontal.length == 0) {
-      let coords = view.coordsAtPos(start, -1)!
-      top = Math.min(coords.top, top)
-      bottom = Math.max(coords.bottom, bottom)
-    }
+    if (horizontal.length == 0) addSpan(start, from == null, end, to == null, view.textDirection)
  
     return {top, bottom, horizontal}
   }
