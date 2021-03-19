@@ -1,3 +1,13 @@
+## 0.18.3 (2021-03-19)
+
+### Breaking changes
+
+The outer DOM element now has class `cm-editor` instead of `cm-wrap` (`cm-wrap` will be present as well until 0.19).
+
+### Bug fixes
+
+Improve behavior of `posAtCoords` when the position is near text but not in any character's actual box.
+
 ## 0.18.2 (2021-03-19)
 
 ### Bug fixes
