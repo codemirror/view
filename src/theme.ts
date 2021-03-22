@@ -45,7 +45,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     alignItems: "flex-start !important",
     fontFamily: "monospace",
     lineHeight: 1.4,
-    height: "100%",
+    flexGrow: 2,
     overflowX: "auto",
     position: "relative",
     zIndex: 0
