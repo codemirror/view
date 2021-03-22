@@ -26,11 +26,15 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     position: "relative !important",
     boxSizing: "border-box",
     "&.cm-focused": {
-      // FIXME it would be great if we could directly use the browser's
-      // default focus outline, but it appears we can't, so this tries to
-      // approximate that
-      outline_fallback: "1px dotted #212121",
-      outline: "5px auto -webkit-focus-ring-color"
+      // Provide a simple default outline to make sure a focused
+      // editor is visually distinct. Can't leave the default behavior
+      // because that will apply to the content element, which is
+      // inside the scrollable container and doesn't include the
+      // gutters. We also can't use an 'auto' outline, since those
+      // are, for some reason, drawn behind the element content, which
+      // will cause things like the active line background to cover
+      // the outline (#297).
+      outline: "1px dotted #212121"
     },
     display: "flex !important",
     flexDirection: "column"
