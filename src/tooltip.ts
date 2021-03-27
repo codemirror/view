@@ -17,47 +17,67 @@ type Measured = {
 
 const Outside = "-10000px"
 
-const tooltipPlugin = ViewPlugin.fromClass(class {
-  input: readonly (Tooltip | null)[]
+class TooltipViewManager {
+  private input: readonly (Tooltip | null)[]
   tooltips: readonly Tooltip[]
-  tooltipViews: TooltipView[]
+  tooltipViews: readonly TooltipView[]
+
+  constructor(
+    view: EditorView,
+    private readonly facet: Facet<Tooltip | null>,
+    private readonly createTooltipView: (tooltip: Tooltip) => TooltipView
+  ) {
+    this.input = view.state.facet(facet)
+    this.tooltips = this.input.filter(t => t) as Tooltip[]
+    this.tooltipViews = this.tooltips.map(createTooltipView)
+  }
+
+  update(update: ViewUpdate) {
+    const input = update.state.facet(this.facet)
+    const tooltips = input.filter(x => x) as Tooltip[]
+    if (input === this.input) {
+      for (let t of this.tooltipViews) if (t.update) t.update(update)
+      return {shouldMeasure: false}
+    }
+
+    let tooltipViews = []
+    for (let i = 0; i < tooltips.length; i++) {
+      let tip = tooltips[i], known = -1
+      if (!tip) continue
+      for (let i = 0; i < this.tooltips.length; i++) {
+        let other = this.tooltips[i]
+        if (other && other.create == tip.create) known = i
+      }
+      if (known < 0) {
+        tooltipViews[i] = this.createTooltipView(tip)
+      } else {
+        let tooltipView = tooltipViews[i] = this.tooltipViews[known]
+        if (tooltipView.update) tooltipView.update(update)
+      }
+    }
+    for (let t of this.tooltipViews) if (tooltipViews.indexOf(t) < 0) t.dom.remove()
+
+    this.input = input
+    this.tooltips = tooltips
+    this.tooltipViews = tooltipViews
+    return {shouldMeasure: true}
+  }
+}
+
+const tooltipPlugin = ViewPlugin.fromClass(class {
+  manager: TooltipViewManager
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
   inView = true
 
   constructor(readonly view: EditorView) {
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
-    this.input = view.state.facet(showTooltip)
-    this.tooltips = this.input.filter(t => t) as Tooltip[]
-    this.tooltipViews = this.tooltips.map(tp => this.createTooltip(tp))
+    this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
   }
 
   update(update: ViewUpdate) {
-    let input = update.state.facet(showTooltip)
-    if (input == this.input) {
-      for (let t of this.tooltipViews) if (t.update) t.update(update)
-    } else {
-      let tooltips = input.filter(x => x) as Tooltip[]
-      let views = []
-      for (let i = 0; i < tooltips.length; i++) {
-        let tip = tooltips[i], known = -1
-        if (!tip) continue
-        for (let i = 0; i < this.tooltips.length; i++) {
-          let other = this.tooltips[i]
-          if (other && other.create == tip.create) known = i
-        }
-        if (known < 0) {
-          views[i] = this.createTooltip(tip)
-        } else {
-          let tooltipView = views[i] = this.tooltipViews[known]
-          if (tooltipView.update) tooltipView.update(update)
-        }
-      }
-      for (let t of this.tooltipViews) if (views.indexOf(t) < 0) t.dom.remove()
-      this.input = input
-      this.tooltips = tooltips
-      this.tooltipViews = views
+    const {shouldMeasure} = this.manager.update(update)
+    if (shouldMeasure)
       this.maybeMeasure()
-    }
   }
 
   createTooltip(tooltip: Tooltip) {
@@ -72,14 +92,14 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   destroy() {
-    for (let {dom} of this.tooltipViews) dom.remove()
+    for (let {dom} of this.manager.tooltipViews) dom.remove()
   }
 
   readMeasure() {
     return {
       editor: this.view.dom.getBoundingClientRect(),
-      pos: this.tooltips.map(t => this.view.coordsAtPos(t.pos)),
-      size: this.tooltipViews.map(({dom}) => dom.getBoundingClientRect()),
+      pos: this.manager.tooltips.map(t => this.view.coordsAtPos(t.pos)),
+      size: this.manager.tooltipViews.map(({dom}) => dom.getBoundingClientRect()),
       innerWidth: window.innerWidth,
       innerHeight: window.innerHeight
     }
@@ -88,8 +108,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   writeMeasure(measured: Measured) {
     let {editor} = measured
     let others = []
-    for (let i = 0; i < this.tooltips.length; i++) {
-      let tooltip = this.tooltips[i], tView = this.tooltipViews[i], {dom} = tView
+    for (let i = 0; i < this.manager.tooltips.length; i++) {
+      let tooltip = this.manager.tooltips[i], tView = this.manager.tooltipViews[i], {dom} = tView
       let pos = measured.pos[i], size = measured.size[i]
       // Hide tooltips that are outside of the editor.
       if (!pos || pos.bottom <= editor.top || pos.top >= editor.bottom || pos.right <= editor.left || pos.left >= editor.right) {
@@ -122,7 +142,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   maybeMeasure() {
-    if (this.tooltips.length) {
+    if (this.manager.tooltips.length) {
       if (this.view.inView || this.inView) this.view.requestMeasure(this.measureReq)
       this.inView = this.view.inView
     }
@@ -141,6 +161,9 @@ const baseTheme = EditorView.baseTheme({
   "&light .cm-tooltip": {
     border: "1px solid #ddd",
     backgroundColor: "#f5f5f5"
+  },
+  "&light .cm-hover-tooltip-section:not(:first-child)": {
+    borderTop: "1px solid #ddd",
   },
   "&dark .cm-tooltip": {
     backgroundColor: "#333338",
@@ -167,11 +190,13 @@ export interface Tooltip {
   /// representation](#tooltip.TooltipView).
   create(view: EditorView): TooltipView
   /// Whether the tooltip should be shown above or below the target
-  /// position. Defaults to false.
+  /// position. Not guaranteed for hover tooltips since all hover
+  /// tooltips for the same range are always positioned together.
+  /// Defaults to false.
   above?: boolean
   /// Whether the `above` option should be honored when there isn't
   /// enough space on that side to show the tooltip inside the
-  /// viewport. Defaults to false.
+  /// viewport. Not guaranteed for hover tooltips. Defaults to false.
   strictSide?: boolean
 }
 
@@ -190,6 +215,63 @@ export interface TooltipView {
 /// Behavior by which an extension can provide a tooltip to be shown.
 export const showTooltip = Facet.define<Tooltip | null>({
   enables: [tooltipPlugin, baseTheme]
+})
+
+const showHoverTooltip = Facet.define<Tooltip | null>()
+
+class HoverTooltipHost implements TooltipView {
+  private readonly manager: TooltipViewManager
+  dom: HTMLElement
+  mounted: boolean = false
+
+  // Needs to be static so that host tooltip instances always match
+  static create(view: EditorView) {
+    return new HoverTooltipHost(view)
+  }
+
+  private constructor(readonly view: EditorView) {
+    this.dom = document.createElement("div")
+    this.dom.classList.add("cm-hover-tooltip")
+    this.manager = new TooltipViewManager(view, showHoverTooltip, t => this.createHostedView(t))
+  }
+
+  createHostedView(tooltip: Tooltip) {
+    const hostedView = tooltip.create(this.view)
+    hostedView.dom.classList.add("cm-hover-tooltip-section")
+    this.dom.appendChild(hostedView.dom)
+    if (this.mounted && hostedView.mount)
+      hostedView.mount(this.view)
+    return hostedView
+  }
+
+  mount(view: EditorView) {
+    for (const hostedView of this.manager.tooltipViews) {
+      if (hostedView.mount) hostedView.mount(view)
+    }
+    this.mounted = true
+  }
+
+  positioned() {
+    for (const hostedView of this.manager.tooltipViews) {
+      if (hostedView.positioned) hostedView.positioned()
+    }
+  }
+
+  update(update: ViewUpdate) {
+    this.manager.update(update)
+  }
+}
+
+const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
+  const tooltips = state.facet(showHoverTooltip).filter(t => t) as Tooltip[]
+  if (tooltips.length === 0) return null
+
+  return {
+    pos: Math.min(...tooltips.map(t => t.pos)),
+    end: Math.max(...tooltips.filter(t => t.end != null).map(t => t.end!)),
+    create: HoverTooltipHost.create,
+    above: tooltips[0].above
+  }
 })
 
 const HoverTime = 750, HoverMaxDist = 6
@@ -316,6 +398,10 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
 /// (either directly or in a promise). The `side` argument indicates
 /// on which side of the position the pointer is—it will be -1 if the
 /// pointer is before the position, 1 if after the position.
+///
+/// Note that all hover tooltips are hosted within a single tooltip
+/// container element. This allows multiple tooltips over the same
+/// range to be "merged" together without overlapping.
 export function hoverTooltip(
   source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
   options: {hideOnChange?: boolean} = {}
@@ -338,11 +424,12 @@ export function hoverTooltip(
       return value
     },
 
-    provide: f => showTooltip.from(f)
+    provide: f => showHoverTooltip.from(f)
   })
 
   return [
     hoverState,
-    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover))
+    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover)),
+    showHoverTooltipHost
   ]
 }
