@@ -412,13 +412,17 @@ export class EditorView {
   }
 
   /// Find the line or block widget at the given vertical position.
-  /// `editorTop`, if given, provides the vertical position of the top
-  /// of the editor. It defaults to the editor's screen position
-  /// (which will force a DOM layout). You can explicitly pass 0 to
-  /// use editor-relative offsets.
-  blockAtHeight(height: number, editorTop?: number) {
+  ///
+  /// By default, this position is interpreted as a screen position,
+  /// meaning `docTop` is set to the DOM top position of the editor
+  /// content (forcing a layout). You can pass a different `docTop`
+  /// value—for example 0 to interpret `height` as a document-relative
+  /// position, or a precomputed document top
+  /// (`view.contentDOM.getBoundingClientRect().top`) to limit layout
+  /// queries.
+  blockAtHeight(height: number, docTop?: number) {
     this.readMeasured()
-    return this.viewState.blockAtHeight(height, ensureTop(editorTop, this.contentDOM))
+    return this.viewState.blockAtHeight(height, ensureTop(docTop, this.contentDOM))
   }
 
   /// Find information for the visual line (see
@@ -427,19 +431,21 @@ export class EditorView {
   /// array of block info structs in its `type` field if this line
   /// consists of more than one block.
   ///
-  /// Heights are interpreted relative to the given `editorTop`
-  /// position. When not given, the top position of the editor's
-  /// [content element](#view.EditorView.contentDOM) is taken.
-  visualLineAtHeight(height: number, editorTop?: number): BlockInfo {
+  /// Defaults to treating `height` as a screen position. See
+  /// [`blockAtHeight`](#view.EditorView.blockAtHeight) for the
+  /// interpretation of the `docTop` parameter.
+  visualLineAtHeight(height: number, docTop?: number): BlockInfo {
     this.readMeasured()
-    return this.viewState.lineAtHeight(height, ensureTop(editorTop, this.contentDOM))
+    return this.viewState.lineAtHeight(height, ensureTop(docTop, this.contentDOM))
   }
 
   /// Iterate over the height information of the visual lines in the
-  /// viewport.
-  viewportLines(f: (line: BlockInfo) => void, editorTop?: number) {
+  /// viewport. The heights of lines are reported relative to the
+  /// given document top, which defaults to the screen position of the
+  /// document (forcing a layout).
+  viewportLines(f: (line: BlockInfo) => void, docTop?: number) {
     let {from, to} = this.viewport
-    this.viewState.forEachLine(from, to, f, ensureTop(editorTop, this.contentDOM))
+    this.viewState.forEachLine(from, to, f, ensureTop(docTop, this.contentDOM))
   }
 
   /// Find the extent and height of the visual line (the content shown
@@ -448,12 +454,12 @@ export class EditorView {
   /// line when line breaks are covered by replaced decorations) at
   /// the given position.
   ///
-  /// Vertical positions are computed relative to the `editorTop`
+  /// Vertical positions are computed relative to the `docTop`
   /// argument, which defaults to 0 for this method. You can pass
   /// `view.contentDOM.getBoundingClientRect().top` here to get screen
   /// coordinates.
-  visualLineAt(pos: number, editorTop: number = 0): BlockInfo {
-    return this.viewState.lineAt(pos, editorTop)
+  visualLineAt(pos: number, docTop: number = 0): BlockInfo {
+    return this.viewState.lineAt(pos, docTop)
   }
 
   /// The editor's total content height.
