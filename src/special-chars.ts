@@ -54,7 +54,7 @@ let _supportsTabSize: null | boolean = null
 function supportsTabSize() {
   if (_supportsTabSize == null && typeof document != "undefined" && document.body) {
     let styles = document.body.style as any
-    _supportsTabSize = (styles.tabSize || styles.MozTabSize) != null
+    _supportsTabSize = (styles.tabSize ?? styles.MozTabSize) != null
   }
   return _supportsTabSize || false
 }
