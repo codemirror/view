@@ -228,9 +228,13 @@ describe("EditorView decoration", () => {
         decoEditor("abc", [w(2, new WordWidget("A"), -1),
                            w(2, new WordWidget("B"), 1)]))
       cm.dispatch({selection: {anchor: 2}})
-      let domSel = document.getSelection()!
-      ist(domSel.focusNode!.childNodes[domSel.focusOffset - 1].textContent, "A")
-      ist(domSel.focusNode!.childNodes[domSel.focusOffset].textContent, "B")
+      let {focusNode, focusOffset} = document.getSelection()!
+      let [before, after] = focusNode!.nodeType == 3 ?
+        [focusOffset ? focusNode! : focusNode!.previousSibling!,
+         focusOffset == focusNode!.nodeValue!.length ? focusNode!.nextSibling! : focusNode!] :
+        [focusNode!.childNodes[focusOffset - 1], focusNode!.childNodes[focusOffset]]
+      ist(before.textContent, "A")
+      ist(after.textContent, "B")
     })
 
     it("preserves widgets alongside edits regardless of side", () => {

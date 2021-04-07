@@ -10,6 +10,25 @@ function setDOMSel(node: Node, offset: number) {
   sel.addRange(range)
 }
 
+function textNode(node: Node, text: string): Text | null {
+  if (node.nodeType == 3) {
+    if (node.nodeValue == text) return node as Text
+  } else if (node.nodeType == 1) {
+    for (let ch = node.firstChild; ch; ch = ch.nextSibling) {
+      let found = textNode(ch, text)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function domIndex(node: Node): number {
+  for (var index = 0;; index++) {
+    node = node.previousSibling!
+    if (!node) return index
+  }
+}
+
 describe("EditorView selection", () => {
   it("can read the DOM selection", () => {
     let cm = requireFocus(tempEditor("one\n\nthree"))
@@ -20,18 +39,18 @@ describe("EditorView selection", () => {
       cm.observer.flush()
       ist(cm.state.selection.main.head, expected)
     }
-    let one = cm.contentDOM.firstChild!.firstChild!
-    let three = cm.contentDOM.lastChild!.firstChild!
+    let one = textNode(cm.contentDOM, "one")!
+    let three = textNode(cm.contentDOM, "three")!
     test(one, 0, 0)
     test(one, 1, 1)
     test(one, 3, 3)
-    test(one.parentNode!, 0, 0)
-    test(one.parentNode!, 1, 3)
+    test(one.parentNode!, domIndex(one), 0)
+    test(one.parentNode!, domIndex(one) + 1, 3)
     test(cm.contentDOM.childNodes[1], 0, 4)
     test(three, 0, 5)
     test(three, 2, 7)
-    test(three.parentNode!, 0, 5)
-    test(three.parentNode!, 1, 10)
+    test(three.parentNode!, domIndex(three), 5)
+    test(three.parentNode!, domIndex(three) + 1, 10)
   })
 
   it("syncs the DOM selection with the editor selection", () => {
@@ -41,16 +60,16 @@ describe("EditorView selection", () => {
       let sel = window.getSelection()!
       ist(isEquivalentPosition(node, offset, sel.focusNode, sel.focusOffset))
     }
-    let abc = cm.contentDOM.firstChild!.firstChild!
-    let def = cm.contentDOM.lastChild!.firstChild!
-    test(0, abc.parentNode!, 0)
+    let abc = textNode(cm.contentDOM, "abc")!
+    let def = textNode(cm.contentDOM, "def")!
+    test(0, abc.parentNode!, domIndex(abc))
     test(1, abc, 1)
     test(2, abc, 2)
-    test(3, abc.parentNode!, 1)
+    test(3, abc.parentNode!, domIndex(abc) + 1)
     test(4, cm.contentDOM.childNodes[1], 0)
-    test(5, def.parentNode!, 0)
+    test(5, def.parentNode!, domIndex(def))
     test(6, def, 1)
-    test(8, def.parentNode!, 1)
+    test(8, def.parentNode!, domIndex(def) + 1)
   })
 })
 
