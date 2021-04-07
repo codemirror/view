@@ -1,3 +1,11 @@
+## 0.18.5 (2021-04-07)
+
+### Bug fixes
+
+Improve handling of bidi text with brackets (conforming to Unicode 13's bidi algorithm).
+
+Fix the position where `drawSelection` displays the cursor on bidi boundaries.
+
 ## 0.18.4 (2021-04-07)
 
 ### Bug fixes
