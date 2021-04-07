@@ -12,6 +12,7 @@ import {getSelection, focusPreventScroll, Rect} from "./dom"
 export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
+  lastIOSEnter: number = 0
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
   lastEscPress: number = 0
@@ -43,19 +44,29 @@ export class InputState {
     for (let type in handlers) {
       let handler = handlers[type]
       view.contentDOM.addEventListener(type, (event: Event) => {
-        if (!eventBelongsToEditor(view, event) || this.ignoreDuringComposition(event) ||
-            type == "keydown" && this.screenKeyEvent(view, event as KeyboardEvent)) return
+        if (type == "keydown") {
+          // Must always run, even if a custom handler handled the event
+          this.lastKeyCode = (event as KeyboardEvent).keyCode
+          this.lastKeyTime = Date.now()
+          if (this.screenKeyEvent(view, event as KeyboardEvent)) return
+          // Prevent the default behavior of Enter on iOS makes the
+          // virtual keyboard get stuck in the wrong (lowercase)
+          // state. So we let it go through, and then, in
+          // applyDOMChange, notify key handlers of it and reset to
+          // the state they produce.
+          if (browser.ios && this.lastKeyCode == 13 && !(getMods(event as KeyboardEvent) & ~Mod.Shift) &&
+              !(event as any).synthetic) {
+            this.lastIOSEnter = Date.now()
+            return
+          }
+        }
+        if (!eventBelongsToEditor(view, event) || this.ignoreDuringComposition(event)) return
         if (this.mustFlushObserver(event)) view.observer.forceFlush()
         if (this.runCustomHandlers(type, view, event)) event.preventDefault()
         else handler(view, event)
       })
       this.registeredEvents.push(type)
     }
-    // Must always run, even if a custom handler handled the event
-    view.contentDOM.addEventListener("keydown", (event: KeyboardEvent) => {
-      view.inputState.lastKeyCode = event.keyCode
-      view.inputState.lastKeyTime = Date.now()
-    })
     this.notifiedFocused = view.hasFocus
     this.ensureHandlers(view)
   }
@@ -318,11 +329,15 @@ function doPaste(view: EditorView, input: string) {
   })
 }
 
-function mustCapture(event: KeyboardEvent): boolean {
-  const enum Mod { Ctrl = 1, Alt = 2, Shift = 4, Meta = 8 }
-  let mods = (event.ctrlKey ? Mod.Ctrl : 0) | (event.metaKey ? Mod.Meta : 0) |
+const enum Mod { Ctrl = 1, Alt = 2, Shift = 4, Meta = 8 }
+
+function getMods(event: KeyboardEvent) {
+  return (event.ctrlKey ? Mod.Ctrl : 0) | (event.metaKey ? Mod.Meta : 0) |
     (event.altKey ? Mod.Alt : 0) | (event.shiftKey ? Mod.Shift : 0)
-  let code = event.keyCode, macCtrl = browser.mac && mods == Mod.Ctrl
+}
+
+function mustCapture(code: number, mods: Mod): boolean {
+  let macCtrl = browser.mac && mods == Mod.Ctrl
   return code == 8 || (macCtrl && code == 72) ||  // Backspace, Ctrl-h on Mac
     code == 46 || (macCtrl && code == 68) || // Delete, Ctrl-d on Mac
     code == 27 || // Esc
@@ -331,7 +346,7 @@ function mustCapture(event: KeyboardEvent): boolean {
 }
 
 handlers.keydown = (view, event: KeyboardEvent) => {
-  if (mustCapture(event)) event.preventDefault()
+  if (mustCapture(event.keyCode, getMods(event))) event.preventDefault()
   view.inputState.setSelectionOrigin("keyboardselection")
 }
 

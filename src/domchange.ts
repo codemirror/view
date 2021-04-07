@@ -58,7 +58,10 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
          (change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 &&
           dispatchKey(view, "Backspace", 8)) ||
          (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
-          dispatchKey(view, "Delete", 46))))
+          dispatchKey(view, "Delete", 46))) ||
+        browser.ios &&
+        (view.inputState.lastIOSEnter > Date.now() - 225 && change.insert.lines > 1 &&
+         dispatchKey(view, "Enter", 10)))
       return
 
     let text = change.insert.toString()
@@ -207,8 +210,10 @@ function selectionFromPoints(points: DOMPoint[], base: number): EditorSelection 
 function dispatchKey(view: EditorView, name: string, code: number): boolean {
   let options = {key: name, code: name, keyCode: code, which: code, cancelable: true}
   let down = new KeyboardEvent("keydown", options)
+  ;(down as any).synthetic = true
   view.contentDOM.dispatchEvent(down)
   let up = new KeyboardEvent("keyup", options)
+  ;(up as any).synthetic = true
   view.contentDOM.dispatchEvent(up)
   return down.defaultPrevented || up.defaultPrevented
 }
