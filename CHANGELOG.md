@@ -1,3 +1,15 @@
+## 0.18.4 (2021-04-07)
+
+### Bug fixes
+
+Fix an issue where the default focus ring gets obscured by the gutters and active line.
+
+Fix an issue where the editor believed Chrome Android didn't support the CSS `tab-size` style.
+
+Don't style active lines when there are non-empty selection ranges, so that the active line background doesn't obscure the selection.
+
+Make iOS autocapitalize update properly when you press Enter.
+
 ## 0.18.3 (2021-03-19)
 
 ### Breaking changes
