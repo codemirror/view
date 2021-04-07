@@ -41,6 +41,23 @@ const LowTypes = dec("8888888888888888888888888888888888866688888878783333333333
 // Character types for codepoints 0x600 to 0x6f9
 const ArabicTypes = dec("4444448826627288999999999992222222222222222222222222222222222222222222222229999999999999999999994444444444644222822222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222999999949999999229989999223333333333")
 
+const Brackets = Object.create(null), BracketStack: number[] = []
+// There's a lot more in
+// https://www.unicode.org/Public/UCD/latest/ucd/BidiBrackets.txt,
+// which are left out to keep code size down.
+for (let p of ["()", "[]", "{}"]) {
+  let l = p.charCodeAt(0), r = p.charCodeAt(1)
+  Brackets[l] = r; Brackets[r] = -l
+}
+
+// Tracks direction in and before bracketed ranges.
+const enum Bracketed {
+  OppositeBefore = 1,
+  EmbedInside = 2,
+  OppositeInside = 4,
+  MaxDepth = 3 * 63
+}
+
 function charType(ch: number) {
   return ch <= 0xf7 ? LowTypes[ch] :
     0x590 <= ch && ch <= 0x5f4 ? T.R :
@@ -98,7 +115,7 @@ export class BidiSpan {
 const types: T[] = []
 
 export function computeOrder(line: string, direction: Direction) {
-  let len = line.length, outerType = direction == LTR ? T.L : T.R 
+  let len = line.length, outerType = direction == LTR ? T.L : T.R, oppositeType = direction == LTR ? T.R : T.L
 
   if (!line || outerType == T.L && !BidiRE.test(line)) return trivialOrder(len)
 
@@ -145,6 +162,49 @@ export function computeOrder(line: string, direction: Direction) {
     }
     prev = type
     if (type & T.Strong) prevStrong = type
+  }
+
+  // N0. Process bracket pairs in an isolating run sequence
+  // sequentially in the logical order of the text positions of the
+  // opening paired brackets using the logic given below. Within this
+  // scope, bidirectional types EN and AN are treated as R.
+  for (let i = 0, sI = 0, context = 0, ch, br, type; i < len; i++) {
+    // Keeps [startIndex, type, strongSeen] triples for each open
+    // bracket on BracketStack.
+    if (br = Brackets[ch = line.charCodeAt(i)]) {
+      if (br < 0) { // Closing bracket
+        for (let sJ = sI - 3; sJ >= 0; sJ -= 3) {
+          if (BracketStack[sJ + 1] == -br) {
+            let flags = BracketStack[sJ + 2]
+            let type = (flags & Bracketed.EmbedInside) ? outerType :
+              !(flags & Bracketed.OppositeInside) ? 0 :
+              (flags & Bracketed.OppositeBefore) ? oppositeType : outerType
+            if (type) types[i] = types[BracketStack[sJ]] = type
+            sI = sJ
+            break
+          }
+        }
+      } else if (BracketStack.length == Bracketed.MaxDepth) {
+        break
+      } else {
+        BracketStack[sI++] = i
+        BracketStack[sI++] = ch
+        BracketStack[sI++] = context
+      }
+    } else if ((type = types[i]) == T.R || type == T.L) {
+      let embed = type == outerType
+      context = embed ? 0 : Bracketed.OppositeBefore
+      for (let sJ = sI - 3; sJ >= 0; sJ -= 3) {
+        let cur = BracketStack[sJ + 2]
+        if (cur & Bracketed.EmbedInside) break
+        if (embed) {
+          BracketStack[sJ + 2] |= Bracketed.EmbedInside
+        } else {
+          if (cur & Bracketed.OppositeInside) break
+          BracketStack[sJ + 2] |= Bracketed.OppositeInside
+        }
+      }
+    }
   }
 
   // N1. A sequence of neutrals takes the direction of the
