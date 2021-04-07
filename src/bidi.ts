@@ -297,6 +297,6 @@ export function moveVisually(line: Line, order: readonly BidiSpan[], dir: Direct
   if (!nextSpan && span.level != dir)
     return EditorSelection.cursor(forward ? line.to : line.from, forward ? -1 : 1, dir)
   if (nextSpan && nextSpan.level < span.level)
-    return EditorSelection.cursor(nextSpan.side(!forward, dir) + line.from, 0, nextSpan.level)
-  return EditorSelection.cursor(nextIndex + line.from, 0, span.level)
+    return EditorSelection.cursor(nextSpan.side(!forward, dir) + line.from, forward ? 1 : -1, nextSpan.level)
+  return EditorSelection.cursor(nextIndex + line.from, forward ? -1 : 1, span.level)
 }
