@@ -1,3 +1,9 @@
+## 0.18.6 (2021-04-08)
+
+### Bug fixes
+
+Fix an issue in the compiled output that would break the code when minified with terser.
+
 ## 0.18.5 (2021-04-07)
 
 ### Bug fixes
