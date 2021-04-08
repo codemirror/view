@@ -13,13 +13,17 @@ export function selectionCollapsed(domSel: Selection) {
   return collapsed
 }
 
+export function contains(dom: HTMLElement, node: Node | null) {
+  return node ? dom.contains(node.nodeType != 1 ? node.parentNode : node) : false
+}
+
 export function hasSelection(dom: HTMLElement, selection: Selection): boolean {
   if (!selection.anchorNode) return false
   try {
     // Firefox will raise 'permission denied' errors when accessing
     // properties of `sel.anchorNode` when it's in a generated CSS
     // element.
-    return dom.contains(selection.anchorNode.nodeType == 3 ? selection.anchorNode.parentNode! : selection.anchorNode)
+    return contains(dom, selection.anchorNode)
   } catch(_) {
     return false
   }

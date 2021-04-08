@@ -1,7 +1,7 @@
 import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
 import {inputHandler, editable} from "./extension"
-import {selectionCollapsed, getSelection} from "./dom"
+import {selectionCollapsed, getSelection, contains} from "./dom"
 import browser from "./browser"
 import {EditorSelection, Transaction, Annotation, Text} from "@codemirror/state"
 
@@ -30,9 +30,12 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
   } else if (view.hasFocus || !view.state.facet(editable)) {
     let domSel = getSelection(view.root)
     let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
-    let head = iHead && iHead.node == domSel.focusNode && iHead.offset == domSel.focusOffset ? view.state.selection.main.head
+    let head = iHead && iHead.node == domSel.focusNode && iHead.offset == domSel.focusOffset ||
+      !contains(view.contentDOM, domSel.focusNode)
+      ? view.state.selection.main.head
       : view.docView.posFromDOM(domSel.focusNode!, domSel.focusOffset)
-    let anchor = iAnchor && iAnchor.node == domSel.anchorNode && iAnchor.offset == domSel.anchorOffset
+    let anchor = iAnchor && iAnchor.node == domSel.anchorNode && iAnchor.offset == domSel.anchorOffset ||
+      !contains(view.contentDOM, domSel.anchorNode)
       ? view.state.selection.main.anchor
       : selectionCollapsed(domSel) ? head : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
     if (head != sel.head || anchor != sel.anchor)
