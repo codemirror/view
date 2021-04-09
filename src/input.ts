@@ -44,22 +44,7 @@ export class InputState {
     for (let type in handlers) {
       let handler = handlers[type]
       view.contentDOM.addEventListener(type, (event: Event) => {
-        if (type == "keydown") {
-          // Must always run, even if a custom handler handled the event
-          this.lastKeyCode = (event as KeyboardEvent).keyCode
-          this.lastKeyTime = Date.now()
-          if (this.screenKeyEvent(view, event as KeyboardEvent)) return
-          // Prevent the default behavior of Enter on iOS makes the
-          // virtual keyboard get stuck in the wrong (lowercase)
-          // state. So we let it go through, and then, in
-          // applyDOMChange, notify key handlers of it and reset to
-          // the state they produce.
-          if (browser.ios && this.lastKeyCode == 13 && !(getMods(event as KeyboardEvent) & ~Mod.Shift) &&
-              !(event as any).synthetic) {
-            this.lastIOSEnter = Date.now()
-            return
-          }
-        }
+        if (type == "keydown" && this.keydown(view, event as KeyboardEvent)) return
         if (!eventBelongsToEditor(view, event) || this.ignoreDuringComposition(event)) return
         if (this.mustFlushObserver(event)) view.observer.forceFlush()
         if (this.runCustomHandlers(type, view, event)) event.preventDefault()
@@ -112,6 +97,23 @@ export class InputState {
         try { handler.call(set.plugin, event, view) }
         catch (e) { logException(view.state, e) }
       }
+    }
+  }
+
+  keydown(view: EditorView, event: KeyboardEvent) {
+    // Must always run, even if a custom handler handled the event
+    this.lastKeyCode = event.keyCode
+    this.lastKeyTime = Date.now()
+    if (this.screenKeyEvent(view, event as KeyboardEvent)) return
+    // Prevent the default behavior of Enter on iOS makes the
+    // virtual keyboard get stuck in the wrong (lowercase)
+    // state. So we let it go through, and then, in
+    // applyDOMChange, notify key handlers of it and reset to
+    // the state they produce.
+    if (browser.ios && this.lastKeyCode == 13 && !(event.ctrlKey || event.altKey || event.metaKey) &&
+        !(event as any).synthetic) {
+      this.lastIOSEnter = Date.now()
+      return
     }
   }
 
@@ -329,24 +331,7 @@ function doPaste(view: EditorView, input: string) {
   })
 }
 
-const enum Mod { Ctrl = 1, Alt = 2, Shift = 4, Meta = 8 }
-
-function getMods(event: KeyboardEvent) {
-  return (event.ctrlKey ? Mod.Ctrl : 0) | (event.metaKey ? Mod.Meta : 0) |
-    (event.altKey ? Mod.Alt : 0) | (event.shiftKey ? Mod.Shift : 0)
-}
-
-function mustCapture(code: number, mods: Mod): boolean {
-  let macCtrl = browser.mac && mods == Mod.Ctrl
-  return code == 8 || (macCtrl && code == 72) ||  // Backspace, Ctrl-h on Mac
-    code == 46 || (macCtrl && code == 68) || // Delete, Ctrl-d on Mac
-    code == 27 || // Esc
-    (mods == (browser.mac ? Mod.Meta : Mod.Ctrl) && // Ctrl/Cmd-[biyz]
-     (code == 66 || code == 73 || code == 89 || code == 90))
-}
-
 handlers.keydown = (view, event: KeyboardEvent) => {
-  if (mustCapture(event.keyCode, getMods(event))) event.preventDefault()
   view.inputState.setSelectionOrigin("keyboardselection")
 }
 
