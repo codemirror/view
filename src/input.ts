@@ -13,6 +13,7 @@ export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
   lastIOSEnter: number = 0
+  lastIOSBackspace: number = 0
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
   lastEscPress: number = 0
@@ -110,11 +111,12 @@ export class InputState {
     // state. So we let it go through, and then, in
     // applyDOMChange, notify key handlers of it and reset to
     // the state they produce.
-    if (browser.ios && this.lastKeyCode == 13 && !(event.ctrlKey || event.altKey || event.metaKey) &&
-        !(event as any).synthetic) {
-      this.lastIOSEnter = Date.now()
-      return
+    if (browser.ios && (event.keyCode == 13 || event.keyCode == 8) &&
+        !(event.ctrlKey || event.altKey || event.metaKey) && !(event as any).synthetic) {
+      this[event.keyCode == 13 ? "lastIOSEnter" : "lastIOSBackspace"] = Date.now()
+      return true
     }
+    return false
   }
 
   ignoreDuringComposition(event: Event): boolean {

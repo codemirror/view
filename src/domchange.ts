@@ -57,14 +57,16 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     if (browser.android &&
         ((change.from == sel.from && change.to == sel.to &&
           change.insert.length == 1 && change.insert.lines == 2 &&
-          dispatchKey(view, "Enter", 10)) ||
+          dispatchKey(view, "Enter", 13)) ||
          (change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 &&
           dispatchKey(view, "Backspace", 8)) ||
          (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
           dispatchKey(view, "Delete", 46))) ||
         browser.ios &&
-        (view.inputState.lastIOSEnter > Date.now() - 225 && change.insert.lines > 1 &&
-         dispatchKey(view, "Enter", 10)))
+        ((view.inputState.lastIOSEnter > Date.now() - 225 && change.insert.lines > 1 &&
+          dispatchKey(view, "Enter", 13)) ||
+         (view.inputState.lastIOSBackspace > Date.now() - 225 && !change.insert.length &&
+          dispatchKey(view, "Backspace", 8))))
       return
 
     let text = change.insert.toString()
