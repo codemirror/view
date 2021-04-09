@@ -614,6 +614,7 @@ export class EditorView {
     this.inputState.destroy()
     this.dom.remove()
     this.observer.destroy()
+    this.docView.destroy()
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
   }
 

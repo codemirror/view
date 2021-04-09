@@ -188,7 +188,7 @@ export class DocView extends ContentView {
       else
         break
     }
-    if (fromI < toI || content.length) this.replaceChildren(fromI, toI, content)
+    if (fromI < toI || content.length) this.replaceAndDestroyChildren(fromI, toI, content)
   }
 
   // Sync the DOM selection to this.state.selection

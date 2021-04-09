@@ -24,12 +24,15 @@ export class LineView extends ContentView implements BlockView {
 
   // Consumes source
   merge(from: number, to: number, source: BlockView | null, takeDeco: boolean, openStart: number, openEnd: number): boolean {
+    let children = none
     if (source) {
       if (!(source instanceof LineView)) return false
       if (!this.dom) source.transferDOM(this) // Reuse source.dom when appropriate
+      children = source.children
+      source.children = none; source.length = 0
     }
     if (takeDeco) this.setDeco(source ? source.attrs : null)
-    mergeInlineChildren(this, from, to, source ? source.children : none, openStart, openEnd)
+    mergeInlineChildren(this, from, to, children, openStart, openEnd)
     return true
   }
 
@@ -39,12 +42,12 @@ export class LineView extends ContentView implements BlockView {
     if (this.length == 0) return end
     let {i, off} = this.childPos(at)
     if (off) {
-      end.append(this.children[i].slice(off), 0)
+      end.append(this.children[i].split(off), 0)
       this.children[i].merge(off, this.children[i].length, null, 0, 0)
       i++
     }
     for (let j = i; j < this.children.length; j++) end.append(this.children[j], 0)
-    while (i > 0 && this.children[i - 1].length == 0) { this.children[i - 1].parent = null; i-- }
+    while (i > 0 && this.children[i - 1].length == 0) this.children[--i].destroy()
     this.children.length = i
     this.markDirty()
     this.length = at
@@ -149,10 +152,15 @@ export class BlockWidgetView extends ContentView implements BlockView {
   }
 
   merge(from: number, to: number, source: ContentView | null, _takeDeco: boolean, openStart: number, openEnd: number): boolean {
-    if (source && (!(source instanceof BlockWidgetView) || !this.widget.compare(source.widget) ||
-                   from > 0 && openStart <= 0 || to < this.length && openEnd <= 0))
-      return false
-    this.length = from + (source ? source.length : 0) + (this.length - to)
+    let sourceLen = 0
+    if (source) {
+      if (!(source instanceof BlockWidgetView) || !this.widget.compare(source.widget) ||
+          from > 0 && openStart <= 0 || to < this.length && openEnd <= 0)
+        return false
+      sourceLen = source.length
+      if (!this.dom && source.dom) { this.setDOM(source.dom); source.dom = null }
+    }
+    this.length = from + sourceLen + (this.length - to)
     return true
   }
 
@@ -195,4 +203,9 @@ export class BlockWidgetView extends ContentView implements BlockView {
 
   ignoreMutation(): boolean { return true }
   ignoreEvent(event: Event): boolean { return this.widget.ignoreEvent(event) }
+
+  destroy() {
+    super.destroy()
+    if (this.dom) this.widget.destroy(this.dom)
+  }
 }
