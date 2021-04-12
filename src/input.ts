@@ -3,7 +3,7 @@ import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
 import {domEventHandlers, ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior,
-        logException, mouseSelectionStyle} from "./extension"
+        logException, mouseSelectionStyle, editable} from "./extension"
 import browser from "./browser"
 import {groupAt} from "./cursor"
 import {getSelection, focusPreventScroll, Rect} from "./dom"
@@ -465,7 +465,7 @@ handlers.dragstart = (view, event: DragEvent) => {
 }
 
 handlers.drop = (view, event: DragEvent) => {
-  if (!event.dataTransfer) return
+  if (!event.dataTransfer || !view.state.facet(editable)) return
 
   let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY})
   let text = event.dataTransfer.getData("Text")
@@ -488,6 +488,7 @@ handlers.drop = (view, event: DragEvent) => {
 }
 
 handlers.paste = (view: EditorView, event: ClipboardEvent) => {
+  if (!view.state.facet(editable)) return
   view.observer.flush()
   let data = brokenClipboardAPI ? null : event.clipboardData
   let text = data && data.getData("text/plain")
@@ -554,7 +555,7 @@ handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
   } else {
     captureCopy(view, text)
   }
-  if (event.type == "cut")
+  if (event.type == "cut" && view.state.facet(editable))
     view.dispatch({
       changes: ranges,
       scrollIntoView: true,
