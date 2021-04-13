@@ -291,24 +291,6 @@ describe("EditorView decoration", () => {
       ist(w.length, 1)
       ist(w[0].parentNode, a[0])
     })
-
-    it("calls destroy on removed widgets", () => {
-      let destroyed = 0
-      let widget = Decoration.widget({widget: new class extends WidgetType {
-        toDOM() { return document.createElement("span") }
-        destroy() { destroyed++ }
-      }})
-      let cm = tempEditor("abcd", [decos(Decoration.set([widget.range(1), widget.range(3)]))])
-      ist(destroyed, 0)
-      cm.dispatch({changes: {from: 0, insert: "x"}})
-      ist(destroyed, 0)
-      cm.dispatch({changes: {from: 2, insert: "y"}})
-      ist(destroyed, 0)
-      cm.dispatch({changes: {from: 0, to: 4}})
-      ist(destroyed, 1)
-      cm.destroy()
-      ist(destroyed, 2)
-    })
   })
 
   describe("replaced", () => {
@@ -536,24 +518,6 @@ describe("EditorView decoration", () => {
         effects: [filterDeco.of(_ => false), addDeco.of([br(1, 3, "X"), br(7, 9, "X")])]
       })
       widgets(cm, [], ["X"], ["X"], [])
-    })
-
-    it("calls destroy on removed block widgets", () => {
-      let destroyed = 0
-      let widget = Decoration.widget({widget: new class extends WidgetType {
-        toDOM() { return document.createElement("div") }
-        destroy() { destroyed++ }
-      }, block: true})
-      let cm = tempEditor("abcd", [decos(Decoration.set([widget.range(1), widget.range(3)]))])
-      ist(destroyed, 0)
-      cm.dispatch({changes: {from: 0, insert: "x"}})
-      ist(destroyed, 0)
-      cm.dispatch({changes: {from: 2, insert: "y"}})
-      ist(destroyed, 0)
-      cm.dispatch({changes: {from: 0, to: 4}})
-      ist(destroyed, 1)
-      cm.destroy()
-      ist(destroyed, 2)
     })
   })
 })

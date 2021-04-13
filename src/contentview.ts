@@ -166,13 +166,9 @@ export abstract class ContentView {
     }
   }
 
-  replaceAndDestroyChildren(from: number, to: number, children?: ContentView[]) {
-    for (let i = from; i < to; i++) this.children[i].destroy()
-    this.replaceChildren(from, to, children)
-  }
-
   replaceChildren(from: number, to: number, children: ContentView[] = none) {
     this.markDirty()
+    for (let i = from; i < to; i++) this.children[i].parent = null
     this.children.splice(from, to - from, ...children)
     for (let i = 0; i < children.length; i++) children[i].setParent(this)
   }
@@ -186,11 +182,6 @@ export abstract class ContentView {
 
   childPos(pos: number, bias: number = 1): {i: number, off: number} {
     return this.childCursor().findPos(pos, bias)
-  }
-
-  destroy() {
-    this.parent = null
-    for (let ch of this.children) ch.destroy()
   }
 
   toString() {

@@ -114,10 +114,6 @@ export abstract class WidgetType {
   /// events.
   ignoreEvent(_event: Event): boolean { return true }
 
-  /// A method called when an instance of the widget is removed from
-  /// the editor. Does nothing by default.
-  destroy(dom: HTMLElement) {}
-
   //// @internal
   get customView(): null | typeof WidgetView { return null }
 }

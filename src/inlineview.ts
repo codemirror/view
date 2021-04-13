@@ -18,8 +18,8 @@ export abstract class InlineView extends ContentView {
   /// Return true when this view is equivalent to `other` and can take
   /// on its role.
   become(_other: InlineView) { return false }
-  // Split off the content after the given position into a new node.
-  abstract split(from: number): InlineView
+  // Return a new view representing the given part of this view.
+  abstract slice(from: number): InlineView
   // When this is a zero-length view with a side, this should return a
   // negative number to indicate it is before its position, or a
   // positive number when after its position.
@@ -65,11 +65,8 @@ export class TextView extends InlineView {
     return true
   }
 
-  split(from: number) {
-    let end = new TextView(this.text.slice(from))
-    this.text = this.text.slice(0, from)
-    this.markDirty()
-    return end
+  slice(from: number) {
+    return new TextView(this.text.slice(from))
   }
 
   localPosFromDOM(node: Node, offset: number): number {
@@ -118,21 +115,8 @@ export class MarkView extends InlineView {
     return true
   }
 
-  split(from: number) {
-    console.log("splitting " + this, "@", from)
-    let {i, off} = this.childCursor().findPos(from, 1), after
-    if (off) {
-      let split = this.children[i], end = split.split(off)
-      after = [end].concat(this.children.slice(i + 1))
-      this.replaceChildren(i + 1, this.children.length)
-    } else {
-      after = this.children.slice(i)
-      while (i && !this.children[i - 1].length) this.children[--i].destroy()
-      this.replaceChildren(i, this.children.length)
-    }
-    let result = new MarkView(this.mark, after, this.length - from)
-    this.length = from
-    return result
+  slice(from: number) {
+    return new MarkView(this.mark, sliceInlineChildren(this.children, from), this.length - from)
   }
 
   domAtPos(pos: number): DOMPos {
@@ -175,11 +159,7 @@ export class WidgetView extends InlineView {
     super()
   }
 
-  split(from: number) {
-    let restLen = this.length - from
-    this.length = from
-    return WidgetView.create(this.widget, restLen, this.side)
-  }
+  slice(from: number) { return WidgetView.create(this.widget, this.length - from, this.side) }
 
   sync() {
     if (!this.dom || !this.widget.updateDOM(this.dom)) {
@@ -235,11 +215,6 @@ export class WidgetView extends InlineView {
     }
     return (pos == 0 && side > 0 || pos == this.length && side <= 0) ? rect : flattenRect(rect, pos == 0)
   }
-
-  destroy() {
-    super.destroy()
-    if (this.dom) this.widget.destroy(this.dom)
-  }
 }
 
 export class CompositionView extends WidgetView {
@@ -278,7 +253,7 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
     if (elts.length == 1 && start.merge(fromOff, toOff, elts[0], openStart, openEnd)) return
     if (elts.length == 0) { start.merge(fromOff, toOff, null, openStart, openEnd); return }
     // Otherwise split it, so that we don't have to worry about aliasing front/end afterwards
-    let after = start.split(toOff)
+    let after = start.slice(toOff)
     if (after.merge(0, 0, elts[elts.length - 1], 0, openEnd)) elts[elts.length - 1] = after
     else elts.push(after)
     toI++
@@ -336,7 +311,17 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
     fromI--
 
   // And if anything remains, splice the child array to insert the new elts
-  if (elts.length || fromI != toI) parent.replaceAndDestroyChildren(fromI, toI, elts)
+  if (elts.length || fromI != toI) parent.replaceChildren(fromI, toI, elts)
+}
+
+export function sliceInlineChildren(children: readonly InlineView[], from: number) {
+  let result = [], off = 0
+  for (let elt of children) {
+    let end = off + elt.length
+    if (end > from) result.push(off < from ? elt.slice(from - off) : elt)
+    off = end
+  }
+  return result
 }
 
 export function inlineDOMAtPos(dom: HTMLElement, children: readonly InlineView[], pos: number) {
