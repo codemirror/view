@@ -1,3 +1,14 @@
+## 0.18.7 (2021-04-13)
+
+### Bug fixes
+
+Fix a crash when drag-selecting out of the editor with editable turned off.
+
+Backspace and delete now largely work in an editor without a keymap.
+
+Pressing backspace on iOS should now properly update the virtual keyboard's capitalize and autocorrect state.
+
+Prevent random line-wrapping in (non-wrapping) editors on Mobile Safari.
 ## 0.18.6 (2021-04-08)
 
 ### Bug fixes
