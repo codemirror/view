@@ -75,7 +75,8 @@ const baseTheme = EditorView.baseTheme({
     display: "flex",
     height: "100%",
     boxSizing: "border-box",
-    left: 0
+    left: 0,
+    zIndex: 11
   },
 
   "&light .cm-gutters": {
