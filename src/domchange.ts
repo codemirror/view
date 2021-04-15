@@ -47,6 +47,16 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
   // Heuristic to notice typing over a selected character
   if (!change && typeOver && !sel.empty && newSel && newSel.main.empty)
     change = {from: sel.from, to: sel.to, insert: view.state.doc.slice(sel.from, sel.to)}
+  // If the change is inside the selection and covers most of it,
+  // assume it is a selection replace (with identical characters at
+  // the start/end not included in the diff)
+  else if (change && change.from >= sel.from && change.to <= sel.to &&
+           (change.from != sel.from || change.to != sel.to) &&
+           (sel.to - sel.from) - (change.to - change.from) <= 4)
+    change = {
+      from: sel.from, to: sel.to,
+      insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
+    }
 
   if (change) {
     let startState = view.state
