@@ -117,7 +117,7 @@ export class DOMObserver {
         if (!changed && i < this.scrollTargets.length && this.scrollTargets[i] == dom) i++
         else if (!changed) changed = this.scrollTargets.slice(0, i)
         if (changed) changed.push(dom)
-        dom = dom.parentNode
+        dom = dom.assignedSlot || dom.parentNode
       } else if (dom.nodeType == 11) { // Shadow root
         dom = dom.host
       } else {
