@@ -38,7 +38,7 @@ interface EditorConfig {
   /// When given, the editor is immediately appended to the given
   /// element on creation. (Otherwise, you'll have to place the view's
   /// [`dom`](#view.EditorView.dom) element in the document yourself.)
-  parent?: Element
+  parent?: Element | DocumentFragment
 }
 
 export const enum UpdateState {
