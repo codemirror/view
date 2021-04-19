@@ -144,7 +144,7 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect) {
         }
       }
       if (top) break
-      cur = cur.parentNode
+      cur = cur.assignedSlot || cur.parentNode
     } else if (cur.nodeType == 11) { // A shadow root
       cur = cur.host
     } else {
