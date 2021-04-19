@@ -1,3 +1,11 @@
+## 0.18.8 (2021-04-19)
+
+### Bug fixes
+
+Handle selection replacements where the inserted text matches the start/end of the replaced text better.
+
+Fix an issue where the editor would miss scroll events when it was placed in a DOM component slot.
+
 ## 0.18.7 (2021-04-13)
 
 ### Bug fixes
