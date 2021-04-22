@@ -166,6 +166,25 @@ describe("DOM changes", () => {
     ist(cm.state.doc.toString(), "abcdx")
   })
 
+  it("correctly handles changes ending on a widget", () => {
+    let widget = new class extends WidgetType {
+      toDOM() { return document.createElement("strong") }
+    }
+    let field = StateField.define<DecorationSet>({
+      create() { return Decoration.set([Decoration.widget({widget}).range(2),
+                                        Decoration.widget({widget}).range(7)]) },
+      update(v, tr) { return v.map(tr.changes) },
+      provide: f => EditorView.decorations.from(f)
+    })
+    let cm = tempEditor("one two thr", [field])
+    let wDOM = cm.contentDOM.querySelectorAll("strong")[1]
+    wDOM.previousSibling!.nodeValue = "e"
+    wDOM.remove()
+    console.log(cm.contentDOM.innerHTML)
+    flush(cm)
+    ist(cm.state.doc.toString(), "one thr")
+  })
+
   it("calls input handlers", () => {
     let cm = tempEditor("abc", [EditorView.inputHandler.of((_v, from, to, insert) => {
       cm.dispatch({changes: {from, to, insert: insert.toUpperCase()}})

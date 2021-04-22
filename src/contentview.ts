@@ -119,16 +119,25 @@ export abstract class ContentView {
     to: number
   } | null {
     let fromI = -1, fromStart = -1, toI = -1, toEnd = -1
-    for (let i = 0, pos = offset; i < this.children.length; i++) {
+    for (let i = 0, pos = offset, prevEnd = offset; i < this.children.length; i++) {
       let child = this.children[i], end = pos + child.length
       if (pos < from && end > to) return child.domBoundsAround(from, to, pos)
-      if (end >= from && fromI == -1) { fromI = i; fromStart = pos }
-      if (end >= to && end != pos && toI == -1) { toI = i; toEnd = end; break }
+      if (end >= from && fromI == -1) {
+        fromI = i
+        fromStart = pos
+      }
+      if (pos > to && child.dom!.parentNode == this.dom) {
+        toI = i
+        toEnd = prevEnd
+        break
+      }
+      prevEnd = end
       pos = end + child.breakAfter
     }
+
     return {from: fromStart, to: toEnd < 0 ? offset + this.length : toEnd,
             startDOM: (fromI ? this.children[fromI - 1].dom!.nextSibling : null) || this.dom!.firstChild,
-            endDOM: toI < this.children.length - 1 && toI >= 0 ? this.children[toI + 1].dom : null}
+            endDOM: toI < this.children.length && toI >= 0 ? this.children[toI].dom : null}
   }
 
   markDirty(andParent: boolean = false) {

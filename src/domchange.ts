@@ -148,7 +148,7 @@ class DOMReader {
   readRange(start: Node | null, end: Node | null) {
     if (!start) return
     let parent = start.parentNode!
-    for (let cur = start!;;) {
+    for (let cur = start;;) {
       this.findPointBefore(parent, cur)
       this.readNode(cur)
       let next: Node | null = cur.nextSibling
