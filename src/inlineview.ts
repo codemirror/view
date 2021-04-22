@@ -1,7 +1,7 @@
 import {Text as DocText} from "@codemirror/text"
 import {ContentView, DOMPos} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
-import {Rect, Rect0, flattenRect, textRange} from "./dom"
+import {Rect, Rect0, flattenRect, textRange, clientRectsFor} from "./dom"
 import {CompositionWidget} from "./docview"
 import browser from "./browser"
 
@@ -361,5 +361,8 @@ export function coordsInChildren(view: ContentView & {children: InlineView[]}, p
       return child.coordsAt(pos - off, side)
     off = end
   }
-  return ((view.dom!.lastChild || view.dom!) as HTMLElement).getBoundingClientRect()
+  let last = view.dom!.lastChild
+  if (!last) return (view.dom as HTMLElement).getBoundingClientRect()
+  let rects = clientRectsFor(last)
+  return rects[rects.length - 1]
 }
