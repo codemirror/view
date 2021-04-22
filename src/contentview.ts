@@ -60,7 +60,7 @@ export abstract class ContentView {
       for (let child of this.children) {
         if (child.dirty) {
           let next = pos ? pos.nextSibling : parent.firstChild
-          if (next && !child.dom && !ContentView.get(next)) child.reuseDOM(next)
+          if (!child.dom && next && !ContentView.get(next)?.parent) child.reuseDOM(next)
           child.sync(track)
           child.dirty = Dirty.Not
         }
