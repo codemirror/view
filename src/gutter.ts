@@ -151,10 +151,14 @@ const gutterView = ViewPlugin.fromClass(class {
       this.dom.style.position = "sticky"
     }
     view.scrollDOM.insertBefore(this.dom, view.contentDOM)
+    this.syncGutters()
   }
 
   update(update: ViewUpdate) {
-    if (!this.updateGutters(update)) return
+    if (this.updateGutters(update)) this.syncGutters()
+  }
+
+  syncGutters() {
     let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport))
     this.view.viewportLines(line => {
       let text: BlockInfo | undefined
@@ -169,7 +173,7 @@ const gutterView = ViewPlugin.fromClass(class {
     }, 0)
     for (let cx of contexts) cx.finish()
     this.dom.style.minHeight = this.view.contentHeight + "px"
-    if (update.state.facet(unfixGutters) != !this.fixed) {
+    if (this.view.state.facet(unfixGutters) != !this.fixed) {
       this.fixed = !this.fixed
       this.dom.style.position = this.fixed ? "sticky" : ""
     }
