@@ -344,6 +344,8 @@ export class EditorView {
     this.editorAttrs = editorAttrs
     let contentAttrs = combineAttrs(this.state.facet(contentAttributes), {
       spellcheck: "false",
+      autocorrect: "off",
+      autocapitalize: "off",
       contenteditable: String(this.state.facet(editable)),
       class: "cm-content",
       style: `${browser.tabSize}: ${this.state.tabSize}`,
