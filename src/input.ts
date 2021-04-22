@@ -339,12 +339,8 @@ handlers.keydown = (view, event: KeyboardEvent) => {
 
 let lastTouch = 0
 
-function mouseLikeTouchEvent(e: TouchEvent) {
-  return e.touches.length == 1 && e.touches[0].radiusX <= 1 && e.touches[0].radiusY <= 1
-}
-
 handlers.touchstart = (view, e) => {
-  if (!mouseLikeTouchEvent(e)) lastTouch = Date.now()
+  lastTouch = Date.now()
   view.inputState.setSelectionOrigin("pointerselection")
 }
 
