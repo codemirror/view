@@ -196,6 +196,7 @@ const HoverTime = 750, HoverMaxDist = 6
 
 class HoverPlugin {
   lastMouseMove: MouseEvent | null = null
+  lastMoveTime = 0
   hoverTimeout = -1
   restartTimeout = -1
   pending: {pos: number} | null = null
@@ -224,9 +225,9 @@ class HoverPlugin {
   checkHover() {
     this.hoverTimeout = -1
     if (this.active) return
-    let now = Date.now(), lastMove = this.lastMouseMove!
-    if (now - lastMove.timeStamp < HoverTime)
-      this.hoverTimeout = setTimeout(this.checkHover, HoverTime - (now - lastMove.timeStamp))
+    let hovered = Date.now() - this.lastMoveTime
+    if (hovered < HoverTime)
+      this.hoverTimeout = setTimeout(this.checkHover, HoverTime - hovered)
     else
       this.startHover()
   }
@@ -260,6 +261,7 @@ class HoverPlugin {
 
   mousemove(event: MouseEvent) {
     this.lastMouseMove = event
+    this.lastMoveTime = Date.now()
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, HoverTime)
     let tooltip = this.active
     if (tooltip && !isInTooltip(event.target as HTMLElement) || this.pending) {
