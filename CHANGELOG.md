@@ -1,3 +1,21 @@
+## 0.18.9 (2021-04-23)
+
+### Bug fixes
+
+Fix a crash that occurred when determining DOM coordinates in some specific situations.
+
+Fix a crash when a DOM change that ended at a zero-width view element (widget) removed that element from the DOM.
+
+Disable autocorrect and autocapitalize by default, since in most code-editor contexts they get in the way. You can use `EditorView.contentAttributes` to override this.
+
+Fix a bug that interfered with native touch selection handling on Android.
+
+Fix an unnecessary DOM update after composition that would disrupt touch selection on Android.
+
+Add a workaround for Safari's broken selection reporting when the editor is in a shadow DOM tree.
+
+Fix select-all from the context menu on Safari.
+
 ## 0.18.8 (2021-04-19)
 
 ### Bug fixes
