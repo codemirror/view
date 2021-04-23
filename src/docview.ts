@@ -207,13 +207,14 @@ export class DocView extends ContentView {
       force = true
     }
 
-    let domSel = getSelection(this.root)
+    let domSel = this.view.observer.selectionRange
     // If the selection is already here, or in an equivalent position, don't touch it
     if (force || !domSel.focusNode ||
         (browser.gecko && main.empty && nextToUneditable(domSel.focusNode, domSel.focusOffset)) ||
         !isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) ||
         !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) {
       this.view.observer.ignore(() => {
+        let rawSel = getSelection(this.root)
         if (main.empty) {
           // Work around https://bugzilla.mozilla.org/show_bug.cgi?id=1612076
           if (browser.gecko) {
@@ -223,23 +224,23 @@ export class DocView extends ContentView {
               if (text) anchor = new DOMPos(text, nextTo == NextTo.Before ? 0 : text.nodeValue!.length)
             }
           }
-          domSel.collapse(anchor.node, anchor.offset)
+          rawSel.collapse(anchor.node, anchor.offset)
           if (main.bidiLevel != null && (domSel as any).cursorBidiLevel != null)
             (domSel as any).cursorBidiLevel = main.bidiLevel
-        } else if (domSel.extend) {
+        } else if (rawSel.extend) {
           // Selection.extend can be used to create an 'inverted' selection
           // (one where the focus is before the anchor), but not all
           // browsers support it yet.
-          domSel.collapse(anchor.node, anchor.offset)
-          domSel.extend(head.node, head.offset)
+          rawSel.collapse(anchor.node, anchor.offset)
+          rawSel.extend(head.node, head.offset)
         } else {
           // Primitive (IE) way
           let range = document.createRange()
           if (main.anchor > main.head) [anchor, head] = [head, anchor]
           range.setEnd(head.node, head.offset)
           range.setStart(anchor.node, anchor.offset)
-          domSel.removeAllRanges()
-          domSel.addRange(range)
+          rawSel.removeAllRanges()
+          rawSel.addRange(range)
         }
       })
     }
@@ -264,7 +265,8 @@ export class DocView extends ContentView {
   }
 
   mayControlSelection() {
-    return this.view.state.facet(editable) ? this.root.activeElement == this.dom : hasSelection(this.dom, getSelection(this.root))
+    return this.view.state.facet(editable) ? this.root.activeElement == this.dom
+      : hasSelection(this.dom, this.view.observer.selectionRange)
   }
 
   nearest(dom: Node): ContentView | null {
@@ -420,7 +422,7 @@ class BlockGapWidget extends WidgetType {
 }
 
 export function computeCompositionDeco(view: EditorView, changes: ChangeSet): DecorationSet {
-  let sel = getSelection(view.root)
+  let sel = view.observer.selectionRange
   let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
   if (!textNode) return Decoration.none
   let cView = view.docView.nearest(textNode)

@@ -1,7 +1,7 @@
 import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
 import {inputHandler, editable} from "./extension"
-import {selectionCollapsed, getSelection, contains} from "./dom"
+import {contains} from "./dom"
 import browser from "./browser"
 import {EditorSelection, Transaction, Annotation, Text} from "@codemirror/state"
 
@@ -10,7 +10,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
   let sel = view.state.selection.main, bounds
   if (start > -1 && (bounds = view.docView.domBoundsAround(start, end, 0))) {
     let {from, to} = bounds
-    let selPoints = view.docView.impreciseHead || view.docView.impreciseAnchor ? [] : selectionPoints(view.contentDOM, view.root)
+    let selPoints = view.docView.impreciseHead || view.docView.impreciseAnchor ? [] : selectionPoints(view)
     let reader = new DOMReader(selPoints, view)
     reader.readRange(bounds.startDOM, bounds.endDOM)
     newSel = selectionFromPoints(selPoints, from)
@@ -28,7 +28,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     if (diff) change = {from: from + diff.from, to: from + diff.toA,
                         insert: view.state.toText(reader.text.slice(diff.from, diff.toB))}
   } else if (view.hasFocus || !view.state.facet(editable)) {
-    let domSel = getSelection(view.root)
+    let domSel = view.observer.selectionRange
     let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
     let head = iHead && iHead.node == domSel.focusNode && iHead.offset == domSel.focusOffset ||
       !contains(view.contentDOM, domSel.focusNode)
@@ -37,7 +37,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     let anchor = iAnchor && iAnchor.node == domSel.anchorNode && iAnchor.offset == domSel.anchorOffset ||
       !contains(view.contentDOM, domSel.anchorNode)
       ? view.state.selection.main.anchor
-      : selectionCollapsed(domSel) ? head : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
+      : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
     if (head != sel.head || anchor != sel.anchor)
       newSel = EditorSelection.single(anchor, head)
   }
@@ -204,10 +204,10 @@ class DOMPoint {
   constructor(readonly node: Node, readonly offset: number) {}
 }
 
-function selectionPoints(dom: HTMLElement, root: DocumentOrShadowRoot): DOMPoint[] {
+function selectionPoints(view: EditorView) {
   let result: DOMPoint[] = []
-  if (root.activeElement != dom) return result
-  let {anchorNode, anchorOffset, focusNode, focusOffset} = getSelection(root)
+  if (view.root.activeElement != view.contentDOM) return result
+  let {anchorNode, anchorOffset, focusNode, focusOffset} = view.observer.selectionRange
   if (anchorNode) {
     result.push(new DOMPoint(anchorNode, anchorOffset))
     if (focusNode != anchorNode || focusOffset != anchorOffset)

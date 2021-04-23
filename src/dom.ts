@@ -1,23 +1,23 @@
-import browser from "./browser"
-
 export function getSelection(root: DocumentOrShadowRoot): Selection {
   return (root.getSelection ? root.getSelection() : document.getSelection())!
 }
 
-// Work around Chrome issue https://bugs.chromium.org/p/chromium/issues/detail?id=447523
-// (isCollapsed inappropriately returns true in shadow dom)
-export function selectionCollapsed(domSel: Selection) {
-  let collapsed = domSel.isCollapsed
-  if (collapsed && browser.chrome && domSel.rangeCount && !domSel.getRangeAt(0).collapsed)
-    collapsed = false
-  return collapsed
+export type SelectionRange = {
+  focusNode: Node | null, focusOffset: number,
+  anchorNode: Node | null, anchorOffset: number
 }
 
 export function contains(dom: HTMLElement, node: Node | null) {
   return node ? dom.contains(node.nodeType != 1 ? node.parentNode : node) : false
 }
 
-export function hasSelection(dom: HTMLElement, selection: Selection): boolean {
+export function deepActiveElement() {
+  let elt = document.activeElement
+  while (elt && elt.shadowRoot) elt = elt.shadowRoot.activeElement
+  return elt
+}
+
+export function hasSelection(dom: HTMLElement, selection: SelectionRange): boolean {
   if (!selection.anchorNode) return false
   try {
     // Firefox will raise 'permission denied' errors when accessing
@@ -159,12 +159,12 @@ export class DOMSelection {
   focusNode: Node | null = null
   focusOffset: number = 0
 
-  eq(domSel: Selection): boolean {
+  eq(domSel: SelectionRange): boolean {
     return this.anchorNode == domSel.anchorNode && this.anchorOffset == domSel.anchorOffset &&
       this.focusNode == domSel.focusNode && this.focusOffset == domSel.focusOffset
   }
 
-  set(domSel: Selection) {
+  set(domSel: SelectionRange) {
     this.anchorNode = domSel.anchorNode; this.anchorOffset = domSel.anchorOffset
     this.focusNode = domSel.focusNode; this.focusOffset = domSel.focusOffset
   }

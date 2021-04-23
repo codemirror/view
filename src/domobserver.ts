@@ -2,7 +2,7 @@ import browser from "./browser"
 import {ContentView, Dirty} from "./contentview"
 import {EditorView} from "./editorview"
 import {editable} from "./extension"
-import {hasSelection, getSelection, DOMSelection, isEquivalentPosition} from "./dom"
+import {hasSelection, getSelection, DOMSelection, isEquivalentPosition, SelectionRange, deepActiveElement} from "./dom"
 
 const observeOptions = {
   childList: true,
@@ -30,6 +30,9 @@ export class DOMObserver {
   scrollTargets: HTMLElement[] = []
   intersection: IntersectionObserver | null = null
   intersecting: boolean = false
+
+  // Used to work around a Safari Selection/shadow DOM bug (#414)
+  selectionRange!: SelectionRange
 
   // Timeout for scheduling check of the parents that need scroll handlers
   parentCheck = -1
@@ -65,6 +68,7 @@ export class DOMObserver {
         this.flushSoon()
       }
 
+    this.updateSelectionRange()
     this.onSelectionChange = this.onSelectionChange.bind(this)
     this.start()
 
@@ -92,7 +96,8 @@ export class DOMObserver {
   }
 
   onSelectionChange(event: Event) {
-    let {view} = this, sel = getSelection(view.root)
+    this.updateSelectionRange()
+    let {view} = this, sel = this.selectionRange
     if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(view.dom, sel))
       return
     let context = sel.anchorNode && view.docView.nearest(sel.anchorNode)
@@ -107,6 +112,15 @@ export class DOMObserver {
       this.flushSoon()
     else
       this.flush()
+  }
+
+  updateSelectionRange() {
+    let {root} = this.view, sel: SelectionRange = getSelection(root)
+    // The Selection object is broken in shadow roots in Safari. See
+    // https://github.com/codemirror/codemirror.next/issues/414
+    if (browser.safari && (root as any).nodeType == 11 && deepActiveElement() == this.view.contentDOM)
+      sel = safariSelectionRangeHack(this.view) || sel
+    this.selectionRange = sel
   }
 
   listenForScroll() {
@@ -161,7 +175,7 @@ export class DOMObserver {
   }
 
   clearSelection() {
-    this.ignoreSelection.set(getSelection(this.view.root))
+    this.ignoreSelection.set(this.selectionRange)
   }
 
   // Throw away any pending changes
@@ -192,7 +206,7 @@ export class DOMObserver {
     for (let mut of this.observer.takeRecords()) records.push(mut)
     if (records.length) this.queue = []
 
-    let selection = getSelection(this.view.root)
+    let selection = this.selectionRange
     let newSel = !this.ignoreSelection.eq(selection) && hasSelection(this.dom, selection)
     if (records.length == 0 && !newSel) return
 
@@ -253,4 +267,38 @@ function findChild(cView: ContentView, dom: Node | null, dir: number): ContentVi
     dom = parent != cView.dom ? parent : dir > 0 ? dom.nextSibling : dom.previousSibling
   }
   return null
+}
+
+function safariSelectionRangeHack(view: EditorView) {
+  let found: null | StaticRange = null
+  // Because Safari (at least in 2018-2021) doesn't provide regular
+  // access to the selection inside a shadowroot, we have to perform a
+  // ridiculous hack to get at it—using `execCommand` to trigger a
+  // `beforeInput` event so that we can read the target range from the
+  // event.
+  function read(event: InputEvent) {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    found = (event as any).getTargetRanges()[0]
+  }
+  view.contentDOM.addEventListener("beforeinput", read, true)
+  document.execCommand("indent")
+  view.contentDOM.removeEventListener("beforeinput", read, true)
+  if (!found) return null
+  let curAnchor = view.docView.domAtPos(view.state.selection.main.anchor)
+  // Since such a range doesn't distinguish between anchor and head,
+  // use a heuristic that flips it around if its end matches the
+  // current anchor.
+  return isEquivalentPosition(curAnchor.node, curAnchor.offset, found!.endContainer, found!.endOffset)
+    ? {
+      anchorNode: found!.endContainer,
+      anchorOffset: found!.endOffset,
+      focusNode: found!.startContainer,
+      focusOffset: found!.startOffset
+    } : {
+      anchorNode: found!.startContainer,
+      anchorOffset: found!.startOffset,
+      focusNode: found!.endContainer,
+      focusOffset: found!.endOffset
+    }
 }
