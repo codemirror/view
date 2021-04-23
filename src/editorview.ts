@@ -596,7 +596,12 @@ export class EditorView {
 
   /// Check whether the editor has focus.
   get hasFocus(): boolean {
-    return document.hasFocus() && this.root.activeElement == this.contentDOM
+    // Safari return false for hasFocus when the context menu is open
+    // or closing, which leads us to ignore selection changes from the
+    // context menu because it looks like the editor isn't focused.
+    // This kludges around that.
+    return (document.hasFocus() || browser.safari && this.inputState.lastContextMenu > Date.now() - 3e4) &&
+      this.root.activeElement == this.contentDOM
   }
 
   /// Put focus on the editor.

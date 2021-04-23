@@ -17,6 +17,7 @@ export class InputState {
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
   lastEscPress: number = 0
+  lastContextMenu: number = 0
   scrollHandlers: ((event: Event) => boolean | void)[] = []
 
   registeredEvents: string[] = []
@@ -596,4 +597,8 @@ handlers.compositionend = view => {
   setTimeout(() => {
     if (view.inputState.composing < 0) forceClearComposition(view)
   }, 50)
+}
+
+handlers.contextmenu = view => {
+  view.inputState.lastContextMenu = Date.now()
 }
