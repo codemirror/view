@@ -128,7 +128,7 @@ export class InputState {
     // compositionend and keydown events are sometimes emitted in the
     // wrong order. The key event should still be ignored, even when
     // it happens after the compositionend event.
-    if (browser.safari && event.timeStamp - this.compositionEndedAt < 500) {
+    if (browser.safari && Date.now() - this.compositionEndedAt < 500) {
       this.compositionEndedAt = 0
       return true
     }
@@ -407,13 +407,14 @@ function queryPos(view: EditorView, event: MouseEvent): {pos: number, bias: 1 | 
 }
 
 const BadMouseDetail = browser.ie && browser.ie_version <= 11
-let lastMouseDown: MouseEvent | null = null, lastMouseDownCount = 0
+let lastMouseDown: MouseEvent | null = null, lastMouseDownCount = 0, lastMouseDownTime = 0
 
 function getClickType(event: MouseEvent) {
   if (!BadMouseDetail) return event.detail
-  let last = lastMouseDown
+  let last = lastMouseDown, lastTime = lastMouseDownTime
   lastMouseDown = event
-  return lastMouseDownCount = !last || (last.timeStamp > Date.now() - 400 && Math.abs(last.clientX - event.clientX) < 2 &&
+  lastMouseDownTime = Date.now()
+  return lastMouseDownCount = !last || (lastTime > Date.now() - 400 && Math.abs(last.clientX - event.clientX) < 2 &&
                                         Math.abs(last.clientY - event.clientY) < 2) ? (lastMouseDownCount + 1) % 3 : 1
 }
 
