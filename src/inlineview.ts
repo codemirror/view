@@ -268,20 +268,20 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
     let end = children[toI]
     if (elts.length && end.merge(0, toOff, elts[elts.length - 1], 0, openEnd)) {
       elts.pop()
-      openEnd = 0
+      openEnd = elts.length ? 0 : openStart
     } else {
       end.merge(0, toOff, null, 0, 0)
     }
   } else if (toI < children.length && elts.length &&
              children[toI].merge(0, 0, elts[elts.length - 1], 0, openEnd)) {
     elts.pop()
-    openEnd = 0
+    openEnd = elts.length ? 0 : openStart
   }
   if (fromOff) {
     let start = children[fromI]
     if (elts.length && start.merge(fromOff, start.length, elts[0], openStart, 0)) {
       elts.shift()
-      openStart = 0
+      openStart = elts.length ? 0 : openEnd
     } else {
       start.merge(fromOff, start.length, null, 0, 0)
     }
@@ -290,7 +290,7 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
     let end = children[fromI - 1]
     if (end.merge(end.length, end.length, elts[0], openStart, 0)) {
       elts.shift()
-      openStart = 0
+      openStart = elts.length ? 0 : openEnd
     }
   }
 
@@ -299,12 +299,12 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
   while (fromI < toI && elts.length && children[toI - 1].become(elts[elts.length - 1])) {
     elts.pop()
     toI--
-    openEnd = 0
+    openEnd = elts.length ? 0 : openStart
   }
   while (fromI < toI && elts.length && children[fromI].become(elts[0])) {
     elts.shift()
     fromI++
-    openStart = 0
+    openStart = elts.length ? 0 : openEnd
   }
   if (!elts.length && fromI && toI < children.length && openStart && openEnd &&
       children[toI].merge(0, 0, children[fromI - 1], openStart, openEnd))

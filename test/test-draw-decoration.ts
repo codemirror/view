@@ -105,6 +105,13 @@ describe("EditorView decoration", () => {
     ist(cm.contentDOM.querySelectorAll(".a").length, 2)
   })
 
+  it("merges joined decorations", () => {
+    let cm = decoEditor("ab cd", [d(0, 2, {class: "a"}), d(3, 5, {class: "a"})])
+    cm.dispatch({changes: {from: 2, to: 3, insert: "x"},
+                 effects: [filterDeco.of(() => false), addDeco.of([d(0, 5, {class: "a"})])]})
+    ist(cm.contentDOM.querySelectorAll(".a").length, 1)
+  })
+
   it("keeps decorations together when deleting inside of them", () => {
     let cm = decoEditor("one\ntwo", [d(1, 6, {class: "a"})])
     ist(cm.contentDOM.querySelectorAll(".a").length, 2)

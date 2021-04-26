@@ -180,7 +180,6 @@ describe("DOM changes", () => {
     let wDOM = cm.contentDOM.querySelectorAll("strong")[1]
     wDOM.previousSibling!.nodeValue = "e"
     wDOM.remove()
-    console.log(cm.contentDOM.innerHTML)
     flush(cm)
     ist(cm.state.doc.toString(), "one thr")
   })
