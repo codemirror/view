@@ -274,7 +274,7 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
   }
 })
 
-const HoverTime = 750, HoverMaxDist = 6
+const enum Hover { Time = 750, MaxDist = 6 }
 
 class HoverPlugin {
   lastMouseMove: MouseEvent | null = null
@@ -286,7 +286,8 @@ class HoverPlugin {
   constructor(readonly view: EditorView,
               readonly source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
               readonly field: StateField<Tooltip | null>,
-              readonly setHover: StateEffectType<Tooltip | null>) {
+              readonly setHover: StateEffectType<Tooltip | null>,
+              readonly hoverTime: number) {
     this.checkHover = this.checkHover.bind(this)
     view.dom.addEventListener("mouseleave", this.mouseleave = this.mouseleave.bind(this))
     view.dom.addEventListener("mousemove", this.mousemove = this.mousemove.bind(this))
@@ -308,8 +309,8 @@ class HoverPlugin {
     this.hoverTimeout = -1
     if (this.active) return
     let hovered = Date.now() - this.lastMoveTime
-    if (hovered < HoverTime)
-      this.hoverTimeout = setTimeout(this.checkHover, HoverTime - hovered)
+    if (hovered < this.hoverTime)
+      this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime - hovered)
     else
       this.startHover()
   }
@@ -344,12 +345,12 @@ class HoverPlugin {
   mousemove(event: MouseEvent) {
     this.lastMouseMove = event
     this.lastMoveTime = Date.now()
-    if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, HoverTime)
+    if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime)
     let tooltip = this.active
     if (tooltip && !isInTooltip(event.target as HTMLElement) || this.pending) {
       let {pos} = tooltip || this.pending!, end = tooltip?.end ?? pos
       if ((pos == end ? this.view.posAtCoords({x: event.clientX, y: event.clientY}) != pos
-           : !isOverRange(this.view, pos, end, event.clientX, event.clientY, HoverMaxDist))) {
+           : !isOverRange(this.view, pos, end, event.clientX, event.clientY, Hover.MaxDist))) {
         this.view.dispatch({effects: this.setHover.of(null)})
         this.pending = null
       }
@@ -427,9 +428,10 @@ export function hoverTooltip(
     provide: f => showHoverTooltip.from(f)
   })
 
+  let hoverTime: number = (options as any).hoverTime || Hover.Time
   return [
     hoverState,
-    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover)),
+    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, hoverTime)),
     showHoverTooltipHost
   ]
 }
