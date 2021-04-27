@@ -162,7 +162,7 @@ const baseTheme = EditorView.baseTheme({
     border: "1px solid #ddd",
     backgroundColor: "#f5f5f5"
   },
-  "&light .cm-hover-tooltip-section:not(:first-child)": {
+  "&light .cm-tooltip-section:not(:first-child)": {
     borderTop: "1px solid #ddd",
   },
   "&dark .cm-tooltip": {
@@ -231,13 +231,13 @@ class HoverTooltipHost implements TooltipView {
 
   private constructor(readonly view: EditorView) {
     this.dom = document.createElement("div")
-    this.dom.classList.add("cm-hover-tooltip")
+    this.dom.classList.add("cm-tooltip-hover")
     this.manager = new TooltipViewManager(view, showHoverTooltip, t => this.createHostedView(t))
   }
 
   createHostedView(tooltip: Tooltip) {
     const hostedView = tooltip.create(this.view)
-    hostedView.dom.classList.add("cm-hover-tooltip-section")
+    hostedView.dom.classList.add("cm-tooltip-section")
     this.dom.appendChild(hostedView.dom)
     if (this.mounted && hostedView.mount)
       hostedView.mount(this.view)
