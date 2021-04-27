@@ -600,7 +600,7 @@ export class EditorView {
     // or closing, which leads us to ignore selection changes from the
     // context menu because it looks like the editor isn't focused.
     // This kludges around that.
-    return (document.hasFocus() || browser.safari && this.inputState.lastContextMenu > Date.now() - 3e4) &&
+    return (document.hasFocus() || browser.safari && this.inputState?.lastContextMenu > Date.now() - 3e4) &&
       this.root.activeElement == this.contentDOM
   }
 
