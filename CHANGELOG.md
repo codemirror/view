@@ -1,3 +1,15 @@
+## 0.18.10 (2021-04-27)
+
+### Bug fixes
+
+Fix a bug where some types of updates wouldn't properly cause marks around the changes to be joined in the DOM.
+
+Fix an issue where the content and gutters in a fixed-height editor could be smaller than the editor height.
+
+Fix a crash on Safari when initializing an editor in an unfocused window.
+
+Fix a bug where the editor would incorrectly conclude it was out of view in some types of absolutely positioned parent elements.
+
 ## 0.18.9 (2021-04-23)
 
 ### Bug fixes
