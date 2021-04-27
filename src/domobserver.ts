@@ -89,10 +89,8 @@ export class DOMObserver {
   }
 
   onScroll(e: Event) {
-    if (this.intersecting) {
-      this.flush()
-      this.onScrollChanged(e)
-    }
+    if (this.intersecting) this.flush()
+    this.onScrollChanged(e)
   }
 
   onSelectionChange(event: Event) {

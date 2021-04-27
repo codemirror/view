@@ -171,7 +171,7 @@ export class EditorView {
       applyDOMChange(this, from, to, typeOver)
     }, event => {
       this.inputState.runScrollHandlers(this, event)
-      this.measure()
+      if (this.observer.intersecting) this.measure()
     })
     this.inputState = new InputState(this)
     this.docView = new DocView(this)
