@@ -121,7 +121,7 @@ export class ViewState {
   // wrap point, where it must stick to the character that it is
   // associated with. Since browsers don't provide a reasonable
   // interface to set or query this, when a selection is set that
-  // might cause this to be signficant, this flag is set. The next
+  // might cause this to be significant, this flag is set. The next
   // measure phase will check whether the cursor is on a line-wrapping
   // boundary and, if so, reset it to make sure it is positioned in
   // the right place.
