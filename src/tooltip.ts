@@ -143,8 +143,11 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   maybeMeasure() {
     if (this.manager.tooltips.length) {
-      if (this.view.inView || this.inView) this.view.requestMeasure(this.measureReq)
-      this.inView = this.view.inView
+      if (this.view.inView) this.view.requestMeasure(this.measureReq)
+      if (this.inView != this.view.inView) {
+        this.inView = this.view.inView
+        if (!this.inView) for (let tv of this.manager.tooltipViews) tv.dom.style.top = Outside
+      }
     }
   }
 }, {
