@@ -1,9 +1,9 @@
-import {tempEditor} from "./temp-editor"
+import {tempView} from "@codemirror/buildhelper/lib/tempview"
 import ist from "ist"
 
 describe("EditorView coords", () => {
   it("can find coordinates for simple text", () => {
-    let cm = tempEditor("one two\n\nthree"), prev = null
+    let cm = tempView("one two\n\nthree"), prev = null
     for (let i = 0; i < cm.state.doc.length; i++) {
       let coords = cm.coordsAtPos(i)!
       if (prev) ist(prev.top < coords.top - 5 || prev.left < coords.left)
@@ -13,7 +13,7 @@ describe("EditorView coords", () => {
   })
 
   it("can find coordinates in text scrolled into view horizontally", () => {
-    let cm = tempEditor("l1\n" + "l2 ".repeat(400))
+    let cm = tempView("l1\n" + "l2 ".repeat(400))
     let rect = cm.dom.getBoundingClientRect(), line2 = cm.coordsAtPos(3)!.top + 2
     cm.scrollDOM.scrollLeft = 0
     let right = cm.posAtCoords({x: rect.right - 2, y: line2})

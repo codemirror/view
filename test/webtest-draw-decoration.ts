@@ -1,5 +1,5 @@
 import {EditorView, Decoration, DecorationSet, WidgetType, Range} from "@codemirror/view"
-import {tempEditor, requireFocus} from "./temp-editor"
+import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
 import {EditorSelection, StateEffect, StateField} from "@codemirror/state"
 import ist from "ist"
 
@@ -35,7 +35,7 @@ function l(pos: number, attrs: any) {
 }
 
 function decoEditor(doc: string, decorations: any = []) {
-  return tempEditor(doc, decos(Decoration.set(decorations)))
+  return tempView(doc, decos(Decoration.set(decorations)))
 }
 
 describe("EditorView decoration", () => {
@@ -81,8 +81,8 @@ describe("EditorView decoration", () => {
   })
 
   it("nests decoration elements", () => {
-    let cm = tempEditor("abcdef", [decos(Decoration.set([d(0, 4, {class: "a"})])),
-                                   decos(Decoration.set([d(2, 6, {class: "b"})]))])
+    let cm = tempView("abcdef", [decos(Decoration.set([d(0, 4, {class: "a"})])),
+                                 decos(Decoration.set([d(2, 6, {class: "b"})]))])
     let a = cm.contentDOM.querySelectorAll(".a"), b = cm.contentDOM.querySelectorAll(".b")
     ist(a.length, 1)
     ist(b.length, 2)
@@ -130,8 +130,8 @@ describe("EditorView decoration", () => {
   })
 
   it("breaks low-precedence ranges for high-precedence wrappers", () => {
-    let cm = tempEditor("abc", [decos(Decoration.set([d(0, 2, {class: "a"})])),
-                                 decos(Decoration.set([d(1, 3, {class: "b"})]))])
+    let cm = tempView("abc", [decos(Decoration.set([d(0, 2, {class: "a"})])),
+                              decos(Decoration.set([d(1, 3, {class: "b"})]))])
     let a = cm.contentDOM.querySelectorAll(".a")
     let b = cm.contentDOM.querySelectorAll(".b")
     ist(a.length, 1)
@@ -270,9 +270,9 @@ describe("EditorView decoration", () => {
     })
 
     it("can wrap widgets in marks", () => {
-      let cm = tempEditor("abcd", [decos(Decoration.set([d(0, 4, {class: "a"})])),
-                                   decos(Decoration.set([w(2, new WordWidget("hi"))])),
-                                   decos(Decoration.set([d(1, 3, {class: "b"})]))])
+      let cm = tempView("abcd", [decos(Decoration.set([d(0, 4, {class: "a"})])),
+                                 decos(Decoration.set([w(2, new WordWidget("hi"))])),
+                                 decos(Decoration.set([d(1, 3, {class: "b"})]))])
       let a = cm.contentDOM.querySelectorAll(".a")
       let b = cm.contentDOM.querySelectorAll(".b")
       let wordElt = cm.contentDOM.querySelector("strong")
@@ -290,8 +290,8 @@ describe("EditorView decoration", () => {
     it("wraps widgets even when the mark starts at the same offset", () => {
       let repl = Decoration.replace({widget: new WordWidget("X"),
                                      inclusive: false})
-      let cm = tempEditor("abcd", [decos(Decoration.set([d(1, 3, {class: "a", inclusive: true})])),
-                                   decos(Decoration.set([repl.range(1, 3)]))])
+      let cm = tempView("abcd", [decos(Decoration.set([d(1, 3, {class: "a", inclusive: true})])),
+                                 decos(Decoration.set([repl.range(1, 3)]))])
       let a = cm.contentDOM.querySelectorAll(".a")
       let w = cm.contentDOM.querySelectorAll("strong")
       ist(a.length, 1)

@@ -33,7 +33,7 @@
     "w3c-keyname": "^2.2.4"
   },
   "devDependencies": {
-    "@codemirror/buildhelper": "^0.1.5"
+    "@codemirror/buildhelper": "^0.1.6"
   },
   "repository": {
     "type": "git",

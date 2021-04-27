@@ -1,4 +1,4 @@
-import {tempEditor} from "./temp-editor"
+import {tempView} from "@codemirror/buildhelper/lib/tempview"
 import {Text, EditorState, Compartment} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
 import ist from "ist"
@@ -14,7 +14,7 @@ describe("EditorView extension", () => {
         }
       }
     })
-    let cm = tempEditor("x\n".repeat(500), [plugin])
+    let cm = tempView("x\n".repeat(500), [plugin])
     ist(viewports.length, 1)
     ist(viewports[0].from, 0)
     cm.dom.style.height = "300px"
@@ -42,7 +42,7 @@ describe("EditorView extension", () => {
         }
       }
     })
-    let cm = tempEditor("xyz", [plugin])
+    let cm = tempView("xyz", [plugin])
     ist(updates, 0)
     cm.dispatch({changes: {from: 1, to: 2, insert: "u"}})
     ist(updates, 1)
@@ -51,12 +51,12 @@ describe("EditorView extension", () => {
   })
 
   it("allows content attributes to be changed through effects", () => {
-    let cm = tempEditor("", [EditorView.contentAttributes.of({spellcheck: "true"})])
+    let cm = tempView("", [EditorView.contentAttributes.of({spellcheck: "true"})])
     ist(cm.contentDOM.spellcheck, true)
   })
 
   it("allows editor attributes to be changed through effects", () => {
-    let cm = tempEditor("", [EditorView.editorAttributes.of({class: "something"})])
+    let cm = tempView("", [EditorView.editorAttributes.of({class: "something"})])
     ist(cm.dom.classList.contains("something"))
     ist(cm.dom.classList.contains("cm-editor"))
   })
@@ -73,7 +73,7 @@ describe("EditorView extension", () => {
       destroy() { this.elt.remove() }
     })
     let lang = new Compartment
-    let cm = tempEditor("one", [plugin, lang.of([])])
+    let cm = tempView("one", [plugin, lang.of([])])
     ist(cm.dom.querySelector(".greeting")!.textContent, "Hello")
     cm.dispatch({effects: lang.reconfigure(EditorState.phrases.of({Hello: "Bonjour"}))})
     ist(cm.dom.querySelector(".greeting")!.textContent, "Bonjour")

@@ -1,6 +1,6 @@
-import {tempEditor} from "./temp-editor"
+import {tempView} from "@codemirror/buildhelper/lib/tempview"
 import {EditorSelection} from "@codemirror/state"
-import {EditorView} from "@codemirror/view"
+import {EditorView, ViewPlugin} from "@codemirror/view"
 import ist from "ist"
 
 function domText(view: EditorView) {
@@ -19,9 +19,20 @@ function domText(view: EditorView) {
   return text
 }
 
+function scroll(height: number) {
+  return [
+    EditorView.contentAttributes.of({style: "overflow: auto"}),
+    EditorView.editorAttributes.of({style: `height: ${height}px`}),
+    ViewPlugin.define(view => {
+      view.scrollDOM.scrollTop = 0
+      return {}
+    })
+  ]
+}
+
 describe("EditorView drawing", () => {
   it("follows updates to the document", () => {
-    let cm = tempEditor("one\ntwo")
+    let cm = tempView("one\ntwo")
     ist(domText(cm), "one\ntwo")
     cm.dispatch({changes: {from: 1, to: 2, insert: "x"}})
     ist(domText(cm), "oxe\ntwo")
@@ -33,7 +44,7 @@ describe("EditorView drawing", () => {
 
   it("works in multiple lines", () => {
     let doc = "abcdefghijklmnopqrstuvwxyz\n".repeat(10)
-    let cm = tempEditor("")
+    let cm = tempView("")
     cm.dispatch({changes: {from: 0, insert: doc}})
     ist(domText(cm), doc)
     cm.dispatch({changes: {from: 0, insert: "/"}})
@@ -48,13 +59,13 @@ describe("EditorView drawing", () => {
   })
 
   it("can split a line", () => {
-    let cm = tempEditor("abc\ndef\nghi")
+    let cm = tempView("abc\ndef\nghi")
     cm.dispatch({changes: {from: 4, insert: "xyz\nk"}})
     ist(domText(cm), "abc\nxyz\nkdef\nghi")
   })
 
   it("redraws lazily", () => {
-    let cm = tempEditor("one\ntwo\nthree")
+    let cm = tempView("one\ntwo\nthree")
     let line0 = cm.domAtPos(0).node, line1 = line0.nextSibling!, line2 = line1.nextSibling!
     let text0 = line0.firstChild!, text2 = line2.firstChild!
     cm.dispatch({changes: {from: 5, insert: "x"}})
@@ -66,13 +77,13 @@ describe("EditorView drawing", () => {
   })
 
   it("notices the doc needs to be redrawn when only inserting empty lines", () => {
-    let cm = tempEditor("")
+    let cm = tempView("")
     cm.dispatch({changes: {from: 0, insert: "\n\n\n"}})
     ist(domText(cm), "\n\n\n")
   })
 
   it("draws BR nodes on empty lines", () => {
-    let cm = tempEditor("one\n\ntwo")
+    let cm = tempView("one\n\ntwo")
     let emptyLine = cm.domAtPos(4).node
     ist(emptyLine.childNodes.length, 1)
     ist(emptyLine.firstChild!.nodeName, "BR")
@@ -81,7 +92,7 @@ describe("EditorView drawing", () => {
   })
 
   it("only draws visible content", () => {
-    let cm = tempEditor("a\n".repeat(500) + "b\n".repeat(500), [], {scroll: 300})
+    let cm = tempView("a\n".repeat(500) + "b\n".repeat(500), [scroll(300)])
     cm.scrollDOM.scrollTop = 3000
     cm.measure()
     ist(cm.contentDOM.childNodes.length, 500, "<")
@@ -96,7 +107,7 @@ describe("EditorView drawing", () => {
   })
 
   it("keeps a drawn area around selection ends", () => {
-    let cm = tempEditor("\nsecond\n" + "x\n".repeat(500) + "last", [], {scroll: 300})
+    let cm = tempView("\nsecond\n" + "x\n".repeat(500) + "last", [scroll(300)])
     cm.dispatch({selection: EditorSelection.single(1, cm.state.doc.length)})
     cm.focus()
     let text = cm.contentDOM.textContent!
@@ -108,7 +119,7 @@ describe("EditorView drawing", () => {
   it("can handle replace-all like events", () => {
     let content = "", chars = "abcdefghijklmn    \n"
     for (let i = 0; i < 5000; i++) content += chars[Math.floor(Math.random() * chars.length)]
-    let cm = tempEditor(content), changes = []
+    let cm = tempView(content), changes = []
     for (let i = Math.floor(content.length / 100); i >= 0; i--) {
       let from = Math.floor(Math.random() * (cm.state.doc.length - 10)), to = from + Math.floor(Math.random() * 10)
       changes.push({from, to, insert: "XYZ"})
@@ -118,19 +129,19 @@ describe("EditorView drawing", () => {
   })
 
   it("can handle deleting a line's content", () => {
-    let cm = tempEditor("foo\nbaz")
+    let cm = tempView("foo\nbaz")
     cm.dispatch({changes: {from: 4, to: 7}})
     ist(domText(cm), "foo\n")
   })
 
   it("can insert blank lines at the end of the document", () => {
-    let cm = tempEditor("foo")
+    let cm = tempView("foo")
     cm.dispatch({changes: {from: 3, insert: "\n\nx"}})
     ist(domText(cm), "foo\n\nx")
   })
 
   it("can handle deleting the end of a line", () => {
-    let cm = tempEditor("a\nbc\n")
+    let cm = tempView("a\nbc\n")
     cm.dispatch({changes: {from: 3, to: 4}})
     cm.dispatch({changes: {from: 3, insert: "d"}})
     ist(domText(cm), "a\nbd\n")
@@ -138,7 +149,7 @@ describe("EditorView drawing", () => {
 
   it("correctly handles very complicated transactions", () => {
     let doc = "foo\nbar\nbaz", chars = "abcdef  \n"
-    let cm = tempEditor(doc)
+    let cm = tempView(doc)
     for (let i = 0; i < 10; i++) {
       let changes = [], pos = Math.min(20, doc.length)
       for (let j = 0; j < 1; j++) {
@@ -167,7 +178,7 @@ describe("EditorView drawing", () => {
 
   it("notices it is added to the DOM even if initially detached", () => {
     if (!(window as any).IntersectionObserver) return // Only works with intersection observer support
-    let cm = tempEditor("a\n\b\nc\nd", [EditorView.contentAttributes.of({style: "font-size: 60px"})])
+    let cm = tempView("a\n\b\nc\nd", [EditorView.contentAttributes.of({style: "font-size: 60px"})])
     let parent = cm.dom.parentNode!
     cm.dom.remove()
     return later().then(() => {
@@ -179,7 +190,7 @@ describe("EditorView drawing", () => {
   })
 
   it("hides parts of long lines that are horizontally out of view", () => {
-    let cm = tempEditor("one\ntwo\n?" + "three ".repeat(3333) + "!\nfour")
+    let cm = tempView("one\ntwo\n?" + "three ".repeat(3333) + "!\nfour")
     let {node} = cm.domAtPos(9)
     ist(node.nodeValue!.length, 2e4, "<")
     ist(node.nodeValue!.indexOf("!"), -1)
@@ -193,7 +204,7 @@ describe("EditorView drawing", () => {
   })
 
   it("hides parts of long lines that are vertically out of view", () => {
-    let cm = tempEditor("<" + "long line ".repeat(10e3) + ">", [], {scroll: 100, wrapping: true})
+    let cm = tempView("<" + "long line ".repeat(10e3) + ">", [scroll(100), EditorView.lineWrapping])
     cm.measure()
     let text = cm.contentDOM.textContent!
     ist(text.length, cm.state.doc.length, "<")

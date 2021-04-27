@@ -1,4 +1,4 @@
-import {tempEditor, requireFocus} from "./temp-editor"
+import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
 import ist from "ist"
 
 function setDOMSel(node: Node, offset: number) {
@@ -31,7 +31,7 @@ function domIndex(node: Node): number {
 
 describe("EditorView selection", () => {
   it("can read the DOM selection", () => {
-    let cm = requireFocus(tempEditor("one\n\nthree"))
+    let cm = requireFocus(tempView("one\n\nthree"))
 
     function test(node: Node, offset: number, expected: number) {
       setDOMSel(node, offset)
@@ -54,7 +54,7 @@ describe("EditorView selection", () => {
   })
 
   it("syncs the DOM selection with the editor selection", () => {
-    let cm = requireFocus(tempEditor("abc\n\ndef"))
+    let cm = requireFocus(tempView("abc\n\ndef"))
     function test(pos: number, node: Node, offset: number) {
       cm.dispatch({selection: {anchor: pos}})
       let sel = window.getSelection()!

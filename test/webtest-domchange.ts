@@ -1,4 +1,4 @@
-import {tempEditor} from "./temp-editor"
+import {tempView} from "@codemirror/buildhelper/lib/tempview"
 import {StateField} from "@codemirror/state"
 import {Decoration, DecorationSet, EditorView, WidgetType} from "@codemirror/view"
 import ist from "ist"
@@ -9,14 +9,14 @@ function flush(cm: EditorView) {
 
 describe("DOM changes", () => {
   it("notices text changes", () => {
-    let cm = tempEditor("foo\nbar")
+    let cm = tempView("foo\nbar")
     cm.domAtPos(1).node.nodeValue = "froo"
     flush(cm)
     ist(cm.state.doc.toString(), "froo\nbar")
   })
 
   it("handles browser enter behavior", () => {
-    let cm = tempEditor("foo\nbar"), line0 = cm.domAtPos(0).node
+    let cm = tempView("foo\nbar"), line0 = cm.domAtPos(0).node
     line0.appendChild(document.createElement("br"))
     line0.appendChild(document.createElement("br"))
     flush(cm)
@@ -24,14 +24,14 @@ describe("DOM changes", () => {
   })
 
   it("supports deleting lines", () => {
-    let cm = tempEditor("1\n2\n3\n4\n5\n6")
+    let cm = tempView("1\n2\n3\n4\n5\n6")
     for (let i = 0, lineDOM = cm.domAtPos(0).node.parentNode!; i < 4; i++) lineDOM.childNodes[1].remove()
     flush(cm)
     ist(cm.state.doc.toString(), "1\n6")
   })
 
   it("can deal with large insertions", () => {
-    let cm = tempEditor("okay")
+    let cm = tempView("okay")
     let node = document.createElement("div")
     node.textContent = "ayayayayayay"
     for (let i = 0, lineDOM = cm.domAtPos(0).node.parentNode!; i < 100; i++) lineDOM.appendChild(node.cloneNode(true))
@@ -40,7 +40,7 @@ describe("DOM changes", () => {
   })
 
   it("properly handles selection for ambiguous backspace", () => {
-    let cm = tempEditor("foo")
+    let cm = tempView("foo")
     cm.dispatch({selection: {anchor: 2}})
     cm.domAtPos(1).node.nodeValue = "fo"
     cm.inputState.lastKeyCode = 8
@@ -50,14 +50,14 @@ describe("DOM changes", () => {
   })
 
   it("notices text changes at the end of a long document", () => {
-    let cm = tempEditor("foo\nbar\n".repeat(15))
+    let cm = tempView("foo\nbar\n".repeat(15))
     cm.domAtPos(8*15).node.textContent = "a"
     flush(cm)
     ist(cm.state.doc.toString(), "foo\nbar\n".repeat(15) + "a")
   })
 
   it("handles replacing a selection with a prefix of itself", () => {
-    let cm = tempEditor("foo\nbar")
+    let cm = tempView("foo\nbar")
     cm.dispatch({selection: {anchor: 0, head: 7}})
     cm.contentDOM.textContent = "f"
     flush(cm)
@@ -65,7 +65,7 @@ describe("DOM changes", () => {
   })
 
   it("handles replacing a selection with a suffix of itself", () => {
-    let cm = tempEditor("foo\nbar")
+    let cm = tempView("foo\nbar")
     cm.dispatch({selection: {anchor: 0, head: 7}})
     cm.contentDOM.textContent = "r"
     flush(cm)
@@ -73,7 +73,7 @@ describe("DOM changes", () => {
   })
 
   it("handles replacing a selection with a prefix of itself and something else", () => {
-    let cm = tempEditor("foo\nbar")
+    let cm = tempView("foo\nbar")
     cm.dispatch({selection: {anchor: 0, head: 7}})
     cm.contentDOM.textContent = "fa"
     flush(cm)
@@ -81,7 +81,7 @@ describe("DOM changes", () => {
   })
 
   it("handles replacing a selection with a suffix of itself and something else", () => {
-    let cm = tempEditor("foo\nbar")
+    let cm = tempView("foo\nbar")
     cm.dispatch({selection: {anchor: 0, head: 7}})
     cm.contentDOM.textContent = "br"
     flush(cm)
@@ -89,7 +89,7 @@ describe("DOM changes", () => {
   })
 
   it("handles replacing a selection with new content that shares a prefix and a suffix", () => {
-    let cm = tempEditor("foo\nbar")
+    let cm = tempView("foo\nbar")
     cm.dispatch({selection: {anchor: 1, head: 6}})
     cm.contentDOM.textContent = "fo--ar"
     flush(cm)
@@ -97,7 +97,7 @@ describe("DOM changes", () => {
   })
 
   it("handles appending", () => {
-    let cm = tempEditor("foo\nbar")
+    let cm = tempView("foo\nbar")
     cm.dispatch({selection: {anchor: 7}})
     cm.contentDOM.appendChild(document.createElement("div"))
     flush(cm)
@@ -105,14 +105,14 @@ describe("DOM changes", () => {
   })
 
   it("handles deleting the first line and the newline after it", () => {
-    let cm = tempEditor("foo\nbar\n\nbaz")
+    let cm = tempView("foo\nbar\n\nbaz")
     cm.contentDOM.innerHTML = "bar<div><br></div><div>baz</div>"
     flush(cm)
     ist(cm.state.doc.toString(), "bar\n\nbaz")
   })
 
   it("handles deleting a line with an empty line after it", () => {
-    let cm = tempEditor("foo\nbar\n\nbaz")
+    let cm = tempView("foo\nbar\n\nbaz")
     cm.contentDOM.innerHTML = "<div>foo</div><br><div>baz</div>"
     flush(cm)
     ist(cm.state.doc.toString(), "foo\n\nbaz")
@@ -124,28 +124,28 @@ describe("DOM changes", () => {
       update() { return Decoration.none },
       provide: f => EditorView.decorations.from(f)
     })
-    let cm = tempEditor("abcd", [field])
+    let cm = tempView("abcd", [field])
     cm.domAtPos(0).node.firstChild!.textContent = "x"
     flush(cm)
     ist(cm.state.doc.toString(), "xbcd")
   })
 
   it("preserves text nodes when edited in the middle", () => {
-    let cm = tempEditor("abcd"), text = cm.domAtPos(1).node
+    let cm = tempView("abcd"), text = cm.domAtPos(1).node
     text.textContent = "axxd"
     flush(cm)
     ist(cm.domAtPos(1).node, text)
   })
 
   it("preserves text nodes when edited at the start", () => {
-    let cm = tempEditor("abcd"), text = cm.domAtPos(1).node
+    let cm = tempView("abcd"), text = cm.domAtPos(1).node
     text.textContent = "xxcd"
     flush(cm)
     ist(cm.domAtPos(1).node, text)
   })
 
   it("preserves text nodes when edited at the end", () => {
-    let cm = tempEditor("abcd"), text = cm.domAtPos(1).node
+    let cm = tempView("abcd"), text = cm.domAtPos(1).node
     text.textContent = "abxx"
     flush(cm)
     ist(cm.domAtPos(1).node, text)
@@ -160,7 +160,7 @@ describe("DOM changes", () => {
       update(v) { return v },
       provide: f => EditorView.decorations.from(f)
     })
-    let cm = tempEditor("abcd", [field])
+    let cm = tempView("abcd", [field])
     cm.domAtPos(0).node.appendChild(document.createTextNode("x"))
     flush(cm)
     ist(cm.state.doc.toString(), "abcdx")
@@ -176,7 +176,7 @@ describe("DOM changes", () => {
       update(v, tr) { return v.map(tr.changes) },
       provide: f => EditorView.decorations.from(f)
     })
-    let cm = tempEditor("one two thr", [field])
+    let cm = tempView("one two thr", [field])
     let wDOM = cm.contentDOM.querySelectorAll("strong")[1]
     wDOM.previousSibling!.nodeValue = "e"
     wDOM.remove()
@@ -185,7 +185,7 @@ describe("DOM changes", () => {
   })
 
   it("calls input handlers", () => {
-    let cm = tempEditor("abc", [EditorView.inputHandler.of((_v, from, to, insert) => {
+    let cm = tempView("abc", [EditorView.inputHandler.of((_v, from, to, insert) => {
       cm.dispatch({changes: {from, to, insert: insert.toUpperCase()}})
       return true
     })])
