@@ -377,11 +377,12 @@ export class EditorView {
     if (this.updateState == UpdateState.Idle && this.measureScheduled > -1) this.measure()
   }
 
-  /// Make sure plugins get a chance to measure the DOM layout before
-  /// the next frame. Calling this is preferable reading DOM layout
-  /// directly from, for example, an event handler, because it'll make
-  /// sure measuring and drawing done by other components is
-  /// synchronized, avoiding unnecessary DOM layout computations.
+  /// Schedule a layout measurement, optionally providing callbacks to
+  /// do custom DOM measuring followed by a DOM write phase. Using
+  /// this is preferable reading DOM layout directly from, for
+  /// example, an event handler, because it'll make sure measuring and
+  /// drawing done by other components is synchronized, avoiding
+  /// unnecessary DOM layout computations.
   requestMeasure<T>(request?: MeasureRequest<T>) {
     if (this.measureScheduled < 0)
       this.measureScheduled = requestAnimationFrame(() => this.measure())

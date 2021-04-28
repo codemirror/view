@@ -43,6 +43,12 @@ interface WidgetDecorationSpec {
   /// Determines whether this is a block widgets, which will be drawn
   /// between lines, or an inline widget (the default) which is drawn
   /// between the surrounding text.
+  ///
+  /// Note that block-level decorations should not have vertical
+  /// margins, and if you dynamically change their height, you should
+  /// make sure to call
+  /// [`requestMeasure`](#view.EditorView.requestMeasure), so that the
+  /// editor can update its information about its vertical layout.
   block?: boolean
   /// Other properties are allowed.
   [other: string]: any
