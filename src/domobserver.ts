@@ -24,6 +24,7 @@ export class DOMObserver {
 
   delayedFlush = -1
   queue: MutationRecord[] = []
+  lastFlush = 0
 
   onCharData: any
 
@@ -32,7 +33,7 @@ export class DOMObserver {
   intersecting: boolean = false
 
   // Used to work around a Safari Selection/shadow DOM bug (#414)
-  selectionRange!: SelectionRange
+  _selectionRange: SelectionRange | null = null
 
   // Timeout for scheduling check of the parents that need scroll handlers
   parentCheck = -1
@@ -43,6 +44,7 @@ export class DOMObserver {
     this.dom = view.contentDOM
     this.observer = new MutationObserver(mutations => {
       for (let mut of mutations) this.queue.push(mut)
+      this._selectionRange = null
       // IE11 will sometimes (on typing over a selection or
       // backspacing out a single character text node) call the
       // observer callback before actually updating the DOM.
@@ -68,7 +70,6 @@ export class DOMObserver {
         this.flushSoon()
       }
 
-    this.updateSelectionRange()
     this.onSelectionChange = this.onSelectionChange.bind(this)
     this.start()
 
@@ -94,7 +95,7 @@ export class DOMObserver {
   }
 
   onSelectionChange(event: Event) {
-    this.updateSelectionRange()
+    if (this.lastFlush < Date.now() - 50) this._selectionRange = null
     let {view} = this, sel = this.selectionRange
     if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(view.dom, sel))
       return
@@ -112,13 +113,16 @@ export class DOMObserver {
       this.flush()
   }
 
-  updateSelectionRange() {
-    let {root} = this.view, sel: SelectionRange = getSelection(root)
-    // The Selection object is broken in shadow roots in Safari. See
-    // https://github.com/codemirror/codemirror.next/issues/414
-    if (browser.safari && (root as any).nodeType == 11 && deepActiveElement() == this.view.contentDOM)
-      sel = safariSelectionRangeHack(this.view) || sel
-    this.selectionRange = sel
+  get selectionRange(): SelectionRange {
+    if (!this._selectionRange) {
+      let {root} = this.view, sel: SelectionRange = getSelection(root)
+      // The Selection object is broken in shadow roots in Safari. See
+      // https://github.com/codemirror/codemirror.next/issues/414
+      if (browser.safari && (root as any).nodeType == 11 && deepActiveElement() == this.view.contentDOM)
+        sel = safariSelectionRangeHack(this.view) || sel
+      this._selectionRange = sel
+    }
+    return this._selectionRange
   }
 
   listenForScroll() {
@@ -200,6 +204,7 @@ export class DOMObserver {
   flush() {
     if (this.delayedFlush >= 0) return
 
+    this.lastFlush = Date.now()
     let records = this.queue
     for (let mut of this.observer.takeRecords()) records.push(mut)
     if (records.length) this.queue = []
@@ -283,20 +288,13 @@ function safariSelectionRangeHack(view: EditorView) {
   document.execCommand("indent")
   view.contentDOM.removeEventListener("beforeinput", read, true)
   if (!found) return null
+  let anchorNode = found!.startContainer, anchorOffset = found!.startOffset
+  let focusNode = found!.endContainer, focusOffset = found!.endOffset
   let curAnchor = view.docView.domAtPos(view.state.selection.main.anchor)
   // Since such a range doesn't distinguish between anchor and head,
   // use a heuristic that flips it around if its end matches the
   // current anchor.
-  return isEquivalentPosition(curAnchor.node, curAnchor.offset, found!.endContainer, found!.endOffset)
-    ? {
-      anchorNode: found!.endContainer,
-      anchorOffset: found!.endOffset,
-      focusNode: found!.startContainer,
-      focusOffset: found!.startOffset
-    } : {
-      anchorNode: found!.startContainer,
-      anchorOffset: found!.startOffset,
-      focusNode: found!.endContainer,
-      focusOffset: found!.endOffset
-    }
+  if (isEquivalentPosition(curAnchor.node, curAnchor.offset, focusNode, focusOffset))
+    [anchorNode, anchorOffset, focusNode, focusOffset] = [focusNode, focusOffset, anchorNode, anchorOffset]
+  return {anchorNode, anchorOffset, focusNode, focusOffset}
 }
