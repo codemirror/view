@@ -125,6 +125,12 @@ export class DOMObserver {
     return this._selectionRange
   }
 
+  setSelectionRange(anchor: {node: Node, offset: number}, head: {node: Node, offset: number}) {
+    if (!(this._selectionRange as any)?.type)
+      this._selectionRange = {anchorNode: anchor.node, anchorOffset: anchor.offset,
+                              focusNode: head.node, focusOffset: head.offset}
+  }
+
   listenForScroll() {
     this.parentCheck = -1
     let i = 0, changed: HTMLElement[] | null = null
