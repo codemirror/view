@@ -484,9 +484,9 @@ describe("EditorView decoration", () => {
       let cm = decoEditor("hello", [br(2, 3, "X")])
       widgets(cm, [], ["X"], [])
       cm.dispatch({changes: {from: 1, to: 2, insert: "u"}, effects: addDeco.of([br(2, 3, "X")])})
-      widgets(cm, [], ["X","X"], [])
+      widgets(cm, [], ["X"], [])
       cm.dispatch({changes: {from: 3, to: 4, insert: "i"}, effects: addDeco.of([br(2, 3, "X")])})
-      widgets(cm, [], ["X","X","X"], [])
+      widgets(cm, [], ["X"], [])
     })
 
     it("can draw a block range that partially overlaps with a collapsed range", () => {
