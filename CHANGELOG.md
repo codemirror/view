@@ -1,3 +1,11 @@
+## 0.18.11 (2021-04-30)
+
+### Bug fixes
+
+Add an attribute to prevent the Grammarly browser extension from messing with the editor content.
+
+Fix more issues around selection handling a Shadow DOM in Safari.
+
 ## 0.18.10 (2021-04-27)
 
 ### Bug fixes
