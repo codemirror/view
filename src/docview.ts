@@ -243,6 +243,7 @@ export class DocView extends ContentView {
           rawSel.addRange(range)
         }
       })
+      this.view.observer.setSelectionRange(anchor, head)
     }
 
     this.impreciseAnchor = anchor.precise ? null : new DOMPos(domSel.anchorNode!, domSel.anchorOffset)
