@@ -4,6 +4,7 @@ import {InlineView, TextView, WidgetView, mergeInlineChildren, inlineDOMAtPos, j
 import {clientRectsFor, Rect} from "./dom"
 import {LineDecoration, WidgetType, BlockType} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
+import browser from "./browser"
 import {Text} from "@codemirror/state"
 
 export interface BlockView extends ContentView {
@@ -97,7 +98,7 @@ export class LineView extends ContentView implements BlockView {
     }
     super.sync(track)
     let last = this.dom!.lastChild
-    if (!last || (last.nodeName != "BR" && (ContentView.get(last) instanceof WidgetView))) {
+    if (!last || (last.nodeName != "BR" && (!browser.ios && (ContentView.get(last) instanceof WidgetView)))) {
       let hack = document.createElement("BR")
       ;(hack as any).cmIgnore = true
       this.dom!.appendChild(hack)
