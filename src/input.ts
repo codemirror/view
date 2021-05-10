@@ -56,6 +56,9 @@ export class InputState {
     }
     this.notifiedFocused = view.hasFocus
     this.ensureHandlers(view)
+    // On Safari adding an input event handler somehow prevents an
+    // issue where the composition vanishes when you press enter.
+    if (browser.safari) view.contentDOM.addEventListener("input", () => null)
   }
 
   ensureHandlers(view: EditorView) {
