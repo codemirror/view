@@ -1,3 +1,11 @@
+## 0.18.12 (2021-05-10)
+
+### Bug fixes
+
+Work around a Mobile Safari bug where, after backspacing out the last character on a line, Enter didn't work anymore.
+
+Work around a problem in Mobile Safari where you couldn't tap to put the cursor at the end of a line that ended in a widget.
+
 ## 0.18.11 (2021-04-30)
 
 ### Bug fixes
