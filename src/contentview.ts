@@ -177,7 +177,10 @@ export abstract class ContentView {
 
   replaceChildren(from: number, to: number, children: ContentView[] = none) {
     this.markDirty()
-    for (let i = from; i < to; i++) this.children[i].parent = null
+    for (let i = from; i < to; i++) {
+      let child = this.children[i]
+      if (child.parent == this) child.parent = null
+    }
     this.children.splice(from, to - from, ...children)
     for (let i = 0; i < children.length; i++) children[i].setParent(this)
   }
