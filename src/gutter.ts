@@ -12,21 +12,29 @@ export abstract class GutterMarker extends RangeValue {
   }
 
   /// Compare this marker to another marker of the same type.
-  abstract eq(other: GutterMarker): boolean
+  eq(other: GutterMarker): boolean { return false }
 
   /// Render the DOM node for this marker, if any.
-  toDOM(_view: EditorView): Node | null { return null }
-
-  /// Create a range that places this marker at the given position.
-  at(pos: number) { return this.range(pos) }
+  toDOM?(_view: EditorView): Node
 
   /// This property can be used to add CSS classes to the gutter
   /// element that contains this marker.
   elementClass!: string
+
+  /// @internal FIXME remove on next major version
+  at(pos: number) { return this.range(pos) }
 }
 
 GutterMarker.prototype.elementClass = ""
+GutterMarker.prototype.toDOM = undefined
 GutterMarker.prototype.mapMode = MapMode.TrackBefore
+
+/// Facet used to add a class to all gutter elements for a given line.
+/// Markers given to this facet should _only_ define an
+/// [`elementclass`](#gutter.GutterMarker.elementClass), not a
+/// [`toDOM`](#gutter.GutterMarker.toDOM) (or the marker will appear
+/// in all gutters for the line).
+export const gutterLineClass = Facet.define<RangeSet<GutterMarker>>()
 
 type Handlers = {[event: string]: (view: EditorView, line: BlockInfo, event: any) => boolean}
 
@@ -108,6 +116,14 @@ const baseTheme = EditorView.baseTheme({
     minWidth: "20px",
     textAlign: "right",
     whiteSpace: "nowrap"
+  },
+
+  "&light .cm-activeLineGutter": {
+    backgroundColor: "#e2f2ff"
+  },
+
+  "&dark .cm-activeLineGutter": {
+    backgroundColor: "#222227"
   }
 })
 
@@ -159,6 +175,8 @@ const gutterView = ViewPlugin.fromClass(class {
   }
 
   syncGutters() {
+    let lineClasses = RangeSet.iter(this.view.state.facet(gutterLineClass), this.view.viewport.from)
+    let classSet: GutterMarker[] = []
     let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport))
     this.view.viewportLines(line => {
       let text: BlockInfo | undefined
@@ -169,7 +187,9 @@ const gutterView = ViewPlugin.fromClass(class {
       }
       if (!text) return
 
-      for (let cx of contexts) cx.line(this.view, text)
+      if (classSet.length) classSet = []
+      advanceCursor(lineClasses, classSet, line.from)
+      for (let cx of contexts) cx.line(this.view, text, classSet)
     }, 0)
     for (let cx of contexts) cx.finish()
     this.dom.style.minHeight = this.view.contentHeight + "px"
@@ -215,6 +235,13 @@ const gutterView = ViewPlugin.fromClass(class {
 
 function asArray<T>(val: T | readonly T[]) { return (Array.isArray(val) ? val : [val]) as readonly T[] }
 
+function advanceCursor(cursor: RangeCursor<GutterMarker>, collect: GutterMarker[], pos: number) {
+  while (cursor.value && cursor.from <= pos) {
+    if (cursor.from == pos) collect.push(cursor.value)
+    cursor.next()
+  }
+}
+
 class UpdateContext {
   cursor: RangeCursor<GutterMarker>
   localMarkers: GutterMarker[] = []
@@ -225,30 +252,25 @@ class UpdateContext {
     this.cursor = RangeSet.iter(gutter.markers, viewport.from)
   }
 
-  line(view: EditorView, line: BlockInfo) {
+  line(view: EditorView, line: BlockInfo, extraMarkers: readonly GutterMarker[]) {
     if (this.localMarkers.length) this.localMarkers = []
-    while (this.cursor.value && this.cursor.from <= line.from) {
-      if (this.cursor.from == line.from) this.localMarkers.push(this.cursor.value)
-      this.cursor.next()
-    }
-    let forLine = this.gutter.config.lineMarker(view, line, this.localMarkers)
-    if (forLine) this.localMarkers.unshift(forLine)
+    advanceCursor(this.cursor, this.localMarkers, line.from)
+    let localMarkers = extraMarkers.length ? this.localMarkers.concat(extraMarkers) : this.localMarkers
+    let forLine = this.gutter.config.lineMarker(view, line, localMarkers)
+    if (forLine) localMarkers.unshift(forLine)
 
     let gutter = this.gutter
-    if (this.localMarkers.length == 0 && !gutter.config.renderEmptyElements) return
+    if (localMarkers.length == 0 && !gutter.config.renderEmptyElements) return
 
     let above = line.top - this.height
     if (this.i == gutter.elements.length) {
-      let newElt = new GutterElement(view, line.height, above, this.localMarkers)
+      let newElt = new GutterElement(view, line.height, above, localMarkers)
       gutter.elements.push(newElt)
       gutter.dom.appendChild(newElt.dom)
     } else {
-      let markers: readonly GutterMarker[] = this.localMarkers, elt = gutter.elements[this.i]
-      if (sameMarkers(markers, elt.markers)) {
-        markers = elt.markers
-        this.localMarkers.length = 0
-      }
-      elt.update(view, line.height, above, markers)
+      let elt = gutter.elements[this.i]
+      if (sameMarkers(localMarkers, elt.markers)) localMarkers = elt.markers as GutterMarker[]
+      elt.update(view, line.height, above, localMarkers)
     }
     this.height = line.bottom
     this.i++
@@ -315,8 +337,7 @@ class GutterElement {
       for (let ch; ch = this.dom.lastChild;) ch.remove()
       let cls = "cm-gutterElement"
       for (let m of markers) {
-        let dom = m.toDOM(view)
-        if (dom) this.dom.appendChild(dom)
+        if (m.toDOM) this.dom.appendChild(m.toDOM(view))
         let c = m.elementClass
         if (c) cls += " " + c
       }
@@ -362,9 +383,7 @@ class NumberMarker extends GutterMarker {
 
   eq(other: NumberMarker) { return this.number == other.number }
 
-  toDOM() {
-    return document.createTextNode(this.number)
-  }
+  toDOM(_view: EditorView) { return document.createTextNode(this.number) }
 }
 
 function formatNumber(view: EditorView, number: number) {
@@ -375,7 +394,7 @@ const lineNumberGutter = gutter({
   class: "cm-lineNumbers",
   markers(view: EditorView) { return view.state.facet(lineNumberMarkers) },
   lineMarker(view, line, others) {
-    if (others.length) return null
+    if (others.some(m => m.toDOM)) return null
     return new NumberMarker(formatNumber(view, view.state.doc.lineAt(line.from).number))
   },
   initialSpacer(view: EditorView) {
@@ -399,4 +418,28 @@ function maxLineNumber(lines: number) {
   let last = 9
   while (last < lines) last = last * 10 + 9
   return last
+}
+
+const activeLineGutterMarker = new class extends GutterMarker {
+  eq() { return true }
+  elementClass = "cm-activeLineGutter"
+}
+
+const activeLineGutterHighlighter = gutterLineClass.compute(["selection"], state => {
+  let marks = [], last = -1
+  for (let range of state.selection.ranges) if (range.empty) {
+    let linePos = state.doc.lineAt(range.head).from
+    if (linePos > last) {
+      last = linePos
+      marks.push(activeLineGutterMarker.range(linePos))
+    }
+  }
+  return RangeSet.of(marks)
+})
+
+/// Returns an extension that adds a `cm-activeLineGutter` class to
+/// all gutter elements on the [active
+/// line](#view.highlightActiveLine).
+export function highlightActiveLineGutter() {
+  return activeLineGutterHighlighter
 }
