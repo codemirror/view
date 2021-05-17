@@ -98,7 +98,8 @@ export class DocView extends ContentView {
                       oldLength: number, forceSelection = false, pointerSel = false) {
     this.updateChildren(changes, deco, oldLength)
 
-    this.view.observer.ignore(() => {
+    let {observer} = this.view
+    observer.ignore(() => {
       // Lock the height during redrawing, since Chrome sometimes
       // messes with the scroll position during DOM mutation (though
       // no relayout is triggered and I cannot imagine how it can
@@ -109,10 +110,10 @@ export class DocView extends ContentView {
       // around the selection, get confused and report a different
       // selection from the one it displays (issue #218). This tries
       // to detect that situation.
-      let track = browser.chrome ? {node: getSelection(this.view.root).focusNode!, written: false} : undefined
+      let track = browser.chrome || browser.ios ? {node: observer.selectionRange.focusNode!, written: false} : undefined
       this.sync(track)
       this.dirty = Dirty.Not
-      if (track?.written) forceSelection = true
+      if (track && (track.written || observer.selectionRange.focusNode != track.node)) forceSelection = true
       this.updateSelection(forceSelection, pointerSel)
       this.dom.style.height = ""
     })
@@ -213,10 +214,10 @@ export class DocView extends ContentView {
         // Always reset on Firefox when next to an uneditable node to
         // avoid invisible cursor bugs (#111)
         (browser.gecko && main.empty && nextToUneditable(domSel.focusNode, domSel.focusOffset)) ||
-        // Safari sometimes goes into a weird state after backspacing
-        // out the last character on a line, and comes out of it when we
-        // reset the selection (#482)
-        (browser.safari && main.empty && head.node.childNodes.length == 1 && head.node.firstChild!.nodeName == "BR" &&
+        // Mobile Safari sometimes goes into a weird state after
+        // backspacing out the last character on a line, and comes out
+        // of it when we reset the selection (#482)
+        (browser.ios && main.empty && head.node.childNodes.length == 1 && head.node.firstChild!.nodeName == "BR" &&
          this.view.inputState.lastIOSBackspace > Date.now() - 225) ||
         !isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) ||
         !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) {
