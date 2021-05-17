@@ -347,9 +347,6 @@ export class EditorView {
       autocorrect: "off",
       autocapitalize: "off",
       contenteditable: String(this.state.facet(editable)),
-      // Disable the Grammarly extension, which otherwise feels free
-      // to randomly mess with our DOM structure.
-      "data-gramm": "false",
       class: "cm-content",
       style: `${browser.tabSize}: ${this.state.tabSize}`,
       role: "textbox",
