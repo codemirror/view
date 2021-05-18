@@ -465,17 +465,14 @@ handlers.dragstart = (view, event: DragEvent) => {
   }
 }
 
-handlers.drop = (view, event: DragEvent) => {
-  if (!event.dataTransfer || !view.state.facet(editable)) return
-
+function dropText(view: EditorView, event: DragEvent, text: string, direct: boolean) {
   let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY})
-  let text = event.dataTransfer.getData("Text")
   if (dropPos == null || !text) return
 
   event.preventDefault()
 
   let {mouseSelection} = view.inputState
-  let del = mouseSelection && mouseSelection.dragging && mouseSelection.dragMove ?
+  let del = direct && mouseSelection && mouseSelection.dragging && mouseSelection.dragMove ?
     {from: mouseSelection.dragging.from, to: mouseSelection.dragging.to} : null
   let ins = {from: dropPos, insert: text}
   let changes = view.state.changes(del ? [del, ins] : ins)
@@ -486,6 +483,31 @@ handlers.drop = (view, event: DragEvent) => {
     selection: {anchor: changes.mapPos(dropPos, -1), head: changes.mapPos(dropPos, 1)},
     annotations: Transaction.userEvent.of("drop")
   })
+}
+
+handlers.drop = (view, event: DragEvent) => {
+  if (!event.dataTransfer || !view.state.facet(editable)) return
+
+  let files = event.dataTransfer.files
+  if (files && files.length) { // For a file drop, read the file's text.
+    event.preventDefault()
+    let text = Array(files.length), read = 0
+    let finishFile = () => {
+      if (++read == files.length)
+        dropText(view, event, text.filter(s => s != null).join(view.state.lineBreak), false)
+    }
+    for (let i = 0; i < files.length; i++) {
+      let reader = new FileReader
+      reader.onerror = finishFile
+      reader.onload = () => {
+        if (!/[\x00-\x08\x0e-\x1f]{2}/.test(reader.result as string)) text[i] = reader.result
+        finishFile()
+      }
+      reader.readAsText(files[i])
+    }
+  } else {
+    dropText(view, event, event.dataTransfer.getData("Text"), true)
+  }
 }
 
 handlers.paste = (view: EditorView, event: ClipboardEvent) => {
