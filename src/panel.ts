@@ -173,8 +173,9 @@ class PanelGroup {
 
   scrollMargin() {
     return !this.dom || this.container ? 0
-      : Math.max(0, this.top ? this.dom.getBoundingClientRect().bottom - this.view.scrollDOM.getBoundingClientRect().top
-                 : this.view.scrollDOM.getBoundingClientRect().bottom - this.dom.getBoundingClientRect().top)
+      : Math.max(0, this.top ?
+        this.dom.getBoundingClientRect().bottom - Math.max(0, this.view.scrollDOM.getBoundingClientRect().top) :
+        Math.min(innerHeight, this.view.scrollDOM.getBoundingClientRect().bottom) - this.dom.getBoundingClientRect().top)
   }
 
   syncClasses() {
