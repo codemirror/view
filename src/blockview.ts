@@ -98,7 +98,9 @@ export class LineView extends ContentView implements BlockView {
     }
     super.sync(track)
     let last = this.dom!.lastChild
-    if (!last || (last.nodeName != "BR" && (!browser.ios && (ContentView.get(last) instanceof WidgetView)))) {
+    if (!last ||
+        last.nodeName != "BR" && ContentView.get(last) instanceof WidgetView &&
+        (!browser.ios || !this.children.some(ch => ch instanceof TextView))) {
       let hack = document.createElement("BR")
       ;(hack as any).cmIgnore = true
       this.dom!.appendChild(hack)
