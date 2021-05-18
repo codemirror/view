@@ -206,3 +206,14 @@ export function textRange(node: Text, from: number, to = from) {
   range.setStart(node, from)
   return range
 }
+
+export function dispatchKey(elt: HTMLElement, name: string, code: number): boolean {
+  let options = {key: name, code: name, keyCode: code, which: code, cancelable: true}
+  let down = new KeyboardEvent("keydown", options)
+  ;(down as any).synthetic = true
+  elt.dispatchEvent(down)
+  let up = new KeyboardEvent("keyup", options)
+  ;(up as any).synthetic = true
+  elt.dispatchEvent(up)
+  return down.defaultPrevented || up.defaultPrevented
+}

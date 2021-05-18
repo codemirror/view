@@ -214,11 +214,6 @@ export class DocView extends ContentView {
         // Always reset on Firefox when next to an uneditable node to
         // avoid invisible cursor bugs (#111)
         (browser.gecko && main.empty && nextToUneditable(domSel.focusNode, domSel.focusOffset)) ||
-        // Mobile Safari sometimes goes into a weird state after
-        // backspacing out the last character on a line, and comes out
-        // of it when we reset the selection (#482)
-        (browser.ios && main.empty && head.node.childNodes.length == 1 && head.node.firstChild!.nodeName == "BR" &&
-         this.view.inputState.lastIOSBackspace > Date.now() - 225) ||
         !isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) ||
         !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) {
       this.view.observer.ignore(() => {

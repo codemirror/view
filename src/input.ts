@@ -6,14 +6,13 @@ import {domEventHandlers, ViewUpdate, PluginValue, clickAddsSelectionRange, drag
         logException, mouseSelectionStyle, editable} from "./extension"
 import browser from "./browser"
 import {groupAt} from "./cursor"
-import {getSelection, focusPreventScroll, Rect} from "./dom"
+import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
 
 // This will also be where dragging info and such goes
 export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
-  lastIOSEnter: number = 0
-  lastIOSBackspace: number = 0
+  pendingIOSKey: null | "enter" | "backspace" = null
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
   lastEscPress: number = 0
@@ -117,10 +116,18 @@ export class InputState {
     // the state they produce.
     if (browser.ios && (event.keyCode == 13 || event.keyCode == 8) &&
         !(event.ctrlKey || event.altKey || event.metaKey) && !(event as any).synthetic) {
-      this[event.keyCode == 13 ? "lastIOSEnter" : "lastIOSBackspace"] = Date.now()
+      this.pendingIOSKey = event.keyCode == 13 ? "enter" : "backspace"
+      setTimeout(() => this.flushIOSKey(view), 500)
       return true
     }
     return false
+  }
+
+  flushIOSKey(view: EditorView) {
+    if (!this.pendingIOSKey) return false
+    let dom = view.contentDOM, key = this.pendingIOSKey
+    this.pendingIOSKey = null
+    return key == "enter" ? dispatchKey(dom, "Enter", 13) : dispatchKey(dom, "Backspace", 8)
   }
 
   ignoreDuringComposition(event: Event): boolean {
