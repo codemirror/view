@@ -117,7 +117,7 @@ export class InputState {
     if (browser.ios && (event.keyCode == 13 || event.keyCode == 8) &&
         !(event.ctrlKey || event.altKey || event.metaKey) && !(event as any).synthetic) {
       this.pendingIOSKey = event.keyCode == 13 ? "enter" : "backspace"
-      setTimeout(() => this.flushIOSKey(view), 500)
+      setTimeout(() => this.flushIOSKey(view), 250)
       return true
     }
     return false
