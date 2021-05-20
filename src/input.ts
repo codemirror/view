@@ -108,7 +108,7 @@ export class InputState {
     // Must always run, even if a custom handler handled the event
     this.lastKeyCode = event.keyCode
     this.lastKeyTime = Date.now()
-    if (this.screenKeyEvent(view, event as KeyboardEvent)) return
+    if (this.screenKeyEvent(view, event as KeyboardEvent)) return true
     // Prevent the default behavior of Enter on iOS makes the
     // virtual keyboard get stuck in the wrong (lowercase)
     // state. So we let it go through, and then, in
