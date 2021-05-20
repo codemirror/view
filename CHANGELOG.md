@@ -1,3 +1,19 @@
+## 0.18.13 (2021-05-20)
+
+### Bug fixes
+
+Fix a bug that would cause the content DOM update to crash in specific circumstances.
+
+Work around an issue where, after some types of changes, Mobile Safari would ignore Enter presses.
+
+Make iOS enter and backspace handling more robust, so that platform bugs are less likely to break those keys in the editor.
+
+Fix a regression where Esc + Tab no longer allowed the user to exit the editor.
+
+### New features
+
+You can now drop text files into the editor.
+
 ## 0.18.12 (2021-05-10)
 
 ### Bug fixes
