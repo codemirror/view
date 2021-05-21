@@ -403,7 +403,7 @@ export class DocView extends ContentView {
 function betweenUneditable(pos: DOMPos) {
   return pos.node.nodeType == 1 && pos.node.firstChild &&
     (pos.offset == 0 || (pos.node.childNodes[pos.offset - 1] as HTMLElement).contentEditable == "false") &&
-    (pos.offset < pos.node.childNodes.length || (pos.node.childNodes[pos.offset] as HTMLElement).contentEditable == "false")
+    (pos.offset == pos.node.childNodes.length || (pos.node.childNodes[pos.offset] as HTMLElement).contentEditable == "false")
 }
 
 class BlockGapWidget extends WidgetType {
