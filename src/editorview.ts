@@ -222,9 +222,10 @@ export class EditorView {
       return this.setState(state)
 
     update = new ViewUpdate(this, state, transactions)
+    let scrollTo
     try {
       this.updateState = UpdateState.Updating
-      let scrollTo = transactions.some(tr => tr.scrollIntoView) ? state.selection.main : null
+      scrollTo = transactions.some(tr => tr.scrollIntoView) ? state.selection.main : null
       this.viewState.update(update, scrollTo)
       this.bidiCache = CachedOrder.update(this.bidiCache, update.changes)
       if (!update.empty) this.updatePlugins(update)
