@@ -101,7 +101,7 @@ export abstract class ContentView {
       if (bias < 0) after = node
       else after = node.nextSibling
     }
-    if (after == this.dom.firstChild) return 0
+    if (after == this.dom!.firstChild) return 0
     while (after && !ContentView.get(after)) after = after.nextSibling
     if (!after) return this.length
 
