@@ -7,7 +7,7 @@ import {DocView} from "./docview"
 import {ContentView} from "./contentview"
 import {InputState} from "./input"
 import {Rect, focusPreventScroll, flattenRect} from "./dom"
-import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically} from "./cursor"
+import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
 import {ViewState} from "./viewstate"
 import {ViewUpdate, styleModule,
@@ -486,14 +486,14 @@ export class EditorView {
   /// a predicate that determines, for each subsequent cluster,
   /// whether it should also be moved over.
   moveByChar(start: SelectionRange, forward: boolean, by?: (initial: string) => (next: string) => boolean) {
-    return moveByChar(this, start, forward, by)
+    return skipAtoms(this, start, moveByChar(this, start, forward, by))
   }
 
   /// Move a cursor position across the next group of either
   /// [letters](#state.EditorState.charCategorizer) or non-letter
   /// non-whitespace characters.
   moveByGroup(start: SelectionRange, forward: boolean) {
-    return moveByChar(this, start, forward, initial => byGroup(this, start.head, initial))
+    return skipAtoms(this, start, moveByChar(this, start, forward, initial => byGroup(this, start.head, initial)))
   }
 
   /// Move to the next line boundary in the given direction. If
@@ -517,7 +517,7 @@ export class EditorView {
   /// cursor will have its goal column set to whichever column was
   /// used.
   moveVertically(start: SelectionRange, forward: boolean, distance?: number) {
-    return moveVertically(this, start, forward, distance)
+    return skipAtoms(this, start, moveVertically(this, start, forward, distance))
   }
 
   /// Scroll the given document position into view.

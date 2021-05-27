@@ -4,6 +4,7 @@ import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
 import {WidgetView} from "./inlineview"
 import {LineView} from "./blockview"
+import {PluginField} from "./extension"
 import {clientRectsFor, textRange} from "./dom"
 import {moveVisually, movedOver, Direction} from "./bidi"
 import browser from "./browser"
@@ -269,4 +270,20 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
     result += offset
   }
   return EditorSelection.cursor(result, undefined, undefined, goal)
+}
+
+export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: SelectionRange) {
+  let atoms = view.pluginField(PluginField.atomicRanges)
+  for (let i = 0;; i++) {
+    let moved = false
+    for (let set of atoms) {
+      set.between(pos.from - 1, pos.from + 1, (from, to, value) => {
+        if (pos.from > from && pos.from < to) {
+          pos = oldPos.from > pos.from ? EditorSelection.cursor(from, 1) : EditorSelection.cursor(to, -1)
+          moved = true
+        }
+      })
+    }
+    if (!moved) return pos
+  }
 }

@@ -1,4 +1,5 @@
 import {EditorState, Transaction, ChangeSet, Facet, Extension} from "@codemirror/state"
+import {RangeSet} from "@codemirror/rangeset"
 import {StyleModule} from "style-mod"
 import {DecorationSet} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
@@ -108,6 +109,17 @@ export class PluginField<T> {
   /// not this plugin field. Specifically, replacing decorations that
   /// cross line boundaries will break if provided through a plugin.
   static decorations = PluginField.define<DecorationSet>()
+
+  /// Used to provide ranges that should be treated as atoms as far as
+  /// cursor motion is concerned. This causes methods like
+  /// [`moveByChar`](#view.EditorView.moveByChar) and
+  /// [`moveVertically`](#view.EditorView.moveVertically) (and the
+  /// commands built on top of them) to skip across such regions when
+  /// a selection endpoint would enter them. This does _not_ prevent
+  /// direct programmatic [selection
+  /// updates](#state.TransactionSpec.selection) from moving into such
+  /// regions.
+  static atomicRanges = PluginField.define<RangeSet<any>>()
 
   /// Plugins can provide additional scroll margins (space around the
   /// sides of the scrolling element that should be considered
