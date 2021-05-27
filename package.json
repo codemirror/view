@@ -26,7 +26,7 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/rangeset": "^0.18.0",
+    "@codemirror/rangeset": "^0.18.2",
     "@codemirror/state": "^0.18.0",
     "@codemirror/text": "^0.18.0",
     "style-mod": "^4.0.0",

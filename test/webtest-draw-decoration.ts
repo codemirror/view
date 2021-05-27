@@ -81,8 +81,8 @@ describe("EditorView decoration", () => {
   })
 
   it("nests decoration elements", () => {
-    let cm = tempView("abcdef", [decos(Decoration.set([d(0, 4, {class: "a"})])),
-                                 decos(Decoration.set([d(2, 6, {class: "b"})]))])
+    let cm = tempView("abcdef", [decos(Decoration.set([d(2, 6, {class: "b"})])),
+                                 decos(Decoration.set([d(0, 4, {class: "a"})]))])
     let a = cm.contentDOM.querySelectorAll(".a"), b = cm.contentDOM.querySelectorAll(".b")
     ist(a.length, 1)
     ist(b.length, 2)
@@ -129,9 +129,9 @@ describe("EditorView decoration", () => {
     ist(a[0].textContent, "bCD")
   })
 
-  it("breaks low-precedence ranges for high-precedence wrappers", () => {
-    let cm = tempView("abc", [decos(Decoration.set([d(0, 2, {class: "a"})])),
-                              decos(Decoration.set([d(1, 3, {class: "b"})]))])
+  it("breaks high-precedence ranges for low-precedence wrappers", () => {
+    let cm = tempView("abc", [decos(Decoration.set([d(1, 3, {class: "b"})])),
+                              decos(Decoration.set([d(0, 2, {class: "a"})]))])
     let a = cm.contentDOM.querySelectorAll(".a")
     let b = cm.contentDOM.querySelectorAll(".b")
     ist(a.length, 1)
@@ -270,9 +270,9 @@ describe("EditorView decoration", () => {
     })
 
     it("can wrap widgets in marks", () => {
-      let cm = tempView("abcd", [decos(Decoration.set([d(0, 4, {class: "a"})])),
+      let cm = tempView("abcd", [decos(Decoration.set([d(1, 3, {class: "b"})])),
                                  decos(Decoration.set([w(2, new WordWidget("hi"))])),
-                                 decos(Decoration.set([d(1, 3, {class: "b"})]))])
+                                 decos(Decoration.set([d(0, 4, {class: "a"})]))])
       let a = cm.contentDOM.querySelectorAll(".a")
       let b = cm.contentDOM.querySelectorAll(".b")
       let wordElt = cm.contentDOM.querySelector("strong")
@@ -290,8 +290,8 @@ describe("EditorView decoration", () => {
     it("wraps widgets even when the mark starts at the same offset", () => {
       let repl = Decoration.replace({widget: new WordWidget("X"),
                                      inclusive: false})
-      let cm = tempView("abcd", [decos(Decoration.set([d(1, 3, {class: "a", inclusive: true})])),
-                                 decos(Decoration.set([repl.range(1, 3)]))])
+      let cm = tempView("abcd", [decos(Decoration.set([repl.range(1, 3)])),
+                                 decos(Decoration.set([d(1, 3, {class: "a", inclusive: true})]))])
       let a = cm.contentDOM.querySelectorAll(".a")
       let w = cm.contentDOM.querySelectorAll("strong")
       ist(a.length, 1)
