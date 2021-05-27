@@ -274,7 +274,7 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
 
 export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: SelectionRange) {
   let atoms = view.pluginField(PluginField.atomicRanges)
-  for (let i = 0;; i++) {
+  for (;;) {
     let moved = false
     for (let set of atoms) {
       set.between(pos.from - 1, pos.from + 1, (from, to, value) => {
