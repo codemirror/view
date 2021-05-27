@@ -279,8 +279,7 @@ function findChild(cView: ContentView, dom: Node | null, dir: number): ContentVi
 }
 
 function safariSelectionRangeHack(view: EditorView) {
-  // FIXME Should be `null | StaticRange`, see https://github.com/microsoft/TypeScript/issues/44293
-  let found: null | any = null
+  let found = null as null | StaticRange
   // Because Safari (at least in 2018-2021) doesn't provide regular
   // access to the selection inside a shadowroot, we have to perform a
   // ridiculous hack to get at it—using `execCommand` to trigger a
