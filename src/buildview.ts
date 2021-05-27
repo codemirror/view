@@ -45,8 +45,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   }
 
   wrapMarks(view: InlineView, active: readonly MarkDecoration[]) {
-    for (let i = active.length - 1; i >= 0; i--)
-      view = new MarkView(active[i], [view], view.length)
+    for (let mark of active) view = new MarkView(mark, [view], view.length)
     return view
   }
 
