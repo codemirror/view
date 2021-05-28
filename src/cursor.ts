@@ -134,7 +134,7 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bi
     if (block.top > y || block.bottom < y) {
       bias = block.top > y ? -1 : 1
       y = Math.min(block.bottom - halfLine, Math.max(block.top + halfLine, y))
-      if (bounced) return -1
+      if (bounced) return null
       else bounced = true
     }
     if (block.type == BlockType.Text) break
