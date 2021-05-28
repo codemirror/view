@@ -1,3 +1,17 @@
+## 0.18.14 (2021-05-28)
+
+### Bug fixes
+
+Fix an issue where the DOM selection was sometimes not properly updated when next to a widget.
+
+Invert the order in which overlapping decorations are drawn so that higher-precedence decorations are nested inside lower-precedence ones (and thus override their styling).
+
+Fix a but in `posAtCoords` where it would in some situations return -1 instead of `null`.
+
+### New features
+
+A new plugin field, `PluginField.atomicRanges`, can be used to cause cursor motion to skip past some ranges of the document.
+
 ## 0.18.13 (2021-05-20)
 
 ### Bug fixes
