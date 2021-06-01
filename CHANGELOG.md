@@ -1,3 +1,11 @@
+## 0.18.15 (2021-06-01)
+
+### Bug fixes
+
+Fix a bug that would, in very specific circumstances, cause `posAtCoords` to go into an infinite loop in Safari.
+
+Fix a bug where some types of IME input on Mobile Safari would drop text.
+
 ## 0.18.14 (2021-05-28)
 
 ### Bug fixes
