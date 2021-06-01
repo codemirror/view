@@ -31,6 +31,7 @@ export class InputState {
   // changes have been made, as part of the composition.
   composing = -1
   compositionEndedAt = 0
+  rapidCompositionStart = false
 
   mouseSelection: MouseSelection | null = null
 
@@ -608,15 +609,19 @@ handlers.beforeprint = view => {
   }, 2000)
 }
 
-function forceClearComposition(view: EditorView) {
-  if (view.docView.compositionDeco.size) view.update([])
+function forceClearComposition(view: EditorView, rapid: boolean) {
+  if (view.docView.compositionDeco.size) {
+    view.inputState.rapidCompositionStart = rapid
+    try { view.update([]) }
+    finally { view.inputState.rapidCompositionStart = false }
+  }
 }
 
 handlers.compositionstart = handlers.compositionupdate = view => {
   if (view.inputState.composing < 0) {
     if (view.docView.compositionDeco.size) {
       view.observer.flush()
-      forceClearComposition(view)
+      forceClearComposition(view, true)
     }
     // FIXME possibly set a timeout to clear it again on Android
     view.inputState.composing = 0
@@ -627,7 +632,7 @@ handlers.compositionend = view => {
   view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
   setTimeout(() => {
-    if (view.inputState.composing < 0) forceClearComposition(view)
+    if (view.inputState.composing < 0) forceClearComposition(view, false)
   }, 50)
 }
 

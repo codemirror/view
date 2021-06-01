@@ -194,7 +194,8 @@ export class DocView extends ContentView {
 
   // Sync the DOM selection to this.state.selection
   updateSelection(force = false, fromPointer = false) {
-    if (!(fromPointer || this.mayControlSelection())) return
+    if (!(fromPointer || this.mayControlSelection()) ||
+        browser.ios && this.view.inputState.rapidCompositionStart) return
 
     let main = this.view.state.selection.main
     // FIXME need to handle the case where the selection falls inside a block range
