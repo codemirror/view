@@ -181,7 +181,7 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bi
 function isSuspiciousCaretResult(node: Node, offset: number, x: number) {
   let len
   if (node.nodeType != 3 || offset != (len = node.nodeValue!.length)) return false
-  for (let next = node.nextSibling; next; next = node.nextSibling)
+  for (let next = node.nextSibling; next; next = next.nextSibling)
     if (next.nodeType != 1 || next.nodeName != "BR") return false
   return textRange(node as Text, len - 1, len).getBoundingClientRect().left > x
 }
