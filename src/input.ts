@@ -166,7 +166,7 @@ export class InputState {
 
   update(update: ViewUpdate) {
     if (this.mouseSelection) this.mouseSelection.update(update)
-    this.lastKeyCode = this.lastSelectionTime = 0
+    if (update.transactions.length) this.lastKeyCode = this.lastSelectionTime = 0
   }
 
   destroy() {
@@ -433,17 +433,18 @@ function getClickType(event: MouseEvent) {
 function basicMouseSelection(view: EditorView, event: MouseEvent) {
   let start = queryPos(view, event), type = getClickType(event)
   let startSel = view.state.selection
-  let last = start, lastEvent = event
+  let last = start, lastEvent: MouseEvent | null = event
   return {
     update(update) {
       if (update.changes) {
         if (start) start.pos = update.changes.mapPos(start.pos)
         startSel = startSel.map(update.changes)
+        lastEvent = null
       }
     },
     get(event, extend, multiple) {
       let cur
-      if (event.clientX == lastEvent.clientX && event.clientY == lastEvent.clientY) cur = last
+      if (lastEvent && event.clientX == lastEvent.clientX && event.clientY == lastEvent.clientY) cur = last
       else { cur = last = queryPos(view, event); lastEvent = event }
       if (!cur || !start) return startSel
       let range = rangeForClick(view, cur.pos, cur.bias, type)

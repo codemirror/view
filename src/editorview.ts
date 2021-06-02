@@ -228,7 +228,10 @@ export class EditorView {
       scrollTo = transactions.some(tr => tr.scrollIntoView) ? state.selection.main : null
       this.viewState.update(update, scrollTo)
       this.bidiCache = CachedOrder.update(this.bidiCache, update.changes)
-      if (!update.empty) this.updatePlugins(update)
+      if (!update.empty) {
+        this.updatePlugins(update)
+        this.inputState.update(update)
+      }
       redrawn = this.docView.update(update)
       if (this.state.facet(styleModule) != this.styleModules) this.mountStyles()
       this.updateAttrs()
@@ -310,7 +313,10 @@ export class EditorView {
         if (!updated) updated = update
         else updated.flags |= changed
         this.updateState = UpdateState.Updating
-        if (!update.empty) this.updatePlugins(update)
+        if (!update.empty) {
+          this.updatePlugins(update)
+          this.inputState.update(update)
+        }
         this.updateAttrs()
         if (changed) this.docView.update(update)
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {
