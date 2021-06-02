@@ -195,7 +195,13 @@ export interface MouseSelectionStyle {
   /// progress. When the document changes, it may be necessary to map
   /// some data (like the original selection or start position)
   /// through the changes.
-  update: (update: ViewUpdate) => void
+  ///
+  /// This may return `true` to indicate that the `get` method should
+  /// get queried again after the update, because something in the
+  /// update could change its result. Be wary of infinite loops when
+  /// using this (where `get` returns a new selection, which will
+  /// trigger `update`, which schedules another `get` in response).
+  update: (update: ViewUpdate) => boolean | void
 }
 
 export type MakeSelectionStyle = (view: EditorView, event: MouseEvent) => MouseSelectionStyle | null
@@ -205,10 +211,12 @@ class MouseSelection {
   dragMove: boolean
   extend: boolean
   multiple: boolean
+  lastEvent: MouseEvent
 
   constructor(private inputState: InputState, private view: EditorView,
-              private startEvent: MouseEvent,
+              startEvent: MouseEvent,
               private style: MouseSelectionStyle) {
+    this.lastEvent = startEvent
     let doc = view.contentDOM.ownerDocument!
     doc.addEventListener("mousemove", this.move = this.move.bind(this))
     doc.addEventListener("mouseup", this.up = this.up.bind(this))
@@ -228,11 +236,11 @@ class MouseSelection {
   move(event: MouseEvent) {
     if (event.buttons == 0) return this.destroy()
     if (this.dragging !== false) return
-    this.select(event)
+    this.select(this.lastEvent = event)
   }
 
   up(event: MouseEvent) {
-    if (this.dragging == null) this.select(this.startEvent)
+    if (this.dragging == null) this.select(this.lastEvent)
     if (!this.dragging) event.preventDefault()
     this.destroy()
   }
@@ -256,7 +264,7 @@ class MouseSelection {
 
   update(update: ViewUpdate) {
     if (update.docChanged && this.dragging) this.dragging = this.dragging.map(update.changes)
-    this.style.update(update)
+    if (this.style.update(update)) setTimeout(() => this.select(this.lastEvent), 20)
   }
 }
 
