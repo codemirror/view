@@ -375,8 +375,8 @@ export class DocView extends ContentView {
 
   updateDeco() {
     return this.decorations = [
-      ...this.view.state.facet(decorationsFacet),
       ...this.view.pluginField(PluginField.decorations),
+      ...this.view.state.facet(decorationsFacet),
       this.compositionDeco,
       this.computeBlockGapDeco(),
       this.view.viewState.lineGapDeco
