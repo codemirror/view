@@ -28,6 +28,7 @@ export abstract class GutterMarker extends RangeValue {
 GutterMarker.prototype.elementClass = ""
 GutterMarker.prototype.toDOM = undefined
 GutterMarker.prototype.mapMode = MapMode.TrackBefore
+GutterMarker.prototype.point = true
 
 /// Facet used to add a class to all gutter elements for a given line.
 /// Markers given to this facet should _only_ define an
@@ -201,7 +202,9 @@ const gutterView = ViewPlugin.fromClass(class {
 
   updateGutters(update: ViewUpdate) {
     let prev = update.startState.facet(activeGutters), cur = update.state.facet(activeGutters)
-    let change = update.docChanged || update.heightChanged || update.viewportChanged
+    let change = update.docChanged || update.heightChanged || update.viewportChanged ||
+      !RangeSet.eq(update.startState.facet(gutterLineClass), update.state.facet(gutterLineClass),
+                   update.view.viewport.from, update.view.viewport.to)
     if (prev == cur) {
       for (let gutter of this.gutters) if (gutter.update(update)) change = true
     } else {
@@ -312,7 +315,8 @@ class SingleGutterView {
       let updated = this.config.updateSpacer(this.spacer.markers[0], update)
       if (updated != this.spacer.markers[0]) this.spacer.update(update.view, 0, 0, [updated])
     }
-    return this.markers != prevMarkers
+    let vp = update.view.viewport
+    return !RangeSet.eq(this.markers, prevMarkers, vp.from, vp.to)
   }
 }
 
