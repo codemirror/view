@@ -1,3 +1,15 @@
+## 0.18.16 (2021-06-03)
+
+### Bug fixes
+
+Fix a crash that could occur when the document changed during mouse selection.
+
+Fix a bug where composition inside styled content would sometimes be inappropriately aborted by editor DOM updates.
+
+### New features
+
+`MouseSelectionStyle.update` may now return true to indicate it should be queried for a new selection after the update.
+
 ## 0.18.15 (2021-06-01)
 
 ### Bug fixes
