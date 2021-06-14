@@ -254,6 +254,7 @@ export class DocView extends ContentView {
   }
 
   enforceCursorAssoc() {
+    if (this.view.composing) return
     let cursor = this.view.state.selection.main
     let sel = getSelection(this.root)
     if (!cursor.empty || !cursor.assoc || !sel.modify) return
