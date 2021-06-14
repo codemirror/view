@@ -1,3 +1,11 @@
+## 0.18.17 (2021-06-14)
+
+### Bug fixes
+
+Make `drawSelection` behave properly when lines are split by block widgets.
+
+Make sure drawn selections that span a single line break don't leave a gap between the lines.
+
 ## 0.18.16 (2021-06-03)
 
 ### Bug fixes
