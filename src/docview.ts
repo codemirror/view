@@ -202,6 +202,8 @@ export class DocView extends ContentView {
     let anchor = this.domAtPos(main.anchor)
     let head = main.empty ? anchor : this.domAtPos(main.head)
 
+    // Always reset on Firefox when next to an uneditable node to
+    // avoid invisible cursor bugs (#111)
     if (browser.gecko && main.empty && betweenUneditable(anchor)) {
       let dummy = document.createTextNode("")
       this.view.observer.ignore(() => anchor.node.insertBefore(dummy, anchor.node.childNodes[anchor.offset] || null))
@@ -212,9 +214,6 @@ export class DocView extends ContentView {
     let domSel = this.view.observer.selectionRange
     // If the selection is already here, or in an equivalent position, don't touch it
     if (force || !domSel.focusNode ||
-        // Always reset on Firefox when next to an uneditable node to
-        // avoid invisible cursor bugs (#111)
-        (browser.gecko && main.empty && nextToUneditable(domSel.focusNode, domSel.focusOffset)) ||
         !isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) ||
         !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) {
       this.view.observer.ignore(() => {
