@@ -458,11 +458,9 @@ export class EditorView {
     this.viewState.forEachLine(from, to, f, ensureTop(docTop, this.contentDOM))
   }
 
-  /// Find the extent and height of the visual line (the content shown
-  /// in the editor as a line, which may be smaller than a document
-  /// line when broken up by block widgets, or bigger than a document
-  /// line when line breaks are covered by replaced decorations) at
-  /// the given position.
+  /// Find the extent and height of the visual line (a range delimited
+  /// on both sides by either non-[hidden](#view.Decoration^range)
+  /// line breaks, or the start/end of the document) at the given position.
   ///
   /// Vertical positions are computed relative to the `docTop`
   /// argument, which defaults to 0 for this method. You can pass
