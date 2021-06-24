@@ -259,9 +259,10 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
   } else {
     goalCol = Math.round(goal / view.defaultCharacterWidth)
   }
-  if (dir < 0 && line.from == 0) return EditorSelection.cursor(0)
-  else if (dir > 0 && line.to == doc.length) return EditorSelection.cursor(line.to)
-  let otherLine = doc.line(line.number + dir)
+  let otherLineNo = line.number + dir * (distance == null ? 1 : Math.ceil(distance / view.defaultLineHeight))
+  if (dir < 0 && otherLineNo < 1) return EditorSelection.cursor(0)
+  else if (dir > 0 && otherLineNo > doc.lines) return EditorSelection.cursor(line.to)
+  let otherLine = doc.line(otherLineNo)
   let result = otherLine.from
   let seen = 0
   for (const iter = doc.iterRange(otherLine.from, otherLine.to); seen >= goalCol && !iter.next().done;) {
