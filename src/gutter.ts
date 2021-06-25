@@ -20,9 +20,6 @@ export abstract class GutterMarker extends RangeValue {
   /// This property can be used to add CSS classes to the gutter
   /// element that contains this marker.
   elementClass!: string
-
-  /// @internal FIXME remove on next major version
-  at(pos: number) { return this.range(pos) }
 }
 
 GutterMarker.prototype.elementClass = ""
