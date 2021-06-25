@@ -71,8 +71,6 @@ const panelPlugin = ViewPlugin.fromClass(class {
     this.bottom.sync(this.panels.filter(p => !p.top))
     for (let p of this.panels) {
       p.dom.classList.add("cm-panel")
-      // FIXME drop on next breaking release
-      if ((p as any).class) p.dom.classList.add((p as any).class)
       if (p.mount) p.mount()
     }
   }
@@ -111,8 +109,6 @@ const panelPlugin = ViewPlugin.fromClass(class {
       this.bottom.sync(bottom)
       for (let p of mount) {
         p.dom.classList.add("cm-panel")
-        // FIXME drop on next breaking release
-        if ((p as any).class) p.dom.classList.add((p as any).class)
         if (p.mount) p.mount!()
       }
     } else {
