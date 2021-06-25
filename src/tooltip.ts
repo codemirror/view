@@ -83,8 +83,6 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   createTooltip(tooltip: Tooltip) {
     let tooltipView = tooltip.create(this.view)
     tooltipView.dom.classList.add("cm-tooltip")
-    // FIXME drop this on the next breaking release
-    if ((tooltip as any).class) tooltipView.dom.classList.add((tooltip as any).class)
     tooltipView.dom.style.top = Outside
     this.view.dom.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
@@ -173,12 +171,6 @@ const baseTheme = EditorView.baseTheme({
     color: "white"
   }
 })
-
-// FIXME backward-compat shim. Delete on next major version.
-/// @internal
-export function tooltips(): Extension {
-  return []
-}
 
 /// Describes a tooltip. Values of this type, when provided through
 /// the [`showTooltip`](#tooltip.showTooltip) facet, control the
