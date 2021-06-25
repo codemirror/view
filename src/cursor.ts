@@ -42,10 +42,6 @@ export function groupAt(state: EditorState, pos: number, bias: 1 | -1 = 1) {
 // coordinates. Very inefficient and crude, but can usually be avoided
 // by calling caret(Position|Range)FromPoint instead.
 
-// FIXME holding arrow-up/down at the end of the viewport is a rather
-// common use case that will repeatedly trigger this code. Maybe
-// introduce some element of binary search after all?
-
 function getdx(x: number, rect: ClientRect): number {
   return rect.left > x ? rect.left - x : Math.max(0, x - rect.right)
 }

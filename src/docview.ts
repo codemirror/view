@@ -258,7 +258,7 @@ export class DocView extends ContentView {
     let cursor = this.view.state.selection.main
     let sel = getSelection(this.root)
     if (!cursor.empty || !cursor.assoc || !sel.modify) return
-    let line = LineView.find(this, cursor.head) // FIXME provide view-line-range finding helper
+    let line = LineView.find(this, cursor.head)
     if (!line) return
     let lineStart = line.posAtStart
     if (cursor.head == lineStart || cursor.head == lineStart + line.length) return
