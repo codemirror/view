@@ -228,7 +228,6 @@ export class ViewState {
     this.heightMap = this.heightMap.updateHeight(
       oracle, 0, refresh, new MeasuredHeights(this.viewport.from, lineHeights))
 
-    if (oracle.heightChanged) result |= UpdateFlag.Height
     if (!this.viewportIsAppropriate(this.viewport, bias) ||
         this.scrollTo && (this.scrollTo.head < this.viewport.from || this.scrollTo.head > this.viewport.to)) {
       let newVP = this.getViewport(bias, this.scrollTo)
