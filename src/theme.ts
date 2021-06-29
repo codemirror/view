@@ -58,6 +58,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     display: "block",
     whiteSpace: "pre",
     wordWrap: "normal", // https://github.com/codemirror/codemirror.next/issues/456
+    WebkitUserModify: "read-write-plaintext-only",
     boxSizing: "border-box",
 
     padding: "4px 0",
