@@ -67,6 +67,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
 
   ".cm-lineWrapping": {
     whiteSpace: "pre-wrap",
+    wordBreak: "break-word", // For Safari, which doesn't support overflow-wrap: anywhere
     overflowWrap: "anywhere"
   },
 
