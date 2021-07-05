@@ -288,9 +288,11 @@ export class EditorView {
   }
 
   /// @internal
-  measure() {
+  measure(flush = true) {
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
     this.measureScheduled = -1 // Prevent requestMeasure calls from scheduling another animation frame
+
+    if (flush) this.observer.flush()
 
     let updated: ViewUpdate | null = null
     try {
@@ -381,7 +383,7 @@ export class EditorView {
   private readMeasured() {
     if (this.updateState == UpdateState.Updating)
       throw new Error("Reading the editor layout isn't allowed during an update")
-    if (this.updateState == UpdateState.Idle && this.measureScheduled > -1) this.measure()
+    if (this.updateState == UpdateState.Idle && this.measureScheduled > -1) this.measure(false)
   }
 
   /// Schedule a layout measurement, optionally providing callbacks to

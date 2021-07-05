@@ -239,7 +239,8 @@ export class DOMObserver {
         this.ignore(() => this.view.docView.sync())
         this.view.docView.dirty = Dirty.Not
       }
-      this.view.docView.updateSelection()
+      if (newSel)
+        this.view.docView.updateSelection()
     }
     this.clearSelection()
   }
