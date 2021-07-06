@@ -421,8 +421,7 @@ function findPositionSide(view: EditorView, pos: number, x: number, y: number) {
 }
 
 function queryPos(view: EditorView, event: MouseEvent): {pos: number, bias: 1 | -1} | null {
-  let pos = view.posAtCoords({x: event.clientX, y: event.clientY})
-  if (pos == null) return null
+  let pos = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
   return {pos, bias: findPositionSide(view, pos, event.clientX, event.clientY)}
 }
 

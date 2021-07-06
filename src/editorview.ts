@@ -548,9 +548,11 @@ export class EditorView {
 
   /// Get the document position at the given screen coordinates.
   /// Returns null if no valid position could be found.
-  posAtCoords(coords: {x: number, y: number}): number | null {
+  posAtCoords(coords: {x: number, y: number}, precise: false): number
+  posAtCoords(coords: {x: number, y: number}): number | null
+  posAtCoords(coords: {x: number, y: number}, precise = true): number | null {
     this.readMeasured()
-    return posAtCoords(this, coords)
+    return posAtCoords(this, coords, precise)
   }
 
   /// Get the screen coordinates at the given document position.

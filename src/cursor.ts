@@ -1,12 +1,13 @@
 import {EditorState, EditorSelection, SelectionRange, CharCategory} from "@codemirror/state"
-import {findColumn, countColumn, findClusterBreak} from "@codemirror/text"
+import {findColumn, findClusterBreak} from "@codemirror/text"
 import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
 import {WidgetView} from "./inlineview"
 import {LineView} from "./blockview"
 import {PluginField} from "./extension"
-import {clientRectsFor, textRange} from "./dom"
+import {clientRectsFor, textRange, Rect} from "./dom"
 import {moveVisually, movedOver, Direction} from "./bidi"
+import {BlockInfo} from "./heightmap"
 import browser from "./browser"
 
 declare global {
@@ -126,7 +127,7 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
   return {node, offset: closestOffset > -1 ? closestOffset : generalSide > 0 ? node.nodeValue!.length : 0}
 }
 
-export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bias: -1 | 1 = -1): number | null {
+export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, precise: boolean, bias: -1 | 1 = -1): number | null {
   let content = view.contentDOM.getBoundingClientRect(), block
   let halfLine = view.defaultLineHeight / 2
   for (let bounced = false;;) {
@@ -134,20 +135,20 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bi
     if (block.top > y || block.bottom < y) {
       bias = block.top > y ? -1 : 1
       y = Math.min(block.bottom - halfLine, Math.max(block.top + halfLine, y))
-      if (bounced) return null
+      if (bounced) return precise ? null : 0
       else bounced = true
     }
     if (block.type == BlockType.Text) break
     y = bias > 0 ? block.bottom + halfLine : block.top - halfLine
   }
   let lineStart = block.from
+  x = Math.max(content.left + 1, Math.min(content.right - 1, x))
   // If this is outside of the rendered viewport, we can't determine a position
   if (lineStart < view.viewport.from)
-    return view.viewport.from == 0 ? 0 : null
+    return view.viewport.from == 0 ? 0 : posAtCoordsImprecise(view, content, block, x, y)
   if (lineStart > view.viewport.to)
-    return view.viewport.to == view.state.doc.length ? view.state.doc.length : null
+    return view.viewport.to == view.state.doc.length ? view.state.doc.length : posAtCoordsImprecise(view, content, block, x, y)
   // Clip x to the viewport sides
-  x = Math.max(content.left + 1, Math.min(content.right - 1, x))
   let root = view.root, element = root.elementFromPoint(x, y)
 
   // There's visible editor content under the point, so we can try
@@ -172,6 +173,16 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, bi
     ;({node, offset} = domPosAtCoords(line.dom!, x, y))
   }
   return view.docView.posFromDOM(node, offset)
+}
+
+function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockInfo, x: number, y: number) {
+  let into = Math.round((x - contentRect.left) * view.defaultCharacterWidth)
+  if (view.lineWrapping && block.height > view.defaultLineHeight * 1.5) {
+    let line = Math.floor((y - block.top) / view.defaultLineHeight)
+    into += line * view.viewState.heightOracle.lineLength
+  }
+  let content = view.state.sliceDoc(block.from, block.to)
+  return block.from + findColumn(content, 0, into, view.state.tabSize).offset
 }
 
 // In case of a high line height, Safari's caretRangeFromPoint treats
@@ -236,41 +247,25 @@ export function byGroup(view: EditorView, pos: number, start: string) {
 export function moveVertically(view: EditorView, start: SelectionRange, forward: boolean, distance?: number) {
   let startPos = start.head, dir: -1 | 1 = forward ? 1 : -1
   if (startPos == (forward ? view.state.doc.length : 0)) return EditorSelection.cursor(startPos)
+  let goal = start.goalColumn, startY
+  let rect = view.contentDOM.getBoundingClientRect()
   let startCoords = view.coordsAtPos(startPos)
   if (startCoords) {
-    let rect = view.dom.getBoundingClientRect()
-    let goal = start.goalColumn ?? startCoords.left - rect.left
-    let resolvedGoal = rect.left + goal
-    let dist = distance ?? (view.defaultLineHeight >> 1)
-    for (let startY = dir < 0 ? startCoords.top : startCoords.bottom, extra = 0; extra < 50; extra += 10) {
-      let pos = posAtCoords(view, {x: resolvedGoal, y: startY + (dist + extra) * dir}, dir)
-      if (pos == null) break
-      if (pos != startPos) return EditorSelection.cursor(pos, undefined, undefined, goal)
-    }
-  }
-
-  // Outside of the drawn viewport, use a crude column-based approach
-  let {doc} = view.state, line = doc.lineAt(startPos), tabSize = view.state.tabSize
-  let goal = start.goalColumn, goalCol = 0
-  if (goal == null) {
-    for (const iter = doc.iterRange(line.from, startPos); !iter.next().done;)
-      goalCol = countColumn(iter.value, goalCol, tabSize)
-    goal = goalCol * view.defaultCharacterWidth
+    if (goal == null) goal = startCoords.left - rect.left
+    startY = dir < 0 ? startCoords.top : startCoords.bottom
   } else {
-    goalCol = Math.round(goal / view.defaultCharacterWidth)
+    let line = view.viewState.lineAt(startPos, view.dom.getBoundingClientRect().top)
+    if (goal == null) goal = Math.min(rect.right - rect.left, view.defaultCharacterWidth * (startPos - line.from))
+    startY = dir < 0 ? line.top : line.bottom
   }
-  let otherLineNo = line.number + dir * (distance == null ? 1 : Math.ceil(distance / view.defaultLineHeight))
-  if (dir < 0 && otherLineNo < 1) return EditorSelection.cursor(0)
-  else if (dir > 0 && otherLineNo > doc.lines) return EditorSelection.cursor(line.to)
-  let otherLine = doc.line(otherLineNo)
-  let result = otherLine.from
-  let seen = 0
-  for (const iter = doc.iterRange(otherLine.from, otherLine.to); seen >= goalCol && !iter.next().done;) {
-    const {offset, leftOver} = findColumn(iter.value, seen, goalCol, tabSize)
-    seen = goalCol - leftOver
-    result += offset
+  let resolvedGoal = rect.left + goal
+  let dist = distance ?? (view.defaultLineHeight >> 1)
+  for (let extra = 0;; extra += 10) {
+    let curY = startY + (dist + extra) * dir
+    let pos = posAtCoords(view, {x: resolvedGoal, y: curY}, false, dir)!
+    if (curY < rect.top || curY > rect.bottom || (dir < 0 ? pos < startPos : pos > startPos))
+      return EditorSelection.cursor(pos, undefined, undefined, goal)
   }
-  return EditorSelection.cursor(result, undefined, undefined, goal)
 }
 
 export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: SelectionRange) {
