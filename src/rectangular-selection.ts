@@ -36,8 +36,7 @@ function absoluteColumn(view: EditorView, x: number) {
 }
 
 function getPos(view: EditorView, event: MouseEvent) {
-  let offset = view.posAtCoords({x: event.clientX, y: event.clientY})
-  if (offset == null) return null 
+  let offset = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
   let line = view.state.doc.lineAt(offset), off = offset - line.from
   let col = off > MaxOff ? -1
     : off == line.length ? absoluteColumn(view, event.clientX)
