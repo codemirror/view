@@ -1,3 +1,21 @@
+## 0.18.18 (2021-07-06)
+
+### Bug fixes
+
+Fix a bug that caused `EditorView.moveVertically` to only move by one line, even when given a custom distance, in some cases.
+
+Hide Safari's native bold/italic/underline controls for the content.
+
+Fix a CSS problem that prevented Safari from breaking words longer than the line in line-wrapping mode.
+
+Avoid a problem where composition would be inappropriately abored on Safari.
+
+Fix drag-selection that scrolls the content by dragging past the visible viewport.
+
+### New features
+
+`posAtCoords` now has an imprecise mode where it'll return an approximate position even for parts of the document that aren't currently rendered.
+
 ## 0.18.17 (2021-06-14)
 
 ### Bug fixes
