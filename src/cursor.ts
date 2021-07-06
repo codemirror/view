@@ -182,7 +182,7 @@ function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockI
     into += line * view.viewState.heightOracle.lineLength
   }
   let content = view.state.sliceDoc(block.from, block.to)
-  return block.from + findColumn(content, 0, into, view.state.tabSize).offset
+  return block.from + findColumn(content, into, view.state.tabSize)
 }
 
 // In case of a high line height, Safari's caretRangeFromPoint treats
