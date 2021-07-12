@@ -1,3 +1,9 @@
+## 0.18.19 (2021-07-12)
+
+### Bug fixes
+
+Fix a regression where `EditorView.editable.of(false)` didn't disable editing on Webkit-based browsers.
+
 ## 0.18.18 (2021-07-06)
 
 ### Bug fixes
