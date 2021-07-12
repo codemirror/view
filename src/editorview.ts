@@ -6,7 +6,7 @@ import {StyleModule, StyleSpec} from "style-mod"
 import {DocView} from "./docview"
 import {ContentView} from "./contentview"
 import {InputState} from "./input"
-import {Rect, focusPreventScroll, flattenRect} from "./dom"
+import {Rect, focusPreventScroll, flattenRect, contentEditablePlainTextSupported} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
 import {ViewState} from "./viewstate"
@@ -355,7 +355,7 @@ export class EditorView {
       spellcheck: "false",
       autocorrect: "off",
       autocapitalize: "off",
-      contenteditable: String(this.state.facet(editable)),
+      contenteditable: !this.state.facet(editable) ? "false" : contentEditablePlainTextSupported() ? "plaintext-only" : "true",
       class: "cm-content",
       style: `${browser.tabSize}: ${this.state.tabSize}`,
       role: "textbox",

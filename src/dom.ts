@@ -218,3 +218,16 @@ export function dispatchKey(elt: HTMLElement, name: string, code: number): boole
   elt.dispatchEvent(up)
   return down.defaultPrevented || up.defaultPrevented
 }
+
+let _plainTextSupported: boolean | null = null
+export function contentEditablePlainTextSupported() {
+  if (_plainTextSupported == null) {
+    _plainTextSupported = false
+    let dummy = document.createElement("div")
+    try {
+      dummy.contentEditable = "plaintext-only"
+      _plainTextSupported = dummy.contentEditable == "plaintext-only"
+    } catch(_) {}
+  }
+  return _plainTextSupported
+}
