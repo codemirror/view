@@ -355,10 +355,17 @@ export function joinInlineInto(parent: ContentView, view: InlineView, open: numb
 
 export function coordsInChildren(view: ContentView & {children: InlineView[]}, pos: number, side: number): Rect | null {
   for (let off = 0, i = 0; i < view.children.length; i++) {
-    let child = view.children[i], end = off + child.length
-    if (end == off && child.getSide() <= 0) continue
-    if (side <= 0 || end == view.length ? end >= pos : end > pos)
-      return child.coordsAt(pos - off, side)
+    let child = view.children[i], end = off + child.length, next
+    if ((side <= 0 || end == view.length || child.getSide() > 0 ? end >= pos : end > pos) &&
+        (pos < end || i + 1 == view.children.length || (next = view.children[i + 1]).length || next.getSide() > 0)) {
+      let flatten = 0
+      if (end == off) {
+        if (child.getSide() <= 0) continue
+        flatten = side = -child.getSide()
+      }
+      let rect = child.coordsAt(pos - off, side)
+      return flatten && rect ? flattenRect(rect, side < 0) : rect
+    }
     off = end
   }
   let last = view.dom!.lastChild
