@@ -306,7 +306,7 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
     fromI++
     openStart = elts.length ? 0 : openEnd
   }
-  if (!elts.length && fromI && toI < children.length && openStart && openEnd &&
+  if (!elts.length && fromI && toI < children.length &&
       children[toI].merge(0, 0, children[fromI - 1], openStart, openEnd))
     fromI--
 

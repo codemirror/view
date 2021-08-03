@@ -298,6 +298,12 @@ describe("EditorView decoration", () => {
       ist(w.length, 1)
       ist(w[0].parentNode, a[0])
     })
+
+    it("merges text around a removed widget", () => {
+      let cm = tempView("1234", [decos(Decoration.set([w(2, new WordWidget("x"))]))])
+      cm.dispatch({effects: filterDeco.of(() => false)})
+      ist(cm.domAtPos(2).node.nodeValue, "1234")
+    })
   })
 
   describe("replaced", () => {
