@@ -143,7 +143,7 @@ export class DocView extends ContentView {
 
     let after = this.children[toI]
     // Make sure the end of the line after the update is preserved in `after`
-    if (toOff < after.length || after.children.length && after.children[after.children.length - 1].length == 0) {
+    if (toOff < after.length) {
       // If we're splitting a line, separate part of the start line to
       // avoid that being mangled when updating the start line.
       if (fromI == toI) {
@@ -157,7 +157,7 @@ export class DocView extends ContentView {
       } else {
         // Remove the start of the after element, if necessary, and
         // add it to `content`.
-        if (toOff || after.children.length && after.children[0].length == 0) after.merge(0, toOff, null, false, 0, openEnd)
+        if (toOff) after.merge(0, toOff, null, false, 0, openEnd)
         content.push(after)
       }
     } else if (after.breakAfter) {
