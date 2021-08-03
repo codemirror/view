@@ -46,7 +46,7 @@ describe("EditorView coords", () => {
   })
 
   function near(a: number, b: any) {
-    return Math.abs(a - b) < 1
+    return Math.abs(a - b) < 5
   }
 
   it("takes coordinates before side=1 widgets", () => {
