@@ -3,7 +3,7 @@ import {ContentView} from "./contentview"
 import {inputHandler, editable} from "./extension"
 import {contains, dispatchKey} from "./dom"
 import browser from "./browser"
-import {EditorSelection, Transaction, Annotation, Text} from "@codemirror/state"
+import {EditorSelection, Text} from "@codemirror/state"
 
 export function applyDOMChange(view: EditorView, start: number, end: number, typeOver: boolean) {
   let change: undefined | {from: number, to: number, insert: Text}, newSel
@@ -95,14 +95,14 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
           ? startState.selection.replaceRange(newSel.main) : undefined
       }
     }
-    view.dispatch(tr, {scrollIntoView: true, annotations: Transaction.userEvent.of("input")})
+    view.dispatch(tr, {scrollIntoView: true, userEvent: "input.type" + (view.composing ? ".compose" : "")})
   } else if (newSel && !newSel.main.eq(sel)) {
-    let scrollIntoView = false, annotations: Annotation<any> | undefined
+    let scrollIntoView = false, userEvent = "select"
     if (view.inputState.lastSelectionTime > Date.now() - 50) {
-      if (view.inputState.lastSelectionOrigin == "keyboardselection") scrollIntoView = true
-      else annotations = Transaction.userEvent.of(view.inputState.lastSelectionOrigin!)
+      if (view.inputState.lastSelectionOrigin == "select") scrollIntoView = true
+      userEvent = view.inputState.lastSelectionOrigin!
     }
-    view.dispatch({selection: newSel, scrollIntoView, annotations})
+    view.dispatch({selection: newSel, scrollIntoView, userEvent})
   }
 }
 

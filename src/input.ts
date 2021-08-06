@@ -1,4 +1,4 @@
-import {EditorSelection, EditorState, SelectionRange, Transaction} from "@codemirror/state"
+import {EditorSelection, EditorState, SelectionRange} from "@codemirror/state"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
@@ -257,7 +257,7 @@ class MouseSelection {
     if (!selection.eq(this.view.state.selection) || selection.main.assoc != this.view.state.selection.main.assoc)
       this.view.dispatch({
         selection,
-        annotations: Transaction.userEvent.of("pointerselection"),
+        userEvent: "select.pointer",
         scrollIntoView: true
       })
   }
@@ -348,24 +348,24 @@ function doPaste(view: EditorView, input: string) {
     changes = state.replaceSelection(text)
   }
   view.dispatch(changes, {
-    annotations: Transaction.userEvent.of("paste"),
+    userEvent: "input.paste",
     scrollIntoView: true
   })
 }
 
 handlers.keydown = (view, event: KeyboardEvent) => {
-  view.inputState.setSelectionOrigin("keyboardselection")
+  view.inputState.setSelectionOrigin("select")
 }
 
 let lastTouch = 0
 
 handlers.touchstart = (view, e) => {
   lastTouch = Date.now()
-  view.inputState.setSelectionOrigin("pointerselection")
+  view.inputState.setSelectionOrigin("select.pointer")
 }
 
 handlers.touchmove = view => {
-  view.inputState.setSelectionOrigin("pointerselection")
+  view.inputState.setSelectionOrigin("select.pointer")
 }
 
 handlers.mousedown = (view, event: MouseEvent) => {
@@ -497,7 +497,7 @@ function dropText(view: EditorView, event: DragEvent, text: string, direct: bool
   view.dispatch({
     changes,
     selection: {anchor: changes.mapPos(dropPos, -1), head: changes.mapPos(dropPos, 1)},
-    annotations: Transaction.userEvent.of("drop")
+    userEvent: del ? "move.drop" : "input.drop"
   })
 }
 
@@ -598,7 +598,7 @@ handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
     view.dispatch({
       changes: ranges,
       scrollIntoView: true,
-      annotations: Transaction.userEvent.of("cut")
+      userEvent: "delete.cut"
     })
 }
 

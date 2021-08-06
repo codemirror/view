@@ -1,5 +1,5 @@
 import {RangeSet} from "@codemirror/rangeset"
-import {ChangeSet, Transaction} from "@codemirror/state"
+import {ChangeSet} from "@codemirror/state"
 import {ContentView, ChildCursor, Dirty, DOMPos} from "./contentview"
 import {BlockView, LineView} from "./blockview"
 import {InlineView, CompositionView} from "./inlineview"
@@ -79,7 +79,7 @@ export class DocView extends ContentView {
     let decoDiff = findChangedDeco(prevDeco, deco, update.changes)
     changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff)
 
-    let pointerSel = update.transactions.some(tr => tr.annotation(Transaction.userEvent) == "pointerselection")
+    let pointerSel = update.transactions.some(tr => tr.isUserEvent("select.pointer"))
     if (this.dirty == Dirty.Not && changedRanges.length == 0 &&
         !(update.flags & (UpdateFlag.Viewport | UpdateFlag.LineGaps)) &&
         update.state.selection.main.from >= this.view.viewport.from &&
