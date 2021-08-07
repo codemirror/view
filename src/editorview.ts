@@ -89,7 +89,7 @@ export class EditorView {
   get inView() { return this.viewState.inView }
 
   /// Indicates whether the user is currently composing text via
-  /// [IME](https://developer.mozilla.org/en-US/docs/Mozilla/IME_handling_guide).
+  /// [IME](https://firefox-source-docs.mozilla.org/editor/IMEHandlingGuide.html).
   get composing() { return this.inputState.composing > 0 }
   
   private _dispatch: (tr: Transaction) => void
