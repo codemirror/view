@@ -40,7 +40,7 @@ function getPos(view: EditorView, event: MouseEvent) {
   let line = view.state.doc.lineAt(offset), off = offset - line.from
   let col = off > MaxOff ? -1
     : off == line.length ? absoluteColumn(view, event.clientX)
-    : countColumn(line.text.slice(0, offset - line.from), 0, view.state.tabSize)
+    : countColumn(line.text, view.state.tabSize, offset - line.from)
   return {line: line.number, col, off}
 }
 
