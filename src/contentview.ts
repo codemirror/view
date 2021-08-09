@@ -2,7 +2,17 @@ import {Text} from "@codemirror/text"
 import {Rect, maxOffset, domIndex} from "./dom"
 import {EditorView} from "./editorview"
 
-export const enum Dirty { Not = 0, Child = 1, Node = 2 }
+// Track mutated / outdated status of a view node's DOM
+export const enum Dirty {
+  // All synced up
+  Not = 0,
+  // At least one child is dirty
+  Child = 1,
+  // The node itself isn't in sync with its child list
+  Node = 2,
+  // The node's DOM attributes might have changed
+  Attrs = 4
+}
 
 export class DOMPos {
   constructor(readonly node: Node, readonly offset: number, readonly precise = true) {}
@@ -141,7 +151,6 @@ export abstract class ContentView {
   }
 
   markDirty(andParent: boolean = false) {
-    if (this.dirty & Dirty.Node) return
     this.dirty |= Dirty.Node
     this.markParentsDirty(andParent)
   }
@@ -163,6 +172,7 @@ export abstract class ContentView {
   }
 
   setDOM(dom: Node) {
+    if (this.dom) (this.dom as any).cmView = null
     this.dom = dom
     ;(dom as any).cmView = this
   }

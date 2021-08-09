@@ -8,6 +8,7 @@ const observeOptions = {
   childList: true,
   characterData: true,
   subtree: true,
+  attributes: true,
   characterDataOldValue: true
 }
 
@@ -248,15 +249,18 @@ export class DOMObserver {
   readMutation(rec: MutationRecord): {from: number, to: number, typeOver: boolean} | null {
     let cView = this.view.docView.nearest(rec.target)
     if (!cView || cView.ignoreMutation(rec)) return null
-    cView.markDirty()
+    cView.markDirty(rec.type == "attributes")
+    if (rec.type == "attributes") cView.dirty |= Dirty.Attrs
 
     if (rec.type == "childList") {
       let childBefore = findChild(cView, rec.previousSibling || rec.target.previousSibling, -1)
       let childAfter = findChild(cView, rec.nextSibling || rec.target.nextSibling, 1)
       return {from: childBefore ? cView.posAfter(childBefore) : cView.posAtStart,
               to: childAfter ? cView.posBefore(childAfter) : cView.posAtEnd, typeOver: false}
-    } else { // "characterData"
+    } else if (rec.type == "characterData") {
       return {from: cView.posAtStart, to: cView.posAtEnd, typeOver: rec.target.nodeValue == rec.oldValue}
+    } else {
+      return null
     }
   }
 

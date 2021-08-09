@@ -1,4 +1,4 @@
-import {ContentView, DOMPos} from "./contentview"
+import {ContentView, DOMPos, Dirty} from "./contentview"
 import {DocView} from "./docview"
 import {InlineView, TextView, WidgetView, mergeInlineChildren, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
 import {clientRectsFor, Rect} from "./dom"
@@ -86,7 +86,7 @@ export class LineView extends ContentView implements BlockView {
   }
 
   sync(track?: {node: Node, written: boolean}) {
-    if (!this.dom) {
+    if (!this.dom || (this.dirty & Dirty.Attrs)) {
       this.setDOM(document.createElement("div"))
       this.dom!.className = "cm-line"
       this.prevAttrs = this.attrs ? null : undefined

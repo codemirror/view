@@ -1,5 +1,5 @@
 import {Text as DocText} from "@codemirror/text"
-import {ContentView, DOMPos} from "./contentview"
+import {ContentView, DOMPos, Dirty} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
 import {Rect, Rect0, flattenRect, textRange, clientRectsFor} from "./dom"
 import {CompositionWidget} from "./docview"
@@ -102,7 +102,7 @@ export class MarkView extends InlineView {
   }
 
   sync(track?: {node: Node, written: boolean}) {
-    if (!this.dom) this.createDOM()
+    if (!this.dom || (this.dirty & Dirty.Attrs)) this.createDOM()
     super.sync(track)
   }
 
