@@ -30,6 +30,11 @@ export class InputState {
   // avoid treating the start state of the composition, before any
   // changes have been made, as part of the composition.
   composing = -1
+  // Tracks whether the next change should be marked as starting the
+  // composition (null means no composition, true means next is the
+  // first, false means first has already been marked for this
+  // composition)
+  compositionFirstChange: boolean | null = null
   compositionEndedAt = 0
   rapidCompositionStart = false
 
@@ -626,6 +631,8 @@ function forceClearComposition(view: EditorView, rapid: boolean) {
 }
 
 handlers.compositionstart = handlers.compositionupdate = view => {
+  if (view.inputState.compositionFirstChange == null)
+    view.inputState.compositionFirstChange = true
   if (view.inputState.composing < 0) {
     if (view.docView.compositionDeco.size) {
       view.observer.flush()
@@ -639,6 +646,7 @@ handlers.compositionstart = handlers.compositionupdate = view => {
 handlers.compositionend = view => {
   view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
+  view.inputState.compositionFirstChange = null
   setTimeout(() => {
     if (view.inputState.composing < 0) forceClearComposition(view, false)
   }, 50)

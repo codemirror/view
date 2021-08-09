@@ -95,7 +95,15 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
           ? startState.selection.replaceRange(newSel.main) : undefined
       }
     }
-    view.dispatch(tr, {scrollIntoView: true, userEvent: "input.type" + (view.composing ? ".compose" : "")})
+    let userEvent = "input.type"
+    if (view.composing) {
+      userEvent += ".compose"
+      if (view.inputState.compositionFirstChange) {
+        userEvent += ".start"
+        view.inputState.compositionFirstChange = false
+      }
+    }
+    view.dispatch(tr, {scrollIntoView: true, userEvent})
   } else if (newSel && !newSel.main.eq(sel)) {
     let scrollIntoView = false, userEvent = "select"
     if (view.inputState.lastSelectionTime > Date.now() - 50) {
