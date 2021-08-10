@@ -98,7 +98,7 @@ export class MatchDecorator {
           iterMatches(view.state.doc, this.regexp, start, end,
                       (from, to, m) => ranges.push(this.getDeco(m, view, from).range(from, to)))
         }
-        deco = deco.update({filterFrom: start, filterTo: end, filter: () => false, add: ranges})
+        deco = deco.update({filterFrom: start, filterTo: end, filter: (from, to) => from < start || to > end, add: ranges})
       }
     }
     return deco
