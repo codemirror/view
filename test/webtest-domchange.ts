@@ -178,7 +178,7 @@ describe("DOM changes", () => {
     })
     let cm = tempView("one two thr", [field])
     let wDOM = cm.contentDOM.querySelectorAll("strong")[1]
-    wDOM.previousSibling!.nodeValue = "e"
+    cm.domAtPos(6).node.nodeValue = "e"
     wDOM.remove()
     flush(cm)
     ist(cm.state.doc.toString(), "one thr")

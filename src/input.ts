@@ -133,7 +133,8 @@ export class InputState {
     if (!this.pendingKey) return false
     let dom = view.contentDOM, key = this.pendingKey
     this.pendingKey = null
-    return key == "enter" ? dispatchKey(dom, "Enter", 13) : dispatchKey(dom, "Backspace", 8)
+    let result = key == "enter" ? dispatchKey(dom, "Enter", 13) : dispatchKey(dom, "Backspace", 8)
+    return result
   }
 
   ignoreDuringComposition(event: Event): boolean {

@@ -6,6 +6,10 @@ import ist from "ist"
 const filterDeco = StateEffect.define<(from: number, to: number, spec: any) => boolean>()
 const addDeco = StateEffect.define<Range<Decoration>[]>()
 
+function text(node: Node) {
+  return (node.textContent || "").replace(/\u200b/g, "")
+}
+
 function decos(startState: DecorationSet = Decoration.none) {
   let field = StateField.define<DecorationSet>({
     create() { return startState },
@@ -58,10 +62,10 @@ describe("EditorView decoration", () => {
     cm.dispatch({effects: addDeco.of([d(2, 8, {class: "c"})])})
     let spans = cm.contentDOM.querySelectorAll(".c")
     ist(spans.length, 2)
-    ist(spans[0].textContent, "llo")
-    ist(spans[0].previousSibling!.textContent, "he")
-    ist(spans[1].textContent, "go")
-    ist(spans[1].nextSibling!.textContent, "odbye")
+    ist(text(spans[0]), "llo")
+    ist(text(spans[0].previousSibling!), "he")
+    ist(text(spans[1]), "go")
+    ist(text(spans[1].nextSibling!), "odbye")
   })
 
   it("updates for removed decorations", () => {
@@ -86,10 +90,10 @@ describe("EditorView decoration", () => {
     let a = cm.contentDOM.querySelectorAll(".a"), b = cm.contentDOM.querySelectorAll(".b")
     ist(a.length, 1)
     ist(b.length, 2)
-    ist(a[0].textContent, "abcd")
-    ist(b[0].textContent, "cd")
+    ist(text(a[0]), "abcd")
+    ist(text(b[0]), "cd")
     ist(b[0].parentNode, a[0])
-    ist(b[1].textContent, "ef")
+    ist(text(b[1]), "ef")
   })
 
   it("drops entirely deleted decorations", () => {
@@ -126,7 +130,7 @@ describe("EditorView decoration", () => {
                            addDeco.of([d(1, 4, {class: "c"})])]})
     let a = cm.contentDOM.querySelectorAll(".c")
     ist(a.length, 1)
-    ist(a[0].textContent, "bCD")
+    ist(text(a[0]), "bCD")
   })
 
   it("breaks high-precedence ranges for low-precedence wrappers", () => {
@@ -171,10 +175,9 @@ describe("EditorView decoration", () => {
       let cm = decoEditor("hello", [w(4, new WordWidget("hi"))])
       let elt = cm.contentDOM.querySelector("strong")!
       ist(elt)
-      ist(elt.textContent, "hi")
-      ist(elt.previousSibling!.textContent, "hell")
-      ist(elt.nextSibling!.textContent, "o")
+      ist(text(elt), "hi")
       ist(elt.contentEditable, "false")
+      ist(text(cm.contentDOM), "hellhio")
     })
 
     it("supports editing around widgets", () => {
@@ -198,7 +201,7 @@ describe("EditorView decoration", () => {
       let cm = decoEditor("abc", [Decoration.replace({widget: new WordWidget("X")}).range(1, 2)])
       cm.dispatch({effects: [filterDeco.of(() => false),
                              addDeco.of([Decoration.replace({widget: new WordWidget("Y")}).range(1, 2)])]})
-      ist(cm.contentDOM.textContent, "aYc")
+      ist(text(cm.contentDOM), "aYc")
     })
 
     it("allows replacements to shadow inner replacements", () => {
@@ -206,7 +209,7 @@ describe("EditorView decoration", () => {
         Decoration.replace({widget: new WordWidget("INNER")}).range(5, 12)
       ])
       cm.dispatch({effects: addDeco.of([Decoration.replace({widget: new WordWidget("OUTER")}).range(1, 17)])})
-      ist(cm.contentDOM.textContent, "oOUTERr")
+      ist(text(cm.contentDOM), "oOUTERr")
     })
 
     it("doesn't consider different widgets types equivalent", () => {
@@ -225,9 +228,9 @@ describe("EditorView decoration", () => {
                                     w(4, new WordWidget("C"), 10)])
       let widgets = cm.contentDOM.querySelectorAll("strong")
       ist(widgets.length, 3)
-      ist(widgets[0].textContent, "A")
-      ist(widgets[1].textContent, "B")
-      ist(widgets[2].textContent, "C")
+      ist(text(widgets[0]), "A")
+      ist(text(widgets[1]), "B")
+      ist(text(widgets[2]), "C")
     })
 
     it("places the cursor based on side", () => {
@@ -235,20 +238,19 @@ describe("EditorView decoration", () => {
         decoEditor("abc", [w(2, new WordWidget("A"), -1),
                            w(2, new WordWidget("B"), 1)]))
       cm.dispatch({selection: {anchor: 2}})
-      let {focusNode, focusOffset} = document.getSelection()!
-      let [before, after] = focusNode!.nodeType == 3 ?
-        [focusOffset ? focusNode! : focusNode!.previousSibling!,
-         focusOffset == focusNode!.nodeValue!.length ? focusNode!.nextSibling! : focusNode!] :
-        [focusNode!.childNodes[focusOffset - 1], focusNode!.childNodes[focusOffset]]
-      ist(before.textContent, "A")
-      ist(after.textContent, "B")
+      let selRange = document.getSelection()!.getRangeAt(0)
+      let widgets = cm.contentDOM.querySelectorAll("strong")
+      ist(text(widgets[0]), "A")
+      ist(text(widgets[1]), "B")
+      ist(selRange.comparePoint(widgets[0], 0), -1)
+      ist(selRange.comparePoint(widgets[1], 0), 1)
     })
 
     it("preserves widgets alongside edits regardless of side", () => {
       let cm = decoEditor("abc", [w(1, new WordWidget("x"), -1), w(1, new WordWidget("y"), 1),
                                   w(2, new WordWidget("z"), -1), w(2, new WordWidget("q"), 1)])
       cm.dispatch({changes: {from: 1, to: 2, insert: "B"}})
-      ist(cm.contentDOM.textContent, "axyBzqc")
+      ist(text(cm.contentDOM), "axyBzqc")
     })
 
     it("can update widgets in an empty document", () => {
@@ -281,8 +283,8 @@ describe("EditorView decoration", () => {
       ist(wordElt)
       ist(wordElt!.parentNode, a[0])
       ist(b[0].parentNode, a[0])
-      ist(b[0].textContent, "b")
-      ist(b[1].textContent, "c")
+      ist(text(b[0]), "b")
+      ist(text(b[1]), "c")
       cm.dispatch({effects: [filterDeco.of(from => from != 2)]})
       ist(cm.contentDOM.querySelectorAll(".b").length, 1)
     })
@@ -304,6 +306,17 @@ describe("EditorView decoration", () => {
       cm.dispatch({effects: filterDeco.of(() => false)})
       ist(cm.domAtPos(2).node.nodeValue, "1234")
     })
+
+    it("draws buffers around widgets", () => {
+      let cm = tempView("1234", [decos(Decoration.set([w(1, new WordWidget("x"), 1), w(3, new WordWidget("y"), -1)]))])
+      ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "1_x23y_4")
+    })
+
+    it("doesn't draw unnecessary buffers between adjacent widgets", () => {
+      let cm = tempView("1234", [decos(Decoration.set([w(1, new WordWidget("x"), 1), w(1, new WordWidget("x"), 1),
+                                                       w(3, new WordWidget("x"), -1), w(3, new WordWidget("x"), -1)]))])
+      ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "1_xx23xx_4")
+    })
   })
 
   describe("replaced", () => {
@@ -311,24 +324,24 @@ describe("EditorView decoration", () => {
 
     it("omits replaced content", () => {
       let cm = decoEditor("foobar", [r(1, 4)])
-      ist(cm.contentDOM.textContent, "far")
+      ist(text(cm.contentDOM), "far")
     })
 
     it("can replace across lines", () => {
       let cm = decoEditor("foo\nbar\nbaz\nbug", [r(1, 14)])
       ist(cm.contentDOM.childNodes.length, 1)
-      ist(cm.contentDOM.firstChild!.textContent, "fg")
+      ist(text(cm.contentDOM.firstChild!), "fg")
     })
 
     it("draws replacement widgets", () => {
       let cm = decoEditor("foo\nbar\nbaz", [r(6, 9, {widget: new WordWidget("X")})])
-      ist(cm.contentDOM.textContent, "foobaXaz")
+      ist(text(cm.contentDOM), "foobaXaz")
     })
 
     it("can handle multiple overlapping replaced ranges", () => {
       let cm = decoEditor("foo\nbar\nbaz\nbug", [r(1, 6), r(6, 9), r(8, 14)])
       ist(cm.contentDOM.childNodes.length, 1)
-      ist(cm.contentDOM.firstChild!.textContent, "fg")
+      ist(text(cm.contentDOM.firstChild!), "fg")
     })
 
     it("allows splitting a replaced range", () => {
@@ -337,7 +350,7 @@ describe("EditorView decoration", () => {
         changes: {from: 2, to: 8, insert: "abcdef"},
         effects: [filterDeco.of(_ => false), addDeco.of([r(1, 3), r(7, 9)])]
       })
-      ist(cm.contentDOM.firstChild!.textContent, "1bcde0")
+      ist(text(cm.contentDOM.firstChild!), "1bcde0")
     })
 
     it("allows replacing a single replaced range with two adjacent ones", () => {
@@ -346,14 +359,14 @@ describe("EditorView decoration", () => {
         changes: {from: 2, to: 8, insert: "cdefgh"},
         effects: [filterDeco.of(_ => false), addDeco.of([r(1, 5), r(5, 9)])]
       })
-      ist(cm.contentDOM.firstChild!.textContent, "10")
-      ist((cm.contentDOM.firstChild as HTMLElement).childNodes.length, 4)
+      ist(text(cm.contentDOM.firstChild!), "10")
+      ist((cm.contentDOM.firstChild as HTMLElement).querySelectorAll("span").length, 2)
     })
 
     it("can handle changes inside replaced content", () => {
       let cm = decoEditor("abcdefghij", [r(2, 8)])
       cm.dispatch({changes: {from: 4, to: 6, insert: "n"}})
-      ist(cm.contentDOM.textContent, "abij")
+      ist(text(cm.contentDOM), "abij")
     })
 
     it("preserves selection endpoints inside replaced ranges", () => {
@@ -368,6 +381,13 @@ describe("EditorView decoration", () => {
       let {anchor, head} = cm.state.selection.main
       ist(head, 7)
       ist(anchor, 2)
+    })
+
+    it("draws buffers around replacements", () => {
+      let cm = tempView("12345", [decos(Decoration.set([r(0, 1, {widget: new WordWidget("a")}),
+                                                        r(2, 3, {widget: new WordWidget("b")}),
+                                                        r(4, 5, {widget: new WordWidget("c")})]))])
+      ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "_a_2_b_4_c_")
     })
   })
 

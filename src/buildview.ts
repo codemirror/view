@@ -1,15 +1,20 @@
 import {SpanIterator, RangeSet} from "@codemirror/rangeset"
 import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, BlockType, WidgetType} from "./decoration"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
-import {InlineView, WidgetView, TextView, MarkView} from "./inlineview"
+import {InlineView, WidgetView, TextView, MarkView, WidgetBufferView} from "./inlineview"
 import {Text, TextIterator} from "@codemirror/text"
 
 const enum T { Chunk = 512 }
+
+const enum Buf { No = 0, Yes = 1, IfCursor = 2 }
 
 export class ContentBuilder implements SpanIterator<Decoration> {
   content: BlockView[] = []
   curLine: LineView | null = null
   breakAtStart = 0
+  pendingBuffer = Buf.No
+  // Set to false directly after a widget that covers the position after it
+  atCursorPos = true
   openStart = -1
   openEnd = -1
   cursor: TextIterator
@@ -30,23 +35,30 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   }
 
   getLine() {
-    if (!this.curLine)
+    if (!this.curLine) {
       this.content.push(this.curLine = new LineView)
+      this.atCursorPos = true
+    }
     return this.curLine
   }
 
-  addWidget(view: BlockWidgetView) {
+  flushBuffer(active: readonly MarkDecoration[]) {
+    if (this.pendingBuffer) {
+      this.curLine!.append(wrapMarks(new WidgetBufferView(-1), active), active.length)
+      this.pendingBuffer = Buf.No
+    }
+  }
+
+  addBlockWidget(view: BlockWidgetView) {
+    this.flushBuffer([])
     this.curLine = null
     this.content.push(view)
   }
 
-  finish() {
+  finish(openEnd: number) {
+    if (!openEnd) this.flushBuffer([])
+    else this.pendingBuffer = Buf.No
     if (!this.posCovered()) this.getLine()
-  }
-
-  wrapMarks(view: InlineView, active: readonly MarkDecoration[]) {
-    for (let mark of active) view = new MarkView(mark, [view], view.length)
-    return view
   }
 
   buildText(length: number, active: readonly MarkDecoration[], openStart: number) {
@@ -59,6 +71,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
           if (!this.posCovered()) this.getLine()
           if (this.content.length) this.content[this.content.length - 1].breakAfter = 1
           else this.breakAtStart = 1
+          this.flushBuffer([])
           this.curLine = null
           length--
           continue
@@ -68,7 +81,9 @@ export class ContentBuilder implements SpanIterator<Decoration> {
         }
       }
       let take = Math.min(this.text.length - this.textOff, length, T.Chunk)
-      this.getLine().append(this.wrapMarks(new TextView(this.text.slice(this.textOff, this.textOff + take)), active), openStart)
+      this.flushBuffer(active)
+      this.getLine().append(wrapMarks(new TextView(this.text.slice(this.textOff, this.textOff + take)), active), openStart)
+      this.atCursorPos = true
       this.textOff += take
       length -= take
       openStart = 0
@@ -87,10 +102,21 @@ export class ContentBuilder implements SpanIterator<Decoration> {
       if (deco.block) {
         let {type} = deco
         if (type == BlockType.WidgetAfter && !this.posCovered()) this.getLine()
-        this.addWidget(new BlockWidgetView(deco.widget || new NullWidget("div"), len, type))
+        this.addBlockWidget(new BlockWidgetView(deco.widget || new NullWidget("div"), len, type))
       } else {
-        let widget = this.wrapMarks(WidgetView.create(deco.widget || new NullWidget("span"), len, deco.startSide), active)
-        this.getLine().append(widget, openStart)
+        let view = WidgetView.create(deco.widget || new NullWidget("span"), len, deco.startSide)
+        let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length && (from < to || deco.startSide > 0)
+        let cursorAfter = !view.isEditable && (from < to || deco.startSide <= 0)
+        let line = this.getLine()
+        if (this.pendingBuffer == Buf.IfCursor && !cursorBefore) this.pendingBuffer = Buf.No
+        this.flushBuffer(active)
+        if (cursorBefore) {
+          line.append(wrapMarks(new WidgetBufferView(1), active), openStart)
+          openStart = active.length + Math.max(0, openStart - active.length)
+        }
+        line.append(wrapMarks(view, active), openStart)
+        this.atCursorPos = cursorAfter
+        this.pendingBuffer = !cursorAfter ? Buf.No : from < to ? Buf.Yes : Buf.IfCursor
       }
     } else if (this.doc.lineAt(this.pos).from == this.pos) { // Line decoration
       this.getLine().addLineDeco(deco as LineDecoration)
@@ -115,9 +141,14 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     let builder = new ContentBuilder(text, from, to)
     builder.openEnd = RangeSet.spans(decorations, from, to, builder)
     if (builder.openStart < 0) builder.openStart = builder.openEnd
-    builder.finish()
+    builder.finish(builder.openEnd)
     return builder
   }
+}
+
+function wrapMarks(view: InlineView, active: readonly MarkDecoration[]) {
+  for (let mark of active) view = new MarkView(mark, [view], view.length)
+  return view
 }
 
 class NullWidget extends WidgetType {

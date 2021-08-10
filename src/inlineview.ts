@@ -232,6 +232,8 @@ export class WidgetView extends InlineView {
     }
     return (pos == 0 && side > 0 || pos == this.length && side <= 0) ? rect : flattenRect(rect, pos == 0)
   }
+
+  get isEditable() { return false }
 }
 
 export class CompositionView extends WidgetView {
@@ -250,6 +252,45 @@ export class CompositionView extends WidgetView {
   get overrideDOMText() { return null }
 
   coordsAt(pos: number, side: number) { return textCoords(this.widget.text, pos, side) }
+
+  get isEditable() { return true }
+}
+
+// These are drawn around uneditable widgets to avoid a number of
+// browser bugs that show up when the cursor is directly next to
+// uneditable inline content.
+export class WidgetBufferView extends InlineView {
+  constructor(readonly side: number) { super() }
+
+  get length() { return 0 }
+
+  merge() { return false }
+
+  become(other: InlineView): boolean {
+    return other instanceof WidgetBufferView && other.side == this.side
+  }
+
+  slice() { return new WidgetBufferView(this.side) }
+
+  sync() {
+    if (!this.dom) this.setDOM(document.createTextNode("\u200b"))
+    else if (this.dirty && this.dom.nodeValue != "\u200b") this.dom.nodeValue = "\u200b"
+  }
+
+  getSide() { return this.side }
+
+  domAtPos(pos: number) { return DOMPos.before(this.dom!) }
+
+  domBoundsAround() { return null }
+
+  coordsAt(pos: number): Rect {
+    let rects = clientRectsFor(this.dom!)
+    return rects[rects.length - 1]
+  }
+
+  get overrideDOMText() {
+    return DocText.of([this.dom!.nodeValue!.replace(/\u200b/g, "")])
+  }
 }
 
 export function mergeInlineChildren(parent: ContentView & {children: InlineView[]},

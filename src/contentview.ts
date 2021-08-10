@@ -214,6 +214,8 @@ export abstract class ContentView {
   }
 
   static get(node: Node): ContentView | null { return (node as any).cmView }
+
+  get isEditable() { return true }
 }
 
 ContentView.prototype.breakAfter = 0

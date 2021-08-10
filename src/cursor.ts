@@ -152,7 +152,7 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
   // There's visible editor content under the point, so we can try
   // using caret(Position|Range)FromPoint as a shortcut
   let node: Node | undefined, offset: number = -1
-  if (element && view.contentDOM.contains(element) && !(view.docView.nearest(element) instanceof WidgetView)) {
+  if (element && view.contentDOM.contains(element) && view.docView.nearest(element)?.isEditable != false) {
     if (doc.caretPositionFromPoint) {
       let pos = doc.caretPositionFromPoint(x, y)
       if (pos) ({offsetNode: node, offset} = pos)

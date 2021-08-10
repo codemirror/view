@@ -247,7 +247,6 @@ describe("EditorView drawing", () => {
     cm.measure()
     text = cm.contentDOM.textContent!
     ist(text.length, cm.state.doc.length, "<")
-    console.log(cm.viewState.lineGaps, text.length, cm.state.doc.length)
     ist(text.indexOf("<"), -1)
     ist(text.indexOf(">"), -1)
     cm.scrollDOM.scrollTop = cm.scrollDOM.scrollHeight
