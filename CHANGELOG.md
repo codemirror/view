@@ -1,3 +1,17 @@
+## 0.19.1 (2021-08-11)
+
+### Breaking changes
+
+The view now emits new-style user event annotations for the transactions it generates.
+
+### Bug fixes
+
+Fix a bug where `coordsAtPos` would allow the passed `side` argument to override widget sides, producing incorrect cursor positions.
+
+Fix a bug that could cause content lines to be misaligned in certain situations involving widgets at the end of lines.
+
+Fix an issue where, if the browser decided to modify DOM attributes in the content in response to some editing action, the view failed to reset those again.
+
 ## 0.18.19 (2021-07-12)
 
 ### Bug fixes
