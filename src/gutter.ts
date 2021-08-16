@@ -25,6 +25,7 @@ export abstract class GutterMarker extends RangeValue {
 GutterMarker.prototype.elementClass = ""
 GutterMarker.prototype.toDOM = undefined
 GutterMarker.prototype.mapMode = MapMode.TrackBefore
+GutterMarker.prototype.startSide = GutterMarker.prototype.endSide = -1
 GutterMarker.prototype.point = true
 
 /// Facet used to add a class to all gutter elements for a given line.
