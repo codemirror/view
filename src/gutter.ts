@@ -35,7 +35,7 @@ GutterMarker.prototype.point = true
 /// in all gutters for the line).
 export const gutterLineClass = Facet.define<RangeSet<GutterMarker>>()
 
-type Handlers = {[event: string]: (view: EditorView, line: BlockInfo, event: any) => boolean}
+type Handlers = {[event: string]: (view: EditorView, line: BlockInfo, event: Event) => boolean}
 
 interface GutterConfig {
   /// An extra CSS class to be added to the wrapper (`cm-gutter`)
@@ -44,8 +44,7 @@ interface GutterConfig {
   /// Controls whether empty gutter elements should be rendered.
   /// Defaults to false.
   renderEmptyElements?: boolean
-  /// Retrieve a set of markers to use in this gutter from the
-  /// current editor state.
+  /// Retrieve a set of markers to use in this gutter.
   markers?: (view: EditorView) => (RangeSet<GutterMarker> | readonly RangeSet<GutterMarker>[])
   /// Can be used to optionally add a single marker to every line.
   lineMarker?: (view: EditorView, line: BlockInfo, otherMarkers: readonly GutterMarker[]) => GutterMarker | null
