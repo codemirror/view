@@ -422,7 +422,6 @@ function maxLineNumber(lines: number) {
 }
 
 const activeLineGutterMarker = new class extends GutterMarker {
-  eq() { return true }
   elementClass = "cm-activeLineGutter"
 }
 
