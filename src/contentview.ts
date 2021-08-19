@@ -227,7 +227,7 @@ function rm(dom: Node): Node {
 
 function syncNodeInto(parent: HTMLElement, after: Node | null, dom: Node) {
   let next: Node | null = after ? after.nextSibling : parent.firstChild
-  if (dom.parentNode == parent) while (next != dom) next = rm(next!)
+  if (dom.parentNode == parent) while (next && next != dom) next = rm(next!)
   else parent.insertBefore(dom, next)
 }
 
