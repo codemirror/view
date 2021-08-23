@@ -30,7 +30,7 @@ const plugin = ViewPlugin.fromClass(class {
 /// editor.
 ///
 /// This is only meaningful when the editor is scrollable, and should
-/// not be editors that take the size of their content.
+/// not be enabled in editors that take the size of their content.
 export function scrollPastEnd(): Extension {
   return plugin
 }
