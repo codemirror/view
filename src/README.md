@@ -45,6 +45,8 @@ component that displays the editor state and allows text input.
 
 @placeholder
 
+@scrollPastEnd
+
 ### Key bindings
 
 @KeyBinding
