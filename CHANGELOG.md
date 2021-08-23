@@ -1,3 +1,9 @@
+## 0.19.2 (2021-08-23)
+
+### New features
+
+The package now exports a `scrollPastEnd` function, which returns an extension that adds space below the document to allow the last line to be scrolled to the top of the editor.
+
 ## 0.19.1 (2021-08-11)
 
 ### Breaking changes
