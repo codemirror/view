@@ -103,7 +103,7 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect) {
 
   for (let cur: any = dom.parentNode; cur;) {
     if (cur.nodeType == 1) { // Element
-      let bounding: Rect, top = cur == document.body
+      let bounding: Rect, top = cur == doc.body
       if (top) {
         bounding = windowRect(win)
       } else {
