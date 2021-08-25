@@ -66,7 +66,9 @@ export class TextView extends InlineView {
   }
 
   slice(from: number) {
-    return new TextView(this.text.slice(from))
+    let result = new TextView(this.text.slice(from))
+    this.text = this.text.slice(0, from)
+    return result
   }
 
   localPosFromDOM(node: Node, offset: number): number {
@@ -116,7 +118,18 @@ export class MarkView extends InlineView {
   }
 
   slice(from: number) {
-    return new MarkView(this.mark, sliceInlineChildren(this.children, from), this.length - from)
+    let result = [], off = 0, detachFrom = -1, i = 0
+    for (let elt of this.children) {
+      let end = off + elt.length
+      if (end > from) result.push(off < from ? elt.slice(from - off) : elt)
+      if (detachFrom < 0 && off >= from) detachFrom = i
+      off = end
+      i++
+    }
+    let length = this.length - from
+    this.length = from
+    if (detachFrom > -1) this.replaceChildren(detachFrom, this.children.length)
+    return new MarkView(this.mark, result, length)
   }
 
   domAtPos(pos: number): DOMPos {
@@ -159,7 +172,11 @@ export class WidgetView extends InlineView {
     super()
   }
 
-  slice(from: number) { return WidgetView.create(this.widget, this.length - from, this.side) }
+  slice(from: number) {
+    let result = WidgetView.create(this.widget, this.length - from, this.side)
+    this.length -= from
+    return result
+  }
 
   sync() {
     if (!this.dom || !this.widget.updateDOM(this.dom)) {
@@ -246,7 +263,7 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
   parent.length += dLen
 
   let {children} = parent
-  // Both from and to point into the same text view
+  // Both from and to point into the same child view
   if (fromI == toI && fromOff) {
     let start = children[fromI]
     // Maybe just update that view and be done
@@ -312,16 +329,6 @@ export function mergeInlineChildren(parent: ContentView & {children: InlineView[
 
   // And if anything remains, splice the child array to insert the new elts
   if (elts.length || fromI != toI) parent.replaceChildren(fromI, toI, elts)
-}
-
-export function sliceInlineChildren(children: readonly InlineView[], from: number) {
-  let result = [], off = 0
-  for (let elt of children) {
-    let end = off + elt.length
-    if (end > from) result.push(off < from ? elt.slice(from - off) : elt)
-    off = end
-  }
-  return result
 }
 
 export function inlineDOMAtPos(dom: HTMLElement, children: readonly InlineView[], pos: number) {
