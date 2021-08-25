@@ -1,3 +1,9 @@
+## 0.19.3 (2021-08-25)
+
+### Bug fixes
+
+Fix a view corruption that could happen in situations involving overlapping mark decorations.
+
 ## 0.19.2 (2021-08-23)
 
 ### New features
