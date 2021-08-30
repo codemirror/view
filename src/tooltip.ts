@@ -64,25 +64,54 @@ class TooltipViewManager {
   }
 }
 
+/// Return an extension that configures tooltip behavior.
+export function tooltips(config: {
+  /// By default, tooltips use `"fixed"`
+  /// [positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/position),
+  /// which has the advantage that tooltips don't get cut off by
+  /// scrollable parent elements. However, CSS rules like `contain:
+  /// layout` can break fixed positioning in child nodes, which can be
+  /// worked about by using `"absolute"` here.
+  ///
+  /// On iOS, which at the time of writing still doesn't properly
+  /// support fixed positioning, the library always uses absolute
+  /// positioning.
+  position?: "fixed" | "absolute"
+} = {}): Extension {
+  return config.position ? tooltipPositioning.of(config.position) : []
+}
+
+const tooltipPositioning = Facet.define<"fixed" | "absolute", "fixed" | "absolute">({
+  combine: values => ios ? "absolute" : values.length ? values[0] : "fixed" 
+})
+
 const tooltipPlugin = ViewPlugin.fromClass(class {
   manager: TooltipViewManager
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
   inView = true
+  position: "fixed" | "absolute"
 
   constructor(readonly view: EditorView) {
+    this.position = view.state.facet(tooltipPositioning)
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
   }
 
   update(update: ViewUpdate) {
     const {shouldMeasure} = this.manager.update(update)
-    if (shouldMeasure)
-      this.maybeMeasure()
+    let newPosition = update.state.facet(tooltipPositioning)
+    if (newPosition != this.position) {
+      this.position = newPosition
+      for (let t of this.manager.tooltipViews) t.dom.style.position = newPosition
+      shouldMeasure = true
+    }
+    if (shouldMeasure) this.maybeMeasure()
   }
 
   createTooltip(tooltip: Tooltip) {
     let tooltipView = tooltip.create(this.view)
     tooltipView.dom.classList.add("cm-tooltip")
+    tooltipView.dom.style.position = this.position
     tooltipView.dom.style.top = Outside
     this.view.dom.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
@@ -124,10 +153,9 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let top = above ? pos.top - height : pos.bottom, right = left + width
       for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
         top = above ? r.top - height : r.bottom
-      if (ios) {
+      if (this.position == "absolute") {
         dom.style.top = (top - editor.top) + "px"
         dom.style.left = (left - editor.left) + "px"
-        dom.style.position = "absolute"
       } else {
         dom.style.top = top + "px"
         dom.style.left = left + "px"
@@ -156,7 +184,6 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
 const baseTheme = EditorView.baseTheme({
   ".cm-tooltip": {
-    position: "fixed",
     zIndex: 100
   },
   "&light .cm-tooltip": {
