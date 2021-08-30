@@ -33,8 +33,8 @@ class TooltipViewManager {
   }
 
   update(update: ViewUpdate) {
-    const input = update.state.facet(this.facet)
-    const tooltips = input.filter(x => x) as Tooltip[]
+    let input = update.state.facet(this.facet)
+    let tooltips = input.filter(x => x) as Tooltip[]
     if (input === this.input) {
       for (let t of this.tooltipViews) if (t.update) t.update(update)
       return {shouldMeasure: false}
@@ -98,7 +98,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   update(update: ViewUpdate) {
-    const {shouldMeasure} = this.manager.update(update)
+    let {shouldMeasure} = this.manager.update(update)
     let newPosition = update.state.facet(tooltipPositioning)
     if (newPosition != this.position) {
       this.position = newPosition
@@ -258,7 +258,7 @@ class HoverTooltipHost implements TooltipView {
   }
 
   createHostedView(tooltip: Tooltip) {
-    const hostedView = tooltip.create(this.view)
+    let hostedView = tooltip.create(this.view)
     hostedView.dom.classList.add("cm-tooltip-section")
     this.dom.appendChild(hostedView.dom)
     if (this.mounted && hostedView.mount)
@@ -267,14 +267,14 @@ class HoverTooltipHost implements TooltipView {
   }
 
   mount(view: EditorView) {
-    for (const hostedView of this.manager.tooltipViews) {
+    for (let hostedView of this.manager.tooltipViews) {
       if (hostedView.mount) hostedView.mount(view)
     }
     this.mounted = true
   }
 
   positioned() {
-    for (const hostedView of this.manager.tooltipViews) {
+    for (let hostedView of this.manager.tooltipViews) {
       if (hostedView.positioned) hostedView.positioned()
     }
   }
@@ -285,7 +285,7 @@ class HoverTooltipHost implements TooltipView {
 }
 
 const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
-  const tooltips = state.facet(showHoverTooltip).filter(t => t) as Tooltip[]
+  let tooltips = state.facet(showHoverTooltip).filter(t => t) as Tooltip[]
   if (tooltips.length === 0) return null
 
   return {
@@ -429,8 +429,8 @@ export function hoverTooltip(
   source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
   options: {hideOnChange?: boolean} = {}
 ): Extension {
-  const setHover = StateEffect.define<Tooltip | null>()
-  const hoverState = StateField.define<Tooltip | null>({
+  let setHover = StateEffect.define<Tooltip | null>()
+  let hoverState = StateField.define<Tooltip | null>({
     create() { return null },
 
     update(value, tr) {
