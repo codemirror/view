@@ -1,3 +1,9 @@
+## 0.19.4 (2021-09-01)
+
+### Bug fixes
+
+Fix an issue where lines containing just a widget decoration wrapped in a mark decoration could be displayed with 0 height.
+
 ## 0.19.3 (2021-08-25)
 
 ### Bug fixes
