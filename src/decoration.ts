@@ -120,7 +120,7 @@ export abstract class WidgetType {
   /// events.
   ignoreEvent(_event: Event): boolean { return true }
 
-  //// @internal
+  /// @internal
   get customView(): null | typeof WidgetView { return null }
 }
 

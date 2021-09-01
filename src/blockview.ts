@@ -1,6 +1,7 @@
 import {ContentView, DOMPos, Dirty} from "./contentview"
 import {DocView} from "./docview"
-import {InlineView, TextView, WidgetView, mergeInlineChildren, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
+import {InlineView, TextView, WidgetView, MarkView,
+        mergeInlineChildren, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
 import {clientRectsFor, Rect} from "./dom"
 import {LineDecoration, WidgetType, BlockType} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
@@ -98,6 +99,8 @@ export class LineView extends ContentView implements BlockView {
     }
     super.sync(track)
     let last = this.dom!.lastChild
+    while (last && ContentView.get(last) instanceof MarkView)
+      last = last.lastChild
     if (!last ||
         last.nodeName != "BR" && ContentView.get(last) instanceof WidgetView &&
         (!browser.ios || !this.children.some(ch => ch instanceof TextView))) {
