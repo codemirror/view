@@ -13,7 +13,7 @@ import {ViewState} from "./viewstate"
 import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, MeasureRequest, UpdateFlag, editable, inputHandler} from "./extension"
+        decorations, MeasureRequest, UpdateFlag, editable, inputHandler, scrollTo} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -222,11 +222,18 @@ export class EditorView {
       return this.setState(state)
 
     update = new ViewUpdate(this, state, transactions)
-    let scrollTo
+    let scrollPos: SelectionRange | null = null
     try {
       this.updateState = UpdateState.Updating
-      scrollTo = transactions.some(tr => tr.scrollIntoView) ? state.selection.main : null
-      this.viewState.update(update, scrollTo)
+      for (let tr of transactions) {
+        if (scrollPos) scrollPos = scrollPos.map(tr.changes)
+        if (tr.scrollIntoView) {
+          let {main} = tr.state.selection
+          scrollPos = main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1)
+        }
+        for (let e of tr.effects) if (e.is(scrollTo)) scrollPos = e.value
+      }
+      this.viewState.update(update, scrollPos)
       this.bidiCache = CachedOrder.update(this.bidiCache, update.changes)
       if (!update.empty) {
         this.updatePlugins(update)
@@ -237,7 +244,7 @@ export class EditorView {
       this.updateAttrs()
       this.showAnnouncements(transactions)
     } finally { this.updateState = UpdateState.Idle }
-    if (redrawn || scrollTo || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
+    if (redrawn || scrollPos || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
   }
 
@@ -326,7 +333,7 @@ export class EditorView {
           catch(e) { logException(this.state, e) }
         }
         if (this.viewState.scrollTo) {
-          this.docView.scrollPosIntoView(this.viewState.scrollTo.head, this.viewState.scrollTo.assoc)
+          this.docView.scrollRangeIntoView(this.viewState.scrollTo)
           this.viewState.scrollTo = null
         }
         if (!(changed & UpdateFlag.Viewport) && this.measureRequests.length == 0) break
@@ -632,6 +639,10 @@ export class EditorView {
     this.observer.destroy()
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
   }
+
+  /// Effect that can be [added](#state.TransactionSpec.effects) to a
+  /// transaction to make it scroll the given range into view.
+  static scrollTo = scrollTo
 
   /// Facet to add a [style
   /// module](https://github.com/marijnh/style-mod#documentation) to

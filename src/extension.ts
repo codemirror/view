@@ -1,4 +1,4 @@
-import {EditorState, Transaction, ChangeSet, Facet, Extension} from "@codemirror/state"
+import {EditorState, Transaction, ChangeSet, Facet, StateEffect, Extension, SelectionRange} from "@codemirror/state"
 import {RangeSet} from "@codemirror/rangeset"
 import {StyleModule} from "style-mod"
 import {DecorationSet} from "./decoration"
@@ -27,6 +27,10 @@ export const exceptionSink = Facet.define<(exception: any) => void>()
 export const updateListener = Facet.define<(update: ViewUpdate) => void>()
 
 export const inputHandler = Facet.define<(view: EditorView, from: number, to: number, text: string) => boolean>()
+
+export const scrollTo = StateEffect.define<SelectionRange>({
+  map: (range, changes) => range.map(changes)
+})
 
 /// Log or report an unhandled exception in client code. Should
 /// probably only be used by extension code that allows client code to

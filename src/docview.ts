@@ -1,5 +1,5 @@
 import {RangeSet} from "@codemirror/rangeset"
-import {ChangeSet} from "@codemirror/state"
+import {ChangeSet, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, Dirty, DOMPos} from "./contentview"
 import {BlockView, LineView} from "./blockview"
 import {InlineView, CompositionView} from "./inlineview"
@@ -386,9 +386,13 @@ export class DocView extends ContentView {
     ]
   }
 
-  scrollPosIntoView(pos: number, side: number) {
-    let rect = this.coordsAt(pos, side)
+  scrollRangeIntoView(range: SelectionRange) {
+    let rect = this.coordsAt(range.head, range.empty ? range.assoc : range.head > range.anchor ? -1 : 1), other
     if (!rect) return
+    if (!range.empty && (other = this.coordsAt(range.anchor, range.anchor > range.head ? -1 : 1)))
+      rect = {left: Math.min(rect.left, other.left), top: Math.min(rect.top, other.top),
+              right: Math.max(rect.right, other.right), bottom: Math.max(rect.bottom, other.bottom)}
+
     let mLeft = 0, mRight = 0, mTop = 0, mBottom = 0
     for (let margins of this.view.pluginField(PluginField.scrollMargins)) if (margins) {
       let {left, right, top, bottom} = margins
@@ -400,7 +404,7 @@ export class DocView extends ContentView {
     scrollRectIntoView(this.dom, {
       left: rect.left - mLeft, top: rect.top - mTop,
       right: rect.right + mRight, bottom: rect.bottom + mBottom
-    })
+    }, range.head < range.anchor ? -1 : 1)
   }
 }
 

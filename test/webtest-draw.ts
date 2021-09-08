@@ -106,6 +106,38 @@ describe("EditorView drawing", () => {
     ist(cm.contentDOM.textContent!.match(/b/))
   })
 
+  it("scrolls the selection into view when asked", () => {
+    let cm = tempView("\n".repeat(500), [scroll(150)])
+    cm.scrollDOM.scrollTop = 0
+    cm.measure()
+    cm.dispatch({selection: {anchor: 250}, scrollIntoView: true})
+    let box = cm.scrollDOM.getBoundingClientRect(), pos = cm.coordsAtPos(250)
+    ist(box.top, pos?.top, "<=")
+    ist(box.bottom, pos?.bottom, ">=")
+  })
+
+  it("can scroll ranges into view", () => {
+    let cm = tempView("\n".repeat(500), [scroll(150)])
+    cm.scrollDOM.scrollTop = 0
+    cm.measure()
+    cm.dispatch({effects: EditorView.scrollTo.of(EditorSelection.cursor(250))})
+    let box = cm.scrollDOM.getBoundingClientRect(), pos = cm.coordsAtPos(250)
+    ist(box.top, pos?.top, "<=")
+    ist(box.bottom, pos?.bottom, ">=")
+    cm.dispatch({effects: EditorView.scrollTo.of(EditorSelection.range(403, 400))})
+    let top = cm.coordsAtPos(400), bot = cm.coordsAtPos(403)
+    ist(box.top, top?.top, "<=")
+    ist(box.bottom, bot?.bottom, ">=")
+    cm.dispatch({effects: EditorView.scrollTo.of(EditorSelection.range(300, 400))})
+    let pos400 = cm.coordsAtPos(400)
+    ist(box.top, pos400?.top, "<=")
+    ist(box.bottom, pos400?.bottom, ">=")
+    cm.dispatch({effects: EditorView.scrollTo.of(EditorSelection.range(150, 100))})
+    let pos100 = cm.coordsAtPos(100)
+    ist(box.top, pos100?.top, "<=")
+    ist(box.bottom, pos100?.bottom, ">=")
+  })
+
   it("keeps a drawn area around selection ends", () => {
     let cm = tempView("\nsecond\n" + "x\n".repeat(500) + "last", [scroll(300)])
     cm.dispatch({selection: EditorSelection.single(1, cm.state.doc.length)})

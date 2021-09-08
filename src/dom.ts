@@ -98,7 +98,7 @@ function windowRect(win: Window): Rect {
 
 const ScrollSpace = 5
 
-export function scrollRectIntoView(dom: HTMLElement, rect: Rect) {
+export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1) {
   let doc = dom.ownerDocument!, win = doc.defaultView!
 
   for (let cur: any = dom.parentNode; cur;) {
@@ -118,14 +118,24 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect) {
       }
 
       let moveX = 0, moveY = 0
-      if (rect.top < bounding.top)
+      if (rect.top < bounding.top) {
         moveY = -(bounding.top - rect.top + ScrollSpace)
-      else if (rect.bottom > bounding.bottom)
+        if (side > 0 && rect.bottom > bounding.bottom + moveY)
+          moveY = rect.bottom - bounding.bottom + moveY + ScrollSpace
+      } else if (rect.bottom > bounding.bottom) {
         moveY = rect.bottom - bounding.bottom + ScrollSpace
-      if (rect.left < bounding.left)
+        if (side < 0 && (rect.top - moveY) < bounding.top)
+          moveY = -(bounding.top + moveY - rect.top + ScrollSpace)
+      }
+      if (rect.left < bounding.left) {
         moveX = -(bounding.left - rect.left + ScrollSpace)
-      else if (rect.right > bounding.right)
+        if (side > 0 && rect.right > bounding.right + moveX)
+          moveX = rect.right - bounding.right + moveX + ScrollSpace
+      } else if (rect.right > bounding.right) {
         moveX = rect.right - bounding.right + ScrollSpace
+        if (side < 0 && rect.left < bounding.left + moveX)
+          moveX = -(bounding.left + moveX - rect.left + ScrollSpace)
+      }
       if (moveX || moveY) {
         if (top) {
           win.scrollBy(moveX, moveY)
