@@ -1,3 +1,9 @@
+## 0.19.5 (2021-09-09)
+
+### New features
+
+The new `EditorView.scrollTo` effect can be used to scroll a given range into view.
+
 ## 0.19.4 (2021-09-01)
 
 ### Bug fixes
