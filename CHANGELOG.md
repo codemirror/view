@@ -1,3 +1,9 @@
+## 0.19.6 (2021-09-10)
+
+### Bug fixes
+
+Remove a `console.log` that slipped into the previous release.
+
 ## 0.19.5 (2021-09-09)
 
 ### New features
