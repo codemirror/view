@@ -3,7 +3,7 @@ import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
 import {domEventHandlers, ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior,
-        logException, mouseSelectionStyle, editable} from "./extension"
+        logException, mouseSelectionStyle} from "./extension"
 import browser from "./browser"
 import {groupAt} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
@@ -507,7 +507,8 @@ function dropText(view: EditorView, event: DragEvent, text: string, direct: bool
 }
 
 handlers.drop = (view, event: DragEvent) => {
-  if (!event.dataTransfer || !view.state.facet(editable)) return
+  if (!event.dataTransfer) return
+  if (view.state.readOnly) return event.preventDefault()
 
   let files = event.dataTransfer.files
   if (files && files.length) { // For a file drop, read the file's text.
@@ -532,7 +533,7 @@ handlers.drop = (view, event: DragEvent) => {
 }
 
 handlers.paste = (view: EditorView, event: ClipboardEvent) => {
-  if (!view.state.facet(editable)) return
+  if (view.state.readOnly) return event.preventDefault()
   view.observer.flush()
   let data = brokenClipboardAPI ? null : event.clipboardData
   let text = data && data.getData("text/plain")
@@ -599,7 +600,7 @@ handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
   } else {
     captureCopy(view, text)
   }
-  if (event.type == "cut" && view.state.facet(editable))
+  if (event.type == "cut" && !view.state.readOnly)
     view.dispatch({
       changes: ranges,
       scrollIntoView: true,

@@ -357,7 +357,7 @@ export class EditorView {
     })
     updateAttrs(this.dom, this.editorAttrs, editorAttrs)
     this.editorAttrs = editorAttrs
-    let contentAttrs = combineAttrs(this.state.facet(contentAttributes), {
+    let contentAttrs: Attrs = {
       spellcheck: "false",
       autocorrect: "off",
       autocapitalize: "off",
@@ -366,7 +366,9 @@ export class EditorView {
       style: `${browser.tabSize}: ${this.state.tabSize}`,
       role: "textbox",
       "aria-multiline": "true"
-    })
+    }
+    if (this.state.readOnly) contentAttrs["aria-readonly"] = "true"
+    combineAttrs(this.state.facet(contentAttributes), contentAttrs)
     updateAttrs(this.contentDOM, this.contentAttrs, contentAttrs)
     this.contentAttrs = contentAttrs
   }
@@ -683,12 +685,12 @@ export class EditorView {
   /// every time the view updates.
   static updateListener = updateListener
 
-  /// Facet that controls whether the editor content is editable. When
-  /// its highest-precedence value is `false`, editing is disabled,
-  /// and the content element will no longer have its
-  /// `contenteditable` attribute set to `true`. (Note that this
-  /// doesn't affect API calls that change the editor content, even
-  /// when those are bound to keys or buttons.)
+  /// Facet that controls whether the editor content DOM is editable.
+  /// When its highest-precedence value is `false`, the element will
+  /// not longer have its `contenteditable` attribute set. (Note that
+  /// this doesn't affect API calls that change the editor content,
+  /// even when those are bound to keys or buttons. See the
+  /// [`readOnly`](#state.EditorState.readOnly) facet for that.)
   static editable = editable
 
   /// Allows you to influence the way mouse selection happens. The

@@ -1,5 +1,5 @@
 import {tempView} from "@codemirror/buildhelper/lib/tempview"
-import {StateField} from "@codemirror/state"
+import {EditorState, StateField} from "@codemirror/state"
 import {Decoration, DecorationSet, EditorView, WidgetType} from "@codemirror/view"
 import ist from "ist"
 
@@ -192,5 +192,13 @@ describe("DOM changes", () => {
     cm.domAtPos(0).node.appendChild(document.createTextNode("d"))
     flush(cm)
     ist(cm.state.doc.toString(), "abcD")
+  })
+
+  it("ignores dom-changes in read-only mode", () => {
+    let cm = tempView("abc", [EditorState.readOnly.of(true)])
+    cm.domAtPos(0).node.firstChild!.nodeValue = "abx"
+    flush(cm)
+    ist(cm.state.doc.toString(), "abc")
+    ist(cm.contentDOM.textContent, "abc")
   })
 })

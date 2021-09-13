@@ -8,7 +8,7 @@ import {EditorSelection, Text} from "@codemirror/state"
 export function applyDOMChange(view: EditorView, start: number, end: number, typeOver: boolean) {
   let change: undefined | {from: number, to: number, insert: Text}, newSel
   let sel = view.state.selection.main, bounds
-  if (start > -1 && (bounds = view.docView.domBoundsAround(start, end, 0))) {
+  if (start > -1 && !view.state.readOnly && (bounds = view.docView.domBoundsAround(start, end, 0))) {
     let {from, to} = bounds
     let selPoints = view.docView.impreciseHead || view.docView.impreciseAnchor ? [] : selectionPoints(view)
     let reader = new DOMReader(selPoints, view)
