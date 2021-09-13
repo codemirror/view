@@ -391,8 +391,9 @@ function formatNumber(view: EditorView, number: number) {
   return view.state.facet(lineNumberConfig).formatNumber(number, view.state)
 }
 
-const lineNumberGutter = gutter({
+const lineNumberGutter = activeGutters.compute([lineNumberConfig], state => ({
   class: "cm-lineNumbers",
+  renderEmptyElements: false,
   markers(view: EditorView) { return view.state.facet(lineNumberMarkers) },
   lineMarker(view, line, others) {
     if (others.some(m => m.toDOM)) return null
@@ -404,13 +405,15 @@ const lineNumberGutter = gutter({
   updateSpacer(spacer: GutterMarker, update: ViewUpdate) {
     let max = formatNumber(update.view, maxLineNumber(update.view.state.doc.lines))
     return max == (spacer as NumberMarker).number ? spacer : new NumberMarker(max)
-  }
-})
+  },
+  domEventHandlers: state.facet(lineNumberConfig).domEventHandlers
+}))
 
 /// Create a line number gutter extension.
 export function lineNumbers(config: LineNumberConfig = {}): Extension {
   return [
     lineNumberConfig.of(config),
+    gutters(),
     lineNumberGutter
   ]
 }
