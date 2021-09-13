@@ -1,3 +1,9 @@
+## 0.19.7 (2021-09-13)
+
+### Bug fixes
+
+The view is now aware of the new `EditorState.readOnly` property, and suppresses events that modify the document when it is true.
+
 ## 0.19.6 (2021-09-10)
 
 ### Bug fixes
