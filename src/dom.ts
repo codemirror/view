@@ -1,5 +1,14 @@
 export function getSelection(root: DocumentOrShadowRoot): Selection {
-  return (root.getSelection ? root.getSelection() : document.getSelection())!
+  let target
+  // Browsers differ on whether shadow roots have a getSelection
+  // method. If it exists, use that, otherwise, call it on the
+  // document.
+  if ((root as any).nodeType == 11) { // Shadow root
+    target = (root as any).getSelection ? root as Document : (root as ShadowRoot).ownerDocument
+  } else {
+    target = root as Document
+  }
+  return target.getSelection()!
 }
 
 export type SelectionRange = {
