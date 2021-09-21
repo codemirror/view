@@ -157,9 +157,10 @@ class DOMReader {
       this.readNode(cur)
       let next: Node | null = cur.nextSibling
       if (next == end) break
-      let view = ContentView.get(cur)
-      if (view ? view.breakAfter :
-          isBlockElement(cur) || (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore)))
+      let view = ContentView.get(cur), nextView = ContentView.get(next!)
+      if (view && nextView ? view.breakAfter :
+          (view ? view.breakAfter : isBlockElement(cur)) ||
+          (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore)))
         this.text += this.lineBreak
       cur = next!
     }
