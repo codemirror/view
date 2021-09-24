@@ -128,6 +128,8 @@ export class EditorView {
   private styleModules!: readonly StyleModule[]
   private bidiCache: CachedOrder[] = []
 
+  private destroyed = false;
+
   /// @internal
   updateState: UpdateState = UpdateState.Updating
 
@@ -217,6 +219,11 @@ export class EditorView {
         throw new RangeError("Trying to update state with a transaction that doesn't start from the previous state.")
       state = tr.state
     }
+    if (this.destroyed) {
+      this.viewState.state = state
+      return
+    }
+
     // When the phrases change, redraw the editor
     if (state.facet(EditorState.phrases) != this.state.facet(EditorState.phrases))
       return this.setState(state)
@@ -256,6 +263,10 @@ export class EditorView {
   setState(newState: EditorState) {
     if (this.updateState != UpdateState.Idle)
       throw new Error("Calls to EditorView.setState are not allowed while an update is in progress")
+    if (this.destroyed) {
+      this.viewState.state = newState
+      return
+    }
     this.updateState = UpdateState.Updating
     try {
       for (let plugin of this.plugins) plugin.destroy(this)
@@ -296,6 +307,7 @@ export class EditorView {
 
   /// @internal
   measure(flush = true) {
+    if (this.destroyed) return
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
     this.measureScheduled = -1 // Prevent requestMeasure calls from scheduling another animation frame
 
@@ -636,10 +648,12 @@ export class EditorView {
   /// calling this.
   destroy() {
     for (let plugin of this.plugins) plugin.destroy(this)
+    this.plugins = []
     this.inputState.destroy()
     this.dom.remove()
     this.observer.destroy()
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
+    this.destroyed = true
   }
 
   /// Effect that can be [added](#state.TransactionSpec.effects) to a
