@@ -13,7 +13,7 @@ import {ViewState} from "./viewstate"
 import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, MeasureRequest, UpdateFlag, editable, inputHandler, scrollTo} from "./extension"
+        decorations, MeasureRequest, editable, inputHandler, scrollTo} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -317,6 +317,7 @@ export class EditorView {
     try {
       for (let i = 0;; i++) {
         this.updateState = UpdateState.Measuring
+        let oldViewport = this.viewport
         let changed = this.viewState.measure(this.docView, i > 0)
         let measuring = this.measureRequests
         if (!changed && !measuring.length && this.viewState.scrollTo == null) break
@@ -348,7 +349,7 @@ export class EditorView {
           this.docView.scrollRangeIntoView(this.viewState.scrollTo)
           this.viewState.scrollTo = null
         }
-        if (!(changed & UpdateFlag.Viewport) && this.measureRequests.length == 0) break
+        if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to && this.measureRequests.length == 0) break
       }
     } finally { this.updateState = UpdateState.Idle }
 

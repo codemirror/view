@@ -276,7 +276,7 @@ export const decorations = Facet.define<DecorationSet>()
 
 export const styleModule = Facet.define<StyleModule>()
 
-export const enum UpdateFlag { Focus = 1, Height = 2, Viewport = 4, LineGaps = 8, Geometry = 16 }
+export const enum UpdateFlag { Focus = 1, Height = 2, Viewport = 4, Geometry = 8 }
 
 export class ChangedRange {
   constructor(readonly fromA: number, readonly toA: number, readonly fromB: number, readonly toB: number) {}
@@ -354,7 +354,9 @@ export class ViewUpdate {
     if (this.docChanged) this.flags |= UpdateFlag.Height
   }
 
-  /// Tells you whether the viewport changed in this update.
+  /// Tells you whether the [viewport](#view.EditorView.viewport) or
+  /// [visible ranges](#view.EditorView.visibleRanges) changed in this
+  /// update.
   get viewportChanged() {
     return (this.flags & UpdateFlag.Viewport) > 0
   }

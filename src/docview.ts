@@ -81,7 +81,7 @@ export class DocView extends ContentView {
 
     let pointerSel = update.transactions.some(tr => tr.isUserEvent("select.pointer"))
     if (this.dirty == Dirty.Not && changedRanges.length == 0 &&
-        !(update.flags & (UpdateFlag.Viewport | UpdateFlag.LineGaps)) &&
+        !(update.flags & UpdateFlag.Viewport) &&
         update.state.selection.main.from >= this.view.viewport.from &&
         update.state.selection.main.to <= this.view.viewport.to) {
       this.updateSelection(forceSelection, pointerSel)
