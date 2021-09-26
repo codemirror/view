@@ -332,7 +332,7 @@ function capturePaste(view: EditorView) {
 function doPaste(view: EditorView, input: string) {
   let {state} = view, changes, i = 1, text = state.toText(input)
   let byLine = text.lines == state.selection.ranges.length
-  let linewise = lastLinewiseCopy && state.selection.ranges.every(r => r.empty) && lastLinewiseCopy == text.toString()
+  let linewise = lastLinewiseCopy != null && state.selection.ranges.every(r => r.empty) && lastLinewiseCopy == text.toString()
   if (linewise) {
     let lastLine = -1
     changes = state.changeByRange(range => {
@@ -536,9 +536,8 @@ handlers.paste = (view: EditorView, event: ClipboardEvent) => {
   if (view.state.readOnly) return event.preventDefault()
   view.observer.flush()
   let data = brokenClipboardAPI ? null : event.clipboardData
-  let text = data && data.getData("text/plain")
-  if (text) {
-    doPaste(view, text)
+  if (data) {
+    doPaste(view, data.getData("text/plain"))
     event.preventDefault()
   } else {
     capturePaste(view)
@@ -589,7 +588,7 @@ let lastLinewiseCopy: string | null = null
 
 handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
   let {text, ranges, linewise} = copiedRange(view.state)
-  if (!text) return
+  if (!text && !linewise) return
   lastLinewiseCopy = linewise ? text : null
 
   let data = brokenClipboardAPI ? null : event.clipboardData
