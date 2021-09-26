@@ -1,3 +1,15 @@
+## 0.19.8 (2021-09-26)
+
+### Bug fixes
+
+Fix a bug that could, on DOM changes near block widgets, insert superfluous line breaks.
+
+Make interacting with a destroyed editor view do nothing, rather than crash, to avoid tripping people up with pending timeouts and such.
+
+Make sure `ViewUpdate.viewportChanged` is true whenever `visibleRanges` changes, so that plugins acting only on visible ranges can use it to check when to update.
+
+Fix line-wise cut on empty lines.
+
 ## 0.19.7 (2021-09-13)
 
 ### Bug fixes
