@@ -319,6 +319,7 @@ export class EditorView {
         this.updateState = UpdateState.Measuring
         let oldViewport = this.viewport
         let changed = this.viewState.measure(this.docView, i > 0)
+        console.log("measure:", changed)
         let measuring = this.measureRequests
         if (!changed && !measuring.length && this.viewState.scrollTo == null) break
         this.measureRequests = []

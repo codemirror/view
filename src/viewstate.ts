@@ -183,12 +183,18 @@ export class ViewState {
   measure(docView: DocView, repeated: boolean) {
     let dom = docView.dom, whiteSpace = "", direction: Direction = Direction.LTR
 
+    let result = 0
+
     if (!repeated) {
       // Vertical padding
       let style = window.getComputedStyle(dom)
       whiteSpace = style.whiteSpace!, direction = (style.direction == "rtl" ? Direction.RTL : Direction.LTR) as any
-      this.paddingTop = parseInt(style.paddingTop!) || 0
-      this.paddingBottom = parseInt(style.paddingBottom!) || 0
+      let paddingTop = parseInt(style.paddingTop!) || 0, paddingBottom = parseInt(style.paddingBottom!) || 0
+      if (this.paddingTop != paddingTop || this.paddingBottom != paddingBottom) {
+        result |= UpdateFlag.Geometry
+        this.paddingTop = paddingTop
+        this.paddingBottom = paddingBottom
+      }
     }
 
     // Pixel viewport
@@ -199,7 +205,7 @@ export class ViewState {
     if (!this.inView) return 0
 
     let lineHeights = docView.measureVisibleLineHeights()
-    let refresh = false, bias = 0, result = 0, oracle = this.heightOracle
+    let refresh = false, bias = 0, oracle = this.heightOracle
 
     if (!repeated) {
       let contentWidth = docView.dom.clientWidth
