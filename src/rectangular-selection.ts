@@ -22,9 +22,11 @@ function rectangleFor(state: EditorState, a: Pos, b: Pos) {
     let startCol = Math.min(a.col, b.col), endCol = Math.max(a.col, b.col)
     for (let i = startLine; i <= endLine; i++) {
       let line = state.doc.line(i)
-      let start = findColumn(line.text, startCol, state.tabSize), end = findColumn(line.text, endCol, state.tabSize)
-      if (start < end)
+      let start = findColumn(line.text, startCol, state.tabSize, true)
+      if (start > -1) {
+        let end = findColumn(line.text, endCol, state.tabSize)
         ranges.push(EditorSelection.range(line.from + start, line.from + end))
+      }
     }
   }
   return ranges
