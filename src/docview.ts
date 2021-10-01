@@ -1,7 +1,7 @@
 import {RangeSet} from "@codemirror/rangeset"
 import {ChangeSet, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, Dirty, DOMPos} from "./contentview"
-import {BlockView, LineView} from "./blockview"
+import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {InlineView, CompositionView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
@@ -117,6 +117,10 @@ export class DocView extends ContentView {
       this.updateSelection(forceSelection, pointerSel)
       this.dom.style.height = ""
     })
+    let gaps = []
+    if (this.view.viewport.from || this.view.viewport.to < this.view.state.doc.length) for (let child of this.children)
+      if (child instanceof BlockWidgetView && child.widget instanceof BlockGapWidget) gaps.push(child.dom!)
+    observer.updateGaps(gaps)
   }
 
   private updateChildren(changes: readonly ChangedRange[], deco: readonly DecorationSet[], oldLength: number) {

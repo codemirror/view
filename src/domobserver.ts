@@ -32,6 +32,8 @@ export class DOMObserver {
   scrollTargets: HTMLElement[] = []
   intersection: IntersectionObserver | null = null
   intersecting: boolean = false
+  gapIntersection: IntersectionObserver | null = null
+  gaps: readonly HTMLElement[] = []
 
   // Used to work around a Safari Selection/shadow DOM bug (#414)
   _selectionRange: SelectionRange | null = null
@@ -86,6 +88,10 @@ export class DOMObserver {
         }
       }, {})
       this.intersection.observe(this.dom)
+      this.gapIntersection = new IntersectionObserver(entries => {
+        if (entries[entries.length - 1].intersectionRatio > 0)
+          this.onScrollChanged(document.createEvent("Event"));
+      }, {})
     }
     this.listenForScroll()
   }
@@ -93,6 +99,14 @@ export class DOMObserver {
   onScroll(e: Event) {
     if (this.intersecting) this.flush()
     this.onScrollChanged(e)
+  }
+
+  updateGaps(gaps: readonly HTMLElement[]) {
+    if (this.gapIntersection && (gaps.length != this.gaps.length || this.gaps.some((g, i) => g != gaps[i]))) {
+      this.gapIntersection.disconnect()
+      for (let gap of gaps) this.gapIntersection.observe(gap)
+      this.gaps = gaps
+    }
   }
 
   onSelectionChange(event: Event) {
@@ -267,6 +281,7 @@ export class DOMObserver {
   destroy() {
     this.stop()
     if (this.intersection) this.intersection.disconnect()
+    if (this.gapIntersection) this.gapIntersection.disconnect()
     for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
     window.removeEventListener("scroll", this.onScroll)
     clearTimeout(this.parentCheck)
