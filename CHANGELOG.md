@@ -1,3 +1,11 @@
+## 0.19.9 (2021-10-01)
+
+### Bug fixes
+
+Fix an issue where some kinds of reflows in the surrounding document could move unrendered parts of the editor into view without the editor noticing and updating its viewport.
+
+Fix an occasional crash in the selection drawing extension.
+
 ## 0.19.8 (2021-09-26)
 
 ### Bug fixes
