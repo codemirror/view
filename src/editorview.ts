@@ -13,7 +13,7 @@ import {ViewState} from "./viewstate"
 import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, MeasureRequest, editable, inputHandler, scrollTo} from "./extension"
+        decorations, MeasureRequest, editable, inputHandler, scrollTo, UpdateFlag} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -319,13 +319,15 @@ export class EditorView {
         this.updateState = UpdateState.Measuring
         let oldViewport = this.viewport
         let changed = this.viewState.measure(this.docView, i > 0)
-        let measuring = this.measureRequests
-        if (!changed && !measuring.length && this.viewState.scrollTo == null) break
-        this.measureRequests = []
+        if (!changed && !this.measureRequests.length && this.viewState.scrollTo == null) break
         if (i > 5) {
           console.warn("Viewport failed to stabilize")
           break
         }
+        let measuring: MeasureRequest<any>[] = []
+        // Only run measure requests in this cycle when the viewport didn't change
+        if (!(changed & UpdateFlag.Viewport))
+          [this.measureRequests, measuring] = [measuring, this.measureRequests]
         let measured = measuring.map(m => {
           try { return m.read(this) }
           catch(e) { logException(this.state, e); return BadMeasure }
