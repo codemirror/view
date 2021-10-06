@@ -81,7 +81,7 @@ export class DOMObserver {
     if (typeof IntersectionObserver == "function") {
       this.intersection = new IntersectionObserver(entries => {
         if (this.parentCheck < 0) this.parentCheck = setTimeout(this.listenForScroll.bind(this), 1000)
-        if (entries[entries.length - 1].intersectionRatio > 0 != this.intersecting) {
+        if (entries.length > 0 && entries[entries.length - 1].intersectionRatio > 0 != this.intersecting) {
           this.intersecting = !this.intersecting
           if (this.intersecting != this.view.inView)
             this.onScrollChanged(document.createEvent("Event"))
@@ -89,7 +89,7 @@ export class DOMObserver {
       }, {})
       this.intersection.observe(this.dom)
       this.gapIntersection = new IntersectionObserver(entries => {
-        if (entries[entries.length - 1].intersectionRatio > 0)
+        if (entries.length > 0 && entries[entries.length - 1].intersectionRatio > 0)
           this.onScrollChanged(document.createEvent("Event"));
       }, {})
     }
