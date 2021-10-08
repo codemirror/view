@@ -17,6 +17,8 @@ type Measured = {
 
 const Outside = "-10000px"
 
+const enum Arrow { Size = 7, Offset = 14 }
+
 class TooltipViewManager {
   private input: readonly (Tooltip | null)[]
   tooltips: readonly Tooltip[]
@@ -111,6 +113,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   createTooltip(tooltip: Tooltip) {
     let tooltipView = tooltip.create(this.view)
     tooltipView.dom.classList.add("cm-tooltip")
+    if (tooltip.arrow) tooltipView.dom.classList.add("cm-tooltip-arrow")
     tooltipView.dom.style.position = this.position
     tooltipView.dom.style.top = Outside
     this.view.dom.appendChild(tooltipView.dom)
@@ -143,14 +146,15 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         dom.style.top = Outside
         continue
       }
-      let width = size.right - size.left, height = size.bottom - size.top
-      let left = this.view.textDirection == Direction.LTR ? Math.min(pos.left, measured.innerWidth - width)
-        : Math.max(0, pos.left - width)
-      let above = !!tooltip.above
+      let arrow = !!tooltip.arrow, above = !!tooltip.above
+      let width = size.right - size.left, height = size.bottom - size.top + (arrow ? Arrow.Size : 0)
+      let left = this.view.textDirection == Direction.LTR
+        ? Math.min(pos.left - (arrow ? Arrow.Offset : 0), measured.innerWidth - width)
+        : Math.max(0, pos.left - width + (arrow ? Arrow.Offset : 0))
       if (!tooltip.strictSide &&
           (above ? pos.top - (size.bottom - size.top) < 0 : pos.bottom + (size.bottom - size.top) > measured.innerHeight))
         above = !above
-      let top = above ? pos.top - height : pos.bottom, right = left + width
+      let top = above ? pos.top - height : pos.bottom + (arrow ? Arrow.Size : 0), right = left + width
       for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
         top = above ? r.top - height : r.bottom
       if (this.position == "absolute") {
@@ -182,20 +186,59 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 })
 
+const insetInlineStart = typeof document == 'undefined' || document.body?.style.insetInlineStart != null
+  ? 'insetInlineStart' : 'left';
+
 const baseTheme = EditorView.baseTheme({
   ".cm-tooltip": {
     zIndex: 100
   },
   "&light .cm-tooltip": {
-    border: "1px solid #ddd",
+    border: "1px solid #bbb",
     backgroundColor: "#f5f5f5"
   },
   "&light .cm-tooltip-section:not(:first-child)": {
-    borderTop: "1px solid #ddd",
+    borderTop: "1px solid #bbb",
   },
   "&dark .cm-tooltip": {
     backgroundColor: "#333338",
     color: "white"
+  },
+  ".cm-tooltip.cm-tooltip-arrow:before, .cm-tooltip.cm-tooltip-arrow:after": {
+    position: "absolute",
+    content: "''",
+    [insetInlineStart]: `${Arrow.Offset - Arrow.Size}px`,
+    width: 0,
+    height: 0,
+    borderLeft: `${Arrow.Size}px solid transparent`,
+    borderRight: `${Arrow.Size}px solid transparent`,
+    zIndex: -1
+  },
+  ".cm-tooltip-above.cm-tooltip-arrow:before": {
+    borderTop: `${Arrow.Size}px solid #f5f5f5`,
+    bottom: `-${Arrow.Size - 1}px`
+  },
+  ".cm-tooltip-below.cm-tooltip-arrow:before": {
+    borderBottom: `${Arrow.Size}px solid #f5f5f5`,
+    top: `-${Arrow.Size - 1}px`
+  },
+  ".cm-tooltip-above.cm-tooltip-arrow:after": {
+    borderTop: `${Arrow.Size}px solid #bbb`,
+    bottom: `-${Arrow.Size}px`,
+    zIndex: -2
+  },
+  ".cm-tooltip-below.cm-tooltip-arrow:after": {
+    borderBottom: `${Arrow.Size}px solid #bbb`,
+    top: `-${Arrow.Size}px`,
+    zIndex: -2
+  },
+  "&dark .cm-tooltip.cm-tooltip-arrow:before": {
+    borderTopColor: "#333338",
+    borderBottomColor: "#333338"
+  },
+  "&dark .cm-tooltip.cm-tooltip-arrow:after": {
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent"
   }
 })
 
@@ -219,7 +262,10 @@ export interface Tooltip {
   /// Whether the `above` option should be honored when there isn't
   /// enough space on that side to show the tooltip inside the
   /// viewport. Not guaranteed for hover tooltips. Defaults to false.
-  strictSide?: boolean
+  strictSide?: boolean,
+  /// When set to true, show a triangle connecting the tooltip element
+  /// to position `pos`.
+  arrow?: boolean
 }
 
 /// Describes the way a tooltip is displayed.
@@ -292,7 +338,8 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
     pos: Math.min(...tooltips.map(t => t.pos)),
     end: Math.max(...tooltips.filter(t => t.end != null).map(t => t.end!)),
     create: HoverTooltipHost.create,
-    above: tooltips[0].above
+    above: tooltips[0].above,
+    arrow: tooltips.some(t => t.arrow),
   }
 })
 
