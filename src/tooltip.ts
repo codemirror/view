@@ -97,6 +97,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.position = view.state.facet(tooltipPositioning)
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
+    this.maybeMeasure()
   }
 
   update(update: ViewUpdate) {
