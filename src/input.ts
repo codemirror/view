@@ -12,7 +12,7 @@ import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
 export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
-  pendingIOSKey: null | "enter" | "backspace" = null
+  pendingKey: null | "enter" | "backspace" = null
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
   lastEscPress: number = 0
@@ -122,17 +122,17 @@ export class InputState {
     // the state they produce.
     if (browser.ios && (event.keyCode == 13 || event.keyCode == 8) &&
         !(event.ctrlKey || event.altKey || event.metaKey) && !(event as any).synthetic) {
-      this.pendingIOSKey = event.keyCode == 13 ? "enter" : "backspace"
-      setTimeout(() => this.flushIOSKey(view), 250)
+      this.pendingKey = event.keyCode == 13 ? "enter" : "backspace"
+      setTimeout(() => this.flushPendingKey(view), 250)
       return true
     }
     return false
   }
 
-  flushIOSKey(view: EditorView) {
-    if (!this.pendingIOSKey) return false
-    let dom = view.contentDOM, key = this.pendingIOSKey
-    this.pendingIOSKey = null
+  flushPendingKey(view: EditorView) {
+    if (!this.pendingKey) return false
+    let dom = view.contentDOM, key = this.pendingKey
+    this.pendingKey = null
     return key == "enter" ? dispatchKey(dom, "Enter", 13) : dispatchKey(dom, "Backspace", 8)
   }
 
@@ -654,4 +654,23 @@ handlers.compositionend = view => {
 
 handlers.contextmenu = view => {
   view.inputState.lastContextMenu = Date.now()
+}
+
+handlers.beforeinput = (view, event) => {
+  // Because Chrome Android doesn't fire useful key events, use
+  // beforeinput to detect backspace and fake a key event for it.
+  if (browser.chrome && browser.android && event.inputType == "deleteContentBackward") {
+    view.inputState.pendingKey = "backspace"
+    let startViewHeight = window.visualViewport?.height || 0
+    setTimeout(() => {
+      view.inputState.flushPendingKey(view)
+      // Backspacing near uneditable nodes on Chrome Android sometimes
+      // closes the virtual keyboard. This tries to crudely detect
+      // that and refocus to get it back.
+      if ((window.visualViewport?.height || 0) > startViewHeight + 10 && view.hasFocus) {
+        view.contentDOM.blur()
+        view.focus()
+      }
+    }, 50)
+  }
 }

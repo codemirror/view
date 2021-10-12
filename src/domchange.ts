@@ -64,15 +64,15 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     // backspace, or delete. So this detects changes that look like
     // they're caused by those keys, and reinterprets them as key
     // events.
-    if (browser.android &&
+    if (view.inputState.flushPendingKey(view) ||
+        browser.android &&
         ((change.from == sel.from && change.to == sel.to &&
           change.insert.length == 1 && change.insert.lines == 2 &&
           dispatchKey(view.contentDOM, "Enter", 13)) ||
          (change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 &&
           dispatchKey(view.contentDOM, "Backspace", 8)) ||
          (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
-          dispatchKey(view.contentDOM, "Delete", 46))) ||
-        browser.ios && view.inputState.flushIOSKey(view))
+          dispatchKey(view.contentDOM, "Delete", 46))))
       return
 
     let text = change.insert.toString()
