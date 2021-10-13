@@ -2,7 +2,6 @@ import {EditorState, EditorSelection, SelectionRange, CharCategory} from "@codem
 import {findColumn, findClusterBreak} from "@codemirror/text"
 import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
-import {WidgetView} from "./inlineview"
 import {LineView} from "./blockview"
 import {PluginField} from "./extension"
 import {clientRectsFor, textRange, Rect} from "./dom"
