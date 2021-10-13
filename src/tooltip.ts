@@ -9,6 +9,7 @@ type Rect = {left: number, right: number, top: number, bottom: number}
 
 type Measured = {
   editor: Rect,
+  parent: Rect,
   pos: (Rect | null)[],
   size: Rect[],
   innerWidth: number,
@@ -78,13 +79,27 @@ export function tooltips(config: {
   /// On iOS, which at the time of writing still doesn't properly
   /// support fixed positioning, the library always uses absolute
   /// positioning.
-  position?: "fixed" | "absolute"
+  position?: "fixed" | "absolute",
+  /// The element to put the tooltips into. By default, they are put
+  /// in the editor (`cm-editor`) element, and that is usually what
+  /// you want. But in some layouts that can lead to positioning
+  /// issues, and you need to use a different parent to work around
+  /// those.
+  parent?: HTMLElement
 } = {}): Extension {
-  return config.position ? tooltipPositioning.of(config.position) : []
+  return tooltipConfig.of(config)
 }
 
-const tooltipPositioning = Facet.define<"fixed" | "absolute", "fixed" | "absolute">({
-  combine: values => ios ? "absolute" : values.length ? values[0] : "fixed" 
+type TooltipConfig = {
+  position: "fixed" | "absolute",
+  parent: HTMLElement | null
+}
+
+const tooltipConfig = Facet.define<Partial<TooltipConfig>, TooltipConfig>({
+  combine: values => ({
+    position: ios ? "absolute" : values.find(conf => conf.position)?.position || "fixed",
+    parent: values.find(conf => conf.parent)?.parent || null
+  })
 })
 
 const tooltipPlugin = ViewPlugin.fromClass(class {
@@ -92,21 +107,48 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
   inView = true
   position: "fixed" | "absolute"
+  parent: HTMLElement | null
+  container!: HTMLElement
+  classes: string
 
   constructor(readonly view: EditorView) {
-    this.position = view.state.facet(tooltipPositioning)
+    let config = view.state.facet(tooltipConfig)
+    this.position = config.position
+    this.parent = config.parent
+    this.classes = view.themeClasses
+    this.createContainer()
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
     this.maybeMeasure()
   }
 
+  createContainer() {
+    if (this.parent) {
+      this.container = document.createElement("div")
+      this.container.style.position = "relative"
+      this.container.className = this.view.themeClasses
+      this.parent.appendChild(this.container)
+    } else {
+      this.container = this.view.dom
+    }
+  }
+
   update(update: ViewUpdate) {
     let {shouldMeasure} = this.manager.update(update)
-    let newPosition = update.state.facet(tooltipPositioning)
-    if (newPosition != this.position) {
-      this.position = newPosition
-      for (let t of this.manager.tooltipViews) t.dom.style.position = newPosition
+    let newConfig = update.state.facet(tooltipConfig)
+    if (newConfig.position != this.position) {
+      this.position = newConfig.position
+      for (let t of this.manager.tooltipViews) t.dom.style.position = this.position
       shouldMeasure = true
+    }
+    if (newConfig.parent != this.parent) {
+      if (this.parent) this.container.remove()
+      this.parent = newConfig.parent
+      this.createContainer()
+      for (let t of this.manager.tooltipViews) this.container.appendChild(t.dom)
+      shouldMeasure = true
+    } else if (this.parent && this.view.themeClasses != this.classes) {
+      this.classes = this.container.className = this.view.themeClasses
     }
     if (shouldMeasure) this.maybeMeasure()
   }
@@ -117,7 +159,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     if (tooltip.arrow) tooltipView.dom.classList.add("cm-tooltip-arrow")
     tooltipView.dom.style.position = this.position
     tooltipView.dom.style.top = Outside
-    this.view.dom.appendChild(tooltipView.dom)
+    this.container.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
     return tooltipView
   }
@@ -127,8 +169,10 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   readMeasure() {
+    let editor = this.view.dom.getBoundingClientRect()
     return {
-      editor: this.view.dom.getBoundingClientRect(),
+      editor,
+      parent: this.parent ? this.container.getBoundingClientRect() : editor,
       pos: this.manager.tooltips.map(t => this.view.coordsAtPos(t.pos)),
       size: this.manager.tooltipViews.map(({dom}) => dom.getBoundingClientRect()),
       innerWidth: window.innerWidth,
@@ -159,8 +203,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
         top = above ? r.top - height : r.bottom
       if (this.position == "absolute") {
-        dom.style.top = (top - editor.top) + "px"
-        dom.style.left = (left - editor.left) + "px"
+        dom.style.top = (top - measured.parent.top) + "px"
+        dom.style.left = (left - measured.parent.left) + "px"
       } else {
         dom.style.top = top + "px"
         dom.style.left = left + "px"
