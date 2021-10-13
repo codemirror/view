@@ -22,7 +22,7 @@ export function buildTheme(main: string, spec: {[name: string]: StyleSpec}, scop
 }
 
 export const baseTheme = buildTheme("." + baseThemeID, {
-  "&": {
+  "&.cm-editor": {
     position: "relative !important",
     boxSizing: "border-box",
     "&.cm-focused": {
