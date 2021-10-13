@@ -6,7 +6,7 @@ import {StyleModule, StyleSpec} from "style-mod"
 import {DocView} from "./docview"
 import {ContentView} from "./contentview"
 import {InputState} from "./input"
-import {Rect, focusPreventScroll, flattenRect, contentEditablePlainTextSupported} from "./dom"
+import {Rect, focusPreventScroll, flattenRect, contentEditablePlainTextSupported, getRoot} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
 import {ViewState} from "./viewstate"
@@ -27,7 +27,9 @@ interface EditorConfig {
   state?: EditorState,
   /// If the view is going to be mounted in a shadow root or document
   /// other than the one held by the global variable `document` (the
-  /// default), you should pass it here.
+  /// default), you should pass it here. If you provide `parent`, but
+  /// not this option, the editor will automatically look up a root
+  /// from the parent.
   root?: Document | ShadowRoot,
   /// Override the transaction [dispatch
   /// function](#view.EditorView.dispatch) for this editor view, which
@@ -165,7 +167,7 @@ export class EditorView {
 
     this._dispatch = config.dispatch || ((tr: Transaction) => this.update([tr]))
     this.dispatch = this.dispatch.bind(this)
-    this.root = (config.root || document) as DocumentOrShadowRoot
+    this.root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
 
     this.viewState = new ViewState(config.state || EditorState.create())
     this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec).update(this))
