@@ -92,7 +92,7 @@ export function tooltips(config: {
 
 type TooltipConfig = {
   position: "fixed" | "absolute",
-  parent: HTMLElement | null
+  parent: ParentNode | null
 }
 
 const tooltipConfig = Facet.define<Partial<TooltipConfig>, TooltipConfig>({
@@ -107,7 +107,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
   inView = true
   position: "fixed" | "absolute"
-  parent: HTMLElement | null
+  parent: ParentNode | null
   container!: HTMLElement
   classes: string
 
