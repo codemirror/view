@@ -35,6 +35,12 @@ export class DOMObserver {
   gapIntersection: IntersectionObserver | null = null
   gaps: readonly HTMLElement[] = []
 
+  // Used to suppress the kind of wild series of composition-driven
+  // changes that browsers like Chrome Android sometimes fire, with no
+  // regard for context, even after we've handled the initial change
+  // or event.
+  coolDownUntil = 0
+
   // Used to work around a Safari Selection/shadow DOM bug (#414)
   _selectionRange: SelectionRange | null = null
 
@@ -248,7 +254,10 @@ export class DOMObserver {
     }
 
     let startState = this.view.state
-    if (from > -1 || newSel) this.onChange(from, to, typeOver)
+    if ((from > -1 || newSel) &&
+        // Ignore character-data only changes during cooldown periods
+        !(records.length && records.every(r => r.type == "characterData") && this.coolDownUntil < Date.now()))
+      this.onChange(from, to, typeOver)
     if (this.view.state == startState) { // The view wasn't updated
       if (this.view.docView.dirty) {
         this.ignore(() => this.view.docView.sync())
