@@ -256,7 +256,7 @@ export class DOMObserver {
     let startState = this.view.state
     if ((from > -1 || newSel) &&
         // Ignore character-data only changes during cooldown periods
-        !(records.length && records.every(r => r.type == "characterData") && this.coolDownUntil < Date.now()))
+        !(records.length && records.every(r => r.type == "characterData") && this.coolDownUntil > Date.now()))
       this.onChange(from, to, typeOver)
     if (this.view.state == startState) { // The view wasn't updated
       if (this.view.docView.dirty) {
