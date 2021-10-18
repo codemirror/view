@@ -35,12 +35,6 @@ export class DOMObserver {
   gapIntersection: IntersectionObserver | null = null
   gaps: readonly HTMLElement[] = []
 
-  // Used to suppress the kind of wild series of composition-driven
-  // changes that browsers like Chrome Android sometimes fire, with no
-  // regard for context, even after we've handled the initial change
-  // or event.
-  coolDownUntil = 0
-
   // Used to work around a Safari Selection/shadow DOM bug (#414)
   _selectionRange: SelectionRange | null = null
 
@@ -227,18 +221,10 @@ export class DOMObserver {
     }
   }
 
-  // Apply pending changes, if any
-  flush() {
-    if (this.delayedFlush >= 0) return
-
-    this.lastFlush = Date.now()
+  processRecords() {
     let records = this.queue
     for (let mut of this.observer.takeRecords()) records.push(mut)
     if (records.length) this.queue = []
-
-    let selection = this.selectionRange
-    let newSel = !this.ignoreSelection.eq(selection) && hasSelection(this.dom, selection)
-    if (records.length == 0 && !newSel) return
 
     let from = -1, to = -1, typeOver = false
     for (let record of records) {
@@ -252,20 +238,27 @@ export class DOMObserver {
         to = Math.max(range.to, to)
       }
     }
+    return {from, to, typeOver}
+  }
+
+  // Apply pending changes, if any
+  flush() {
+    // Completely hold off flushing when pending keys are set—the code
+    // managing those will make sure processRecords is called and the
+    // view is resynchronized after
+    if (this.delayedFlush >= 0 || this.view.inputState.pendingKey) return
+
+    this.lastFlush = Date.now()
+    let {from, to, typeOver} = this.processRecords()
+    let selection = this.selectionRange
+    let newSel = !this.ignoreSelection.eq(selection) && hasSelection(this.dom, selection)
+    if (from < 0 && !newSel) return
 
     let startState = this.view.state
-    if ((from > -1 || newSel) &&
-        // Ignore character-data only changes during cooldown periods
-        !(records.length && records.every(r => r.type == "characterData") && this.coolDownUntil > Date.now()))
-      this.onChange(from, to, typeOver)
-    if (this.view.state == startState) { // The view wasn't updated
-      if (this.view.docView.dirty) {
-        this.ignore(() => this.view.docView.sync())
-        this.view.docView.dirty = Dirty.Not
-      }
-      if (newSel)
-        this.view.docView.updateSelection()
-    }
+    this.onChange(from, to, typeOver)
+    
+    // The view wasn't updated
+    if (this.view.state == startState) this.view.docView.reset(newSel)
     this.clearSelection()
   }
 

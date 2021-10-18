@@ -12,7 +12,25 @@ import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
 export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
-  pendingKey: null | "enter" | "backspace" = null
+
+  // On iOS, some keys need to have their default behavior happen
+  // (after which we retroactively handle them and reset the DOM) to
+  // avoid messing up the virtual keyboard state.
+  //
+  // On Chrome Android, backspace near widgets is just completely
+  // broken, and there are no key events, so we need to handle the
+  // beforeinput event. Deleting stuff will often create a flurry of
+  // events, and interrupting it before it is done just makes
+  // subsequent events even more broken, so again, we hold off doing
+  // anything until the browser is finished with whatever it is trying
+  // to do.
+  //
+  // setPendingKey sets this, causing the DOM observer to pause for a
+  // bit, and setting an animation frame (which seems the most
+  // reliable way to detect 'browser is done flailing') to fire a fake
+  // key event and re-sync the view again.
+  pendingKey: undefined | {key: string, keyCode: number} = undefined
+
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
   lastEscPress: number = 0
@@ -120,21 +138,26 @@ export class InputState {
     // state. So we let it go through, and then, in
     // applyDOMChange, notify key handlers of it and reset to
     // the state they produce.
-    if (browser.ios && (event.keyCode == 13 || event.keyCode == 8) &&
+    let pending
+    if (browser.ios && (pending = PendingKeys.find(key => key.keyCode == event.keyCode)) &&
         !(event.ctrlKey || event.altKey || event.metaKey) && !(event as any).synthetic) {
-      this.pendingKey = event.keyCode == 13 ? "enter" : "backspace"
-      setTimeout(() => this.flushPendingKey(view), 250)
+      this.setPendingKey(view, pending)
       return true
     }
     return false
   }
 
-  flushPendingKey(view: EditorView) {
-    if (!this.pendingKey) return false
-    let dom = view.contentDOM, key = this.pendingKey
-    this.pendingKey = null
-    let result = key == "enter" ? dispatchKey(dom, "Enter", 13) : dispatchKey(dom, "Backspace", 8)
-    return result
+  setPendingKey(view: EditorView, pending: {key: string, keyCode: number}) {
+    this.pendingKey = pending
+    requestAnimationFrame(() => {
+      if (!this.pendingKey) return false
+      let key = this.pendingKey
+      this.pendingKey = undefined
+      view.observer.processRecords()
+      let startState = view.state
+      dispatchKey(view.contentDOM, key.key, key.keyCode)
+      if (view.state == startState) view.docView.reset(true)
+    })
   }
 
   ignoreDuringComposition(event: Event): boolean {
@@ -179,6 +202,12 @@ export class InputState {
     if (this.mouseSelection) this.mouseSelection.destroy()
   }
 }
+
+const PendingKeys = [
+  {key: "Backspace", keyCode: 8, inputType: "deleteContentBackward"},
+  {key: "Enter", keyCode: 13, inputType: "insertParagraph"},
+  {key: "Delete", keyCode: 46, inputType: "deleteContentForward"}
+]
 
 // Key codes for modifier keys
 export const modifierCodes = [16, 17, 18, 20, 91, 92, 224, 225]
@@ -659,12 +688,17 @@ handlers.contextmenu = view => {
 
 handlers.beforeinput = (view, event) => {
   // Because Chrome Android doesn't fire useful key events, use
-  // beforeinput to detect backspace and fake a key event for it.
-  if (browser.chrome && browser.android && event.inputType == "deleteContentBackward") {
-    view.inputState.pendingKey = "backspace"
+  // beforeinput to detect backspace (and possibly enter and delete,
+  // but those usually don't even seem to fire beforeinput events at
+  // the moment) and fake a key event for it.
+  //
+  // (preventDefault on beforeinput, though supported in the spec,
+  // seems to do nothing at all on Chrome).
+  let pending
+  if (browser.chrome && browser.android && (pending = PendingKeys.find(key => key.inputType == event.inputType))) {
+    view.inputState.setPendingKey(view, pending)
     let startViewHeight = window.visualViewport?.height || 0
     setTimeout(() => {
-      view.inputState.flushPendingKey(view)
       // Backspacing near uneditable nodes on Chrome Android sometimes
       // closes the virtual keyboard. This tries to crudely detect
       // that and refocus to get it back.

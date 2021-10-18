@@ -92,6 +92,14 @@ export class DocView extends ContentView {
     }
   }
 
+  reset(sel: boolean) {
+    if (this.dirty) {
+      this.view.observer.ignore(() => this.view.docView.sync())
+      this.dirty = Dirty.Not
+    }
+    if (sel) this.updateSelection()
+  }
+
   // Used both by update and checkLayout do perform the actual DOM
   // update
   private updateInner(changes: readonly ChangedRange[], deco: readonly DecorationSet[],

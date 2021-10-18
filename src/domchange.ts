@@ -64,8 +64,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     // backspace, or delete. So this detects changes that look like
     // they're caused by those keys, and reinterprets them as key
     // events.
-    if (view.inputState.flushPendingKey(view) ||
-        browser.android &&
+    if (browser.android &&
         ((change.from == sel.from && change.to == sel.to &&
           change.insert.length == 1 && change.insert.lines == 2 &&
           dispatchKey(view.contentDOM, "Enter", 13)) ||
@@ -73,10 +72,6 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
           dispatchKey(view.contentDOM, "Backspace", 8)) ||
          (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
           dispatchKey(view.contentDOM, "Delete", 46)))) {
-      // Chrome Android will often create a bunch of funky additional
-      // changes right after an enter or backspace change. This makes
-      // the editor ignore those.
-      if (browser.android) view.observer.coolDownUntil = Date.now() + 100
       return
     }
 
