@@ -101,7 +101,7 @@ const baseTheme = EditorView.baseTheme({
     flexDirection: "column",
     flexShrink: 0,
     boxSizing: "border-box",
-    height: "100%",
+    minHeight: "100%",
     overflow: "hidden"
   },
 
