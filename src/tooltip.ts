@@ -1,5 +1,5 @@
 import {EditorView, ViewPlugin, ViewUpdate, Direction, logException} from "@codemirror/view"
-import {StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
+import {EditorState, StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
 
 const ios = typeof navigator != "undefined" &&
   !/Edge\/(\d+)/.exec(navigator.userAgent) && /Apple Computer/.test(navigator.vendor) &&
@@ -527,7 +527,10 @@ export function hoverTooltip(
 
     update(value, tr) {
       if (value && (options.hideOnChange && (tr.docChanged || tr.selection))) return null
-      for (let effect of tr.effects) if (effect.is(setHover)) return effect.value
+      for (let effect of tr.effects) {
+        if (effect.is(setHover)) return effect.value
+        if (effect.is(closeHoverTooltipEffect)) return null
+      }
       if (value && tr.docChanged) {
         let newPos = tr.changes.mapPos(value.pos, -1, MapMode.TrackDel)
         if (newPos == null) return null
@@ -549,3 +552,13 @@ export function hoverTooltip(
     showHoverTooltipHost
   ]
 }
+
+/// Returns true if any hover tooltips are currently active.
+export function hasHoverTooltips(state: EditorState) {
+  return state.facet(showHoverTooltip).some(x => x);
+}
+
+const closeHoverTooltipEffect = StateEffect.define<null>();
+
+/// Transaction effect that closes all hover tooltips.
+export const closeHoverTooltips = closeHoverTooltipEffect.of(null);
