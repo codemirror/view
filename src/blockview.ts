@@ -78,8 +78,9 @@ export class LineView extends ContentView implements BlockView {
 
   // Only called when building a line view in ContentBuilder
   addLineDeco(deco: LineDecoration) {
-    let attrs = deco.spec.attributes
+    let attrs = deco.spec.attributes, cls = deco.spec.class
     if (attrs) this.attrs = combineAttrs(attrs, this.attrs || {})
+    if (cls) this.attrs = combineAttrs(attrs, {class: cls});
   }
 
   domAtPos(pos: number): DOMPos {

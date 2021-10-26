@@ -75,6 +75,8 @@ interface ReplaceDecorationSpec {
 interface LineDecorationSpec {
   /// DOM attributes to add to the element wrapping the line.
   attributes?: {[key: string]: string}
+  /// Shorthand for `{attributes: {class: value}}`.
+  class?: string
   /// Other properties are allowed.
   [other: string]: any
 }

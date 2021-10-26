@@ -9,7 +9,7 @@ export function highlightActiveLine(): Extension {
   return activeLineHighlighter
 }
 
-const lineDeco = Decoration.line({attributes: {class: "cm-activeLine"}})
+const lineDeco = Decoration.line({class: "cm-activeLine"})
 
 const activeLineHighlighter = ViewPlugin.fromClass(class {
   decorations: DecorationSet
