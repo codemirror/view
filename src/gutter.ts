@@ -170,6 +170,11 @@ const gutterView = ViewPlugin.fromClass(class {
 
   update(update: ViewUpdate) {
     if (this.updateGutters(update)) this.syncGutters()
+    if (update.geometryChanged) this.dom.style.minHeight = this.view.contentHeight + "px"
+    if (this.view.state.facet(unfixGutters) != !this.fixed) {
+      this.fixed = !this.fixed
+      this.dom.style.position = this.fixed ? "sticky" : ""
+    }
   }
 
   syncGutters() {
@@ -190,11 +195,6 @@ const gutterView = ViewPlugin.fromClass(class {
       for (let cx of contexts) cx.line(this.view, text, classSet)
     }, 0)
     for (let cx of contexts) cx.finish()
-    this.dom.style.minHeight = this.view.contentHeight + "px"
-    if (this.view.state.facet(unfixGutters) != !this.fixed) {
-      this.fixed = !this.fixed
-      this.dom.style.position = this.fixed ? "sticky" : ""
-    }
   }
 
   updateGutters(update: ViewUpdate) {
