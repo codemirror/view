@@ -229,6 +229,14 @@ export class DocView extends ContentView {
         !isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) ||
         !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) {
       this.view.observer.ignore(() => {
+        // Chrome Android will hide the virtual keyboard when tapping
+        // inside an uneditable node, and not bring it back when we
+        // move the cursor to its proper position. This tries to
+        // restore the keyboard by cycling focus.
+        if (browser.android && browser.chrome && this.dom.contains(domSel.focusNode) && inUneditable(domSel.focusNode, this.dom)) {
+          this.dom.blur()
+          this.dom.focus({preventScroll: true})
+        }
         let rawSel = getSelection(this.root)
         if (main.empty) {
           // Work around https://bugzilla.mozilla.org/show_bug.cgi?id=1612076
@@ -523,4 +531,13 @@ function findChangedDeco(a: readonly DecorationSet[], b: readonly DecorationSet[
   let comp = new DecorationComparator
   RangeSet.compare(a, b, diff, comp)
   return comp.changes
+}
+
+function inUneditable(node: Node | null, inside: HTMLElement) {
+  for (let cur = node; cur && cur != inside; cur = (cur as HTMLElement).assignedSlot || cur.parentNode) {
+    if (cur.nodeType == 1 && (cur as HTMLElement).contentEditable == 'false') {
+      return true;
+    }
+  }
+  return false;
 }
