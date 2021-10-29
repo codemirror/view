@@ -10,16 +10,17 @@ const gecko = !ie && /gecko\/(\d+)/i.test(nav.userAgent)
 const chrome = !ie && /Chrome\/(\d+)/.exec(nav.userAgent)
 const webkit = "webkitFontSmoothing" in doc.documentElement.style
 const safari = !ie && /Apple Computer/.test(nav.vendor)
+const ios = safari && (/Mobile\/\w+/.test(nav.userAgent) || nav.maxTouchPoints > 2)
 
 export default {
-  mac: /Mac/.test(nav.platform),
+  mac: ios || /Mac/.test(nav.platform),
   ie,
   ie_version: ie_upto10 ? doc.documentMode || 6 : ie_11up ? +ie_11up[1] : ie_edge ? +ie_edge[1] : 0,
   gecko,
   gecko_version: gecko ? +(/Firefox\/(\d+)/.exec(nav.userAgent) || [0, 0])[1] : 0,
   chrome: !!chrome,
   chrome_version: chrome ? +chrome[1] : 0,
-  ios: safari && (/Mobile\/\w+/.test(nav.userAgent) || nav.maxTouchPoints > 2),
+  ios,
   android: /Android\b/.test(nav.userAgent),
   webkit,
   safari,
