@@ -14,6 +14,8 @@ const ios = safari && (/Mobile\/\w+/.test(nav.userAgent) || nav.maxTouchPoints >
 
 export default {
   mac: ios || /Mac/.test(nav.platform),
+  windows: /Win/.test(nav.platform),
+  linux: /Linux|X11/.test(nav.platform),
   ie,
   ie_version: ie_upto10 ? doc.documentMode || 6 : ie_11up ? +ie_11up[1] : ie_edge ? +ie_edge[1] : 0,
   gecko,

@@ -4,6 +4,8 @@ import {modifierCodes} from "./input"
 import {base, keyName} from "w3c-keyname"
 import {Facet, EditorState} from "@codemirror/state"
 
+import browser from "./browser"
+
 /// Key bindings associate key names with
 /// [command](#view.Command)-style functions.
 ///
@@ -66,11 +68,7 @@ export interface KeyBinding {
 
 type PlatformName = "mac" | "win" | "linux" | "key"
 
-const currentPlatform: PlatformName = typeof navigator == "undefined" ? "key"
-  : /Mac/.test(navigator.platform) ? "mac"
-  : /Win/.test(navigator.platform) ? "win"
-  : /Linux|X11/.test(navigator.platform) ? "linux"
-  : "key"
+const currentPlatform: PlatformName = browser.mac ? "mac" : browser.windows ? "win" : browser.linux ? "linux" : "key"
 
 function normalizeKeyName(name: string, platform: PlatformName): string {
   const parts = name.split(/-(?!$)/)
