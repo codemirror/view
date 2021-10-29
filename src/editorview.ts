@@ -378,6 +378,7 @@ export class EditorView {
       spellcheck: "false",
       autocorrect: "off",
       autocapitalize: "off",
+      translate: "no",
       contenteditable: !this.state.facet(editable) ? "false" : contentEditablePlainTextSupported() ? "plaintext-only" : "true",
       class: "cm-content",
       style: `${browser.tabSize}: ${this.state.tabSize}`,
