@@ -29,7 +29,7 @@ interface SpecialCharConfig {
 }
 
 const UnicodeRegexpSupport = /x/.unicode != null ? "gu" : "g"
-const Specials = new RegExp("[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u00ad\u061c\u200b\u200e\u200f\u2028\u2029\ufeff\ufff9-\ufffc]", UnicodeRegexpSupport)
+const Specials = new RegExp("[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u00ad\u061c\u200b\u200e\u200f\u2028\u2029\u202d\u202e\ufeff\ufff9-\ufffc]", UnicodeRegexpSupport)
 
 const Names: {[key: number]: string} = {
   0: "null",
@@ -45,6 +45,8 @@ const Names: {[key: number]: string} = {
   8206: "left-to-right mark",
   8207: "right-to-left mark",
   8232: "line separator",
+  8237: "left-to-right override",
+  8238: "right-to-left override",
   8233: "paragraph separator",
   65279: "zero width no-break space",
   65532: "object replacement"
