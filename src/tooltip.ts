@@ -391,8 +391,7 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
 const enum Hover { Time = 750, MaxDist = 6 }
 
 class HoverPlugin {
-  lastMouseMove: MouseEvent | null = null
-  lastMoveTime = 0
+  lastMove: {x: number, y: number, target: HTMLElement, time: number}
   hoverTimeout = -1
   restartTimeout = -1
   pending: {pos: number} | null = null
@@ -402,6 +401,7 @@ class HoverPlugin {
               readonly field: StateField<Tooltip | null>,
               readonly setHover: StateEffectType<Tooltip | null>,
               readonly hoverTime: number) {
+    this.lastMove = {x: 0, y: 0, target: view.dom, time: 0}
     this.checkHover = this.checkHover.bind(this)
     view.dom.addEventListener("mouseleave", this.mouseleave = this.mouseleave.bind(this))
     view.dom.addEventListener("mousemove", this.mousemove = this.mousemove.bind(this))
@@ -422,7 +422,7 @@ class HoverPlugin {
   checkHover() {
     this.hoverTimeout = -1
     if (this.active) return
-    let hovered = Date.now() - this.lastMoveTime
+    let hovered = Date.now() - this.lastMove.time
     if (hovered < this.hoverTime)
       this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime - hovered)
     else
@@ -431,18 +431,16 @@ class HoverPlugin {
 
   startHover() {
     clearTimeout(this.restartTimeout)
-    let lastMove = this.lastMouseMove!
-    let coords = {x: lastMove.clientX, y: lastMove.clientY}
-    let pos = this.view.contentDOM.contains(lastMove.target as HTMLElement)
-      ? this.view.posAtCoords(coords) : null
+    let {lastMove} = this
+    let pos = this.view.contentDOM.contains(lastMove.target) ? this.view.posAtCoords(lastMove) : null
     if (pos == null) return
     let posCoords = this.view.coordsAtPos(pos)
-    if (posCoords == null || coords.y < posCoords.top || coords.y > posCoords.bottom ||
-        coords.x < posCoords.left - this.view.defaultCharacterWidth ||
-        coords.x > posCoords.right + this.view.defaultCharacterWidth) return
+    if (posCoords == null || lastMove.y < posCoords.top || lastMove.y > posCoords.bottom ||
+        lastMove.x < posCoords.left - this.view.defaultCharacterWidth ||
+        lastMove.x > posCoords.right + this.view.defaultCharacterWidth) return
     let bidi = this.view.bidiSpans(this.view.state.doc.lineAt(pos)).find(s => s.from <= pos! && s.to >= pos!)
     let rtl = bidi && bidi.dir == Direction.RTL ? -1 : 1
-    let open = this.source(this.view, pos, (coords.x < posCoords.left ? -rtl : rtl) as -1 | 1)
+    let open = this.source(this.view, pos, (lastMove.x < posCoords.left ? -rtl : rtl) as -1 | 1)
     if ((open as any)?.then) {
       let pending = this.pending = {pos}
       ;(open as Promise<Tooltip | null>).then(result => {
@@ -457,13 +455,12 @@ class HoverPlugin {
   }
 
   mousemove(event: MouseEvent) {
-    this.lastMouseMove = event
-    this.lastMoveTime = Date.now()
+    this.lastMove = {x: event.clientX, y: event.clientY, target: event.target as HTMLElement, time: Date.now()}
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime)
     let tooltip = this.active
-    if (tooltip && !isInTooltip(event.target as HTMLElement) || this.pending) {
+    if (tooltip && !isInTooltip(this.lastMove.target) || this.pending) {
       let {pos} = tooltip || this.pending!, end = tooltip?.end ?? pos
-      if ((pos == end ? this.view.posAtCoords({x: event.clientX, y: event.clientY}) != pos
+      if ((pos == end ? this.view.posAtCoords(this.lastMove) != pos
            : !isOverRange(this.view, pos, end, event.clientX, event.clientY, Hover.MaxDist))) {
         this.view.dispatch({effects: this.setHover.of(null)})
         this.pending = null
