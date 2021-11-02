@@ -1,3 +1,27 @@
+## 0.19.10 (2021-11-02)
+
+### Bug fixes
+
+Don't crash when `IntersectionObserver` fires its callback without any records. Try to handle some backspace issues on Chrome Android
+
+Using backspace near uneditable widgets on Chrome Android should now be more reliable.
+
+Work around a number of browser bugs by always rendering zero-width spaces around in-content widgets, so that browsers will treat the positions near them as valid cursor positions and not try to run composition across widget boundaries.
+
+Work around bogus composition changes created by Chrome Android after handled backspace presses.
+
+Work around an issue where tapping on an uneditable node in the editor would sometimes fail to show the virtual keyboard on Chrome Android.
+
+Prevent translation services from translating the editor content. Show direction override characters as special chars by default
+
+`specialChars` will now, by default, replace direction override chars, to mitigate https://trojansource.codes/ attacks.
+
+### New features
+
+The editor view will, if `parent` is given but `root` is not, derive the root from the parent element.
+
+Line decorations now accept a `class` property to directly add DOM classes to the line.
+
 ## 0.19.9 (2021-10-01)
 
 ### Bug fixes
