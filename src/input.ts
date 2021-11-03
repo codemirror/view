@@ -697,6 +697,11 @@ handlers.beforeinput = (view, event) => {
   let pending
   if (browser.chrome && browser.android && (pending = PendingKeys.find(key => key.inputType == event.inputType))) {
     view.inputState.setPendingKey(view, pending)
+
+    if (pending.key !== "Backspace") {
+      return
+    }
+
     let startViewHeight = window.visualViewport?.height || 0
     setTimeout(() => {
       // Backspacing near uneditable nodes on Chrome Android sometimes
@@ -706,6 +711,6 @@ handlers.beforeinput = (view, event) => {
         view.contentDOM.blur()
         view.focus()
       }
-    }, 50)
+    }, 100)
   }
 }
