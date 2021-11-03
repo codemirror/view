@@ -552,10 +552,9 @@ export class EditorView {
     return skipAtoms(this, start, moveVertically(this, start, forward, distance))
   }
 
-  /// Scroll the given document position into view.
+  // FIXME remove on next major version
   scrollPosIntoView(pos: number) {
-    this.viewState.scrollTo = EditorSelection.cursor(pos)
-    this.requestMeasure()
+    this.dispatch({effects: scrollTo.of(EditorSelection.cursor(pos))})
   }
 
   /// Find the DOM parent node and offset (child offset if `node` is
