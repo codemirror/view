@@ -1,3 +1,13 @@
+## 0.19.11 (2021-11-03)
+
+### Breaking changes
+
+`EditorView.scrollPosIntoView` has been deprecated. Use the `EditorView.scrollTo` effect instead.
+
+### New features
+
+The new `EditorView.centerOn` effect can be used to scroll a given range to the center of the view.
+
 ## 0.19.10 (2021-11-02)
 
 ### Bug fixes
