@@ -89,6 +89,14 @@ class LineGapWidget extends WidgetType {
 
 const enum LG { Margin = 10000, HalfMargin = LG.Margin >> 1,  MinViewPort = LG.Margin * 1.5 }
 
+export class ScrollTarget {
+  constructor(readonly range: SelectionRange, readonly center = false) {}
+
+  map(changes: ChangeDesc) {
+    return changes.empty ? this : new ScrollTarget(this.range.map(changes), this.center)
+  }
+}
+
 export class ViewState {
   // These are contentDOM-local coordinates
   pixelViewport: Rect = {left: 0, right: window.innerWidth, top: 0, bottom: 0}
@@ -103,7 +111,7 @@ export class ViewState {
   // See VP.MaxDOMHeight
   scaler = IdScaler
 
-  scrollTo: SelectionRange | null = null
+  scrollTarget: ScrollTarget | null = null
   // Briefly set to true when printing, to disable viewport limiting
   printing = false
 
@@ -152,7 +160,7 @@ export class ViewState {
       new BigScaler(this.heightOracle.doc, this.heightMap, this.viewports)
   }
 
-  update(update: ViewUpdate, scrollTo: SelectionRange | null = null) {
+  update(update: ViewUpdate, scrollTarget: ScrollTarget | null = null) {
     let prev = this.state
     this.state = update.state
     let newDeco = this.state.facet(decorations)
@@ -165,15 +173,16 @@ export class ViewState {
     if (this.heightMap.height != prevHeight) update.flags |= UpdateFlag.Height
 
     let viewport = heightChanges.length ? this.mapViewport(this.viewport, update.changes) : this.viewport
-    if (scrollTo && (scrollTo.head < viewport.from || scrollTo.head > viewport.to) || !this.viewportIsAppropriate(viewport))
-      viewport = this.getViewport(0, scrollTo)
+    if (scrollTarget && (scrollTarget.range.head < viewport.from || scrollTarget.range.head > viewport.to) ||
+        !this.viewportIsAppropriate(viewport))
+      viewport = this.getViewport(0, scrollTarget)
     this.viewport = viewport
     this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.MinViewPort)
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
     update.flags |= this.computeVisibleRanges()
 
-    if (scrollTo) this.scrollTo = scrollTo
+    if (scrollTarget) this.scrollTarget = scrollTarget
 
     if (!this.mustEnforceCursorAssoc && update.selectionSet && update.view.lineWrapping &&
         update.state.selection.main.empty && update.state.selection.main.assoc)
@@ -233,8 +242,8 @@ export class ViewState {
 
     if (oracle.heightChanged) result |= UpdateFlag.Height
     if (!this.viewportIsAppropriate(this.viewport, bias) ||
-        this.scrollTo && (this.scrollTo.head < this.viewport.from || this.scrollTo.head > this.viewport.to))
-      this.viewport = this.getViewport(bias, this.scrollTo)
+        this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from || this.scrollTarget.range.head > this.viewport.to))
+      this.viewport = this.getViewport(bias, this.scrollTarget)
 
     this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.MinViewPort)
@@ -256,7 +265,7 @@ export class ViewState {
   get visibleTop() { return this.scaler.fromDOM(this.pixelViewport.top, 0) }
   get visibleBottom() { return this.scaler.fromDOM(this.pixelViewport.bottom, 0) }
 
-  getViewport(bias: number, scrollTo: SelectionRange | null): Viewport {
+  getViewport(bias: number, scrollTarget: ScrollTarget | null): Viewport {
     // This will divide VP.Margin between the top and the
     // bottom, depending on the bias (the change in viewport position
     // since the last update). It'll hold a number between 0 and 1
@@ -264,17 +273,19 @@ export class ViewState {
     let map = this.heightMap, doc = this.state.doc, {visibleTop, visibleBottom} = this
     let viewport = new Viewport(map.lineAt(visibleTop - marginTop * VP.Margin, QueryType.ByHeight, doc, 0, 0).from,
                                 map.lineAt(visibleBottom + (1 - marginTop) * VP.Margin, QueryType.ByHeight, doc, 0, 0).to)
-    // If scrollTo is given, make sure the viewport includes that position
-    if (scrollTo) {
-      if (scrollTo.head < viewport.from) {
-        let {top: newTop} = map.lineAt(scrollTo.head, QueryType.ByPos, doc, 0, 0)
-        viewport = new Viewport(map.lineAt(newTop - VP.Margin / 2, QueryType.ByHeight, doc, 0, 0).from,
-                                map.lineAt(newTop + (visibleBottom - visibleTop) + VP.Margin / 2, QueryType.ByHeight, doc, 0, 0).to)
-      } else if (scrollTo.head > viewport.to) {
-        let {bottom: newBottom} = map.lineAt(scrollTo.head, QueryType.ByPos, doc, 0, 0)
-        viewport = new Viewport(map.lineAt(newBottom - (visibleBottom - visibleTop) - VP.Margin / 2,
-                                           QueryType.ByHeight, doc, 0, 0).from,
-                                map.lineAt(newBottom + VP.Margin / 2, QueryType.ByHeight, doc, 0, 0).to)
+    // If scrollTarget is given, make sure the viewport includes that position
+    if (scrollTarget) {
+      let {head} = scrollTarget.range, viewHeight = visibleBottom - visibleTop
+      if (head < viewport.from || head > viewport.to) {
+        let block = map.lineAt(head, QueryType.ByPos, doc, 0, 0), topPos
+        if (scrollTarget.center)
+          topPos = (block.top + block.bottom) / 2 - viewHeight / 2
+        else if (head < viewport.from)
+          topPos = block.top
+        else
+          topPos = block.bottom - viewHeight
+        viewport = new Viewport(map.lineAt(topPos - VP.Margin / 2, QueryType.ByHeight, doc, 0, 0).from,
+                                map.lineAt(topPos + viewHeight + VP.Margin / 2, QueryType.ByHeight, doc, 0, 0).to)
       }
     }
     return viewport

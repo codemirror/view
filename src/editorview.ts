@@ -9,11 +9,11 @@ import {InputState} from "./input"
 import {Rect, focusPreventScroll, flattenRect, contentEditablePlainTextSupported, getRoot} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
-import {ViewState} from "./viewstate"
+import {ViewState, ScrollTarget} from "./viewstate"
 import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, MeasureRequest, editable, inputHandler, scrollTo, UpdateFlag} from "./extension"
+        decorations, MeasureRequest, editable, inputHandler, scrollTo, centerOn, UpdateFlag} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -231,18 +231,21 @@ export class EditorView {
       return this.setState(state)
 
     update = new ViewUpdate(this, state, transactions)
-    let scrollPos: SelectionRange | null = null
+    let scrollTarget: ScrollTarget | null = null
     try {
       this.updateState = UpdateState.Updating
       for (let tr of transactions) {
-        if (scrollPos) scrollPos = scrollPos.map(tr.changes)
+        if (scrollTarget) scrollTarget = scrollTarget.map(tr.changes)
         if (tr.scrollIntoView) {
           let {main} = tr.state.selection
-          scrollPos = main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1)
+          scrollTarget = new ScrollTarget(main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1))
         }
-        for (let e of tr.effects) if (e.is(scrollTo)) scrollPos = e.value
+        for (let e of tr.effects) {
+          if (e.is(scrollTo)) scrollTarget = new ScrollTarget(e.value)
+          else if (e.is(centerOn)) scrollTarget = new ScrollTarget(e.value, true)
+        }
       }
-      this.viewState.update(update, scrollPos)
+      this.viewState.update(update, scrollTarget)
       this.bidiCache = CachedOrder.update(this.bidiCache, update.changes)
       if (!update.empty) {
         this.updatePlugins(update)
@@ -253,7 +256,7 @@ export class EditorView {
       this.updateAttrs()
       this.showAnnouncements(transactions)
     } finally { this.updateState = UpdateState.Idle }
-    if (redrawn || scrollPos || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
+    if (redrawn || scrollTarget || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
   }
 
@@ -321,7 +324,7 @@ export class EditorView {
         this.updateState = UpdateState.Measuring
         let oldViewport = this.viewport
         let changed = this.viewState.measure(this.docView, i > 0)
-        if (!changed && !this.measureRequests.length && this.viewState.scrollTo == null) break
+        if (!changed && !this.measureRequests.length && this.viewState.scrollTarget == null) break
         if (i > 5) {
           console.warn("Viewport failed to stabilize")
           break
@@ -349,9 +352,9 @@ export class EditorView {
           try { measuring[i].write(measured[i], this) }
           catch(e) { logException(this.state, e) }
         }
-        if (this.viewState.scrollTo) {
-          this.docView.scrollRangeIntoView(this.viewState.scrollTo)
-          this.viewState.scrollTo = null
+        if (this.viewState.scrollTarget) {
+          this.docView.scrollIntoView(this.viewState.scrollTarget)
+          this.viewState.scrollTarget = null
         }
         if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to && this.measureRequests.length == 0) break
       }
@@ -664,6 +667,10 @@ export class EditorView {
   /// Effect that can be [added](#state.TransactionSpec.effects) to a
   /// transaction to make it scroll the given range into view.
   static scrollTo = scrollTo
+
+  /// Effect that makes the editor scroll the given range to the
+  /// center of the visible view.
+  static centerOn = centerOn
 
   /// Facet to add a [style
   /// module](https://github.com/marijnh/style-mod#documentation) to

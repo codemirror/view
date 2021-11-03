@@ -1,5 +1,5 @@
 import {RangeSet} from "@codemirror/rangeset"
-import {ChangeSet, SelectionRange} from "@codemirror/state"
+import {ChangeSet} from "@codemirror/state"
 import {ContentView, ChildCursor, Dirty, DOMPos} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {InlineView, CompositionView} from "./inlineview"
@@ -10,6 +10,7 @@ import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoVie
 import {ViewUpdate, PluginField, decorations as decorationsFacet,
         UpdateFlag, editable, ChangedRange} from "./extension"
 import {EditorView} from "./editorview"
+import {ScrollTarget} from "./viewstate"
 
 export class DocView extends ContentView {
   children!: BlockView[]
@@ -406,7 +407,7 @@ export class DocView extends ContentView {
     ]
   }
 
-  scrollRangeIntoView(range: SelectionRange) {
+  scrollIntoView({range, center}: ScrollTarget) {
     let rect = this.coordsAt(range.head, range.empty ? range.assoc : range.head > range.anchor ? -1 : 1), other
     if (!rect) return
     if (!range.empty && (other = this.coordsAt(range.anchor, range.anchor > range.head ? -1 : 1)))
@@ -421,10 +422,10 @@ export class DocView extends ContentView {
       if (top != null) mTop = Math.max(mTop, top)
       if (bottom != null) mBottom = Math.max(mBottom, bottom)
     }
-    scrollRectIntoView(this.dom, {
+    scrollRectIntoView(this.view.scrollDOM, {
       left: rect.left - mLeft, top: rect.top - mTop,
       right: rect.right + mRight, bottom: rect.bottom + mBottom
-    }, range.head < range.anchor ? -1 : 1)
+    }, range.head < range.anchor ? -1 : 1, center)
   }
 }
 

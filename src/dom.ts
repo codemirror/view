@@ -107,10 +107,10 @@ function windowRect(win: Window): Rect {
 
 const ScrollSpace = 5
 
-export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1) {
+export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1, center: boolean) {
   let doc = dom.ownerDocument!, win = doc.defaultView!
 
-  for (let cur: any = dom.parentNode; cur;) {
+  for (let cur: any = dom; cur;) {
     if (cur.nodeType == 1) { // Element
       let bounding: Rect, top = cur == doc.body
       if (top) {
@@ -127,7 +127,15 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1) {
       }
 
       let moveX = 0, moveY = 0
-      if (rect.top < bounding.top) {
+      if (center) {
+        let rectHeight = rect.bottom - rect.top, boundingHeight = bounding.bottom - bounding.top
+        let targetTop
+        if (rectHeight <= boundingHeight) targetTop = rect.top + rectHeight / 2 - boundingHeight / 2
+        else if (side < 0) targetTop = rect.top - ScrollSpace
+        else targetTop = rect.bottom + ScrollSpace - boundingHeight
+        moveY = targetTop - bounding.top
+        if (Math.abs(moveY) <= 1) moveY = 0
+      } else if (rect.top < bounding.top) {
         moveY = -(bounding.top - rect.top + ScrollSpace)
         if (side > 0 && rect.bottom > bounding.bottom + moveY)
           moveY = rect.bottom - bounding.bottom + moveY + ScrollSpace
@@ -165,6 +173,7 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1) {
       }
       if (top) break
       cur = cur.assignedSlot || cur.parentNode
+      center = false
     } else if (cur.nodeType == 11) { // A shadow root
       cur = cur.host
     } else {

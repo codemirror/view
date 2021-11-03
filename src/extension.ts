@@ -32,6 +32,10 @@ export const scrollTo = StateEffect.define<SelectionRange>({
   map: (range, changes) => range.map(changes)
 })
 
+export const centerOn = StateEffect.define<SelectionRange>({
+  map: (range, changes) => range.map(changes)
+})
+
 /// Log or report an unhandled exception in client code. Should
 /// probably only be used by extension code that allows client code to
 /// provide functions, and calls those functions in a context where an
