@@ -158,9 +158,7 @@ const themeSpec = {
   }
 }
 if (CanHidePrimary) (themeSpec as any)[".cm-line"].caretColor = "transparent !important"
-const hideNativeSelection = Prec.override(EditorView.theme(themeSpec))
-
-
+const hideNativeSelection = Prec.highest(EditorView.theme(themeSpec))
 
 function getBase(view: EditorView) {
   let rect = view.scrollDOM.getBoundingClientRect()

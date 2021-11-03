@@ -770,7 +770,7 @@ export class EditorView {
   /// that. You can also use `&dark` or `&light` instead to only
   /// target editors with a dark or light theme.
   static baseTheme(spec: {[selector: string]: StyleSpec}): Extension {
-    return Prec.fallback(styleModule.of(buildTheme("." + baseThemeID, spec, lightDarkIDs)))
+    return Prec.lowest(styleModule.of(buildTheme("." + baseThemeID, spec, lightDarkIDs)))
   }
 
   /// Facet that provides additional DOM attributes for the editor's
