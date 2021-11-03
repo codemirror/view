@@ -698,7 +698,7 @@ handlers.beforeinput = (view, event) => {
   if (browser.chrome && browser.android && (pending = PendingKeys.find(key => key.inputType == event.inputType))) {
     view.inputState.setPendingKey(view, pending)
 
-    if (pending.key !== "Backspace") {
+    if (pending.key === "Enter") {
       return
     }
 
