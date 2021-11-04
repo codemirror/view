@@ -340,10 +340,8 @@ export class ViewState {
       let viewFrom, viewTo
       if (this.heightOracle.lineWrapping) {
         let marginHeight = (LG.Margin / this.heightOracle.lineLength) * this.heightOracle.lineHeight
-        if (line.from != this.viewport.from) viewFrom = line.from
-        else viewFrom = findPosition(structure, (this.visibleTop - line.top - marginHeight) / line.height)
-        if (line.to != this.viewport.to) viewTo = line.to
-        else viewTo = findPosition(structure, (this.visibleBottom - line.top + marginHeight) / line.height)
+        viewFrom = findPosition(structure, (this.visibleTop - line.top - marginHeight) / line.height)
+        viewTo = findPosition(structure, (this.visibleBottom - line.top + marginHeight) / line.height)
       } else {
         let totalWidth = structure.total * this.heightOracle.charWidth
         let marginWidth = LG.Margin * this.heightOracle.charWidth
