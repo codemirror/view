@@ -66,21 +66,24 @@ export abstract class ContentView {
 
   sync(track?: {node: Node, written: boolean}) {
     if (this.dirty & Dirty.Node) {
-      let parent = this.dom as HTMLElement, pos: Node | null = null
+      let parent = this.dom as HTMLElement
+      let pos: Node | null = parent.firstChild
       for (let child of this.children) {
         if (child.dirty) {
-          let next = pos ? pos.nextSibling : parent.firstChild
-          if (!child.dom && next && !ContentView.get(next)?.parent) child.reuseDOM(next)
+          if (!child.dom && pos && !ContentView.get(pos)?.parent) child.reuseDOM(pos)
           child.sync(track)
           child.dirty = Dirty.Not
         }
-        if (track && track.node == parent && pos != child.dom) track.written = true
-        syncNodeInto(parent, pos, child.dom!)
-        pos = child.dom!
+        if (track && !track.written && track.node == parent && pos != child.dom) track.written = true
+        if (child.dom!.parentNode == parent) {
+          while (pos && pos != child.dom) pos = rm(pos)
+          pos = child.dom!.nextSibling
+        } else {
+          parent.insertBefore(child.dom!, pos)
+        }
       }
-      let next: Node | null = pos ? pos.nextSibling : parent.firstChild
-      if (next && track && track.node == parent) track.written = true
-      while (next) next = rm(next)
+      if (pos && track && track.node == parent) track.written = true
+      while (pos) pos = rm(pos)
     } else if (this.dirty & Dirty.Child) {
       for (let child of this.children) if (child.dirty) {
         child.sync(track)
@@ -221,16 +224,10 @@ export abstract class ContentView {
 ContentView.prototype.breakAfter = 0
 
 // Remove a DOM node and return its next sibling.
-function rm(dom: Node): Node {
+function rm(dom: Node): Node | null {
   let next = dom.nextSibling
   dom.parentNode!.removeChild(dom)
-  return next!
-}
-
-function syncNodeInto(parent: HTMLElement, after: Node | null, dom: Node) {
-  let next: Node | null = after ? after.nextSibling : parent.firstChild
-  if (dom.parentNode == parent) while (next != dom) next = rm(next!)
-  else parent.insertBefore(dom, next)
+  return next
 }
 
 export class ChildCursor {
