@@ -87,7 +87,12 @@ class LineGapWidget extends WidgetType {
   get estimatedHeight() { return this.vertical ? this.size : -1 }
 }
 
-const enum LG { Margin = 10000, HalfMargin = LG.Margin >> 1,  MinViewPort = LG.Margin * 1.5 }
+const enum LG {
+  Margin = 2000,
+  HalfMargin = LG.Margin >> 1,
+  DoubleMargin = LG.Margin << 1,
+  SelectionMargin = 10,
+}
 
 export class ScrollTarget {
   constructor(readonly range: SelectionRange, readonly center = false) {}
@@ -178,7 +183,7 @@ export class ViewState {
       viewport = this.getViewport(0, scrollTarget)
     this.viewport = viewport
     this.updateForViewport()
-    if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.MinViewPort)
+    if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
     update.flags |= this.computeVisibleRanges()
 
@@ -246,7 +251,7 @@ export class ViewState {
       this.viewport = this.getViewport(bias, this.scrollTarget)
 
     this.updateForViewport()
-    if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.MinViewPort)
+    if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
       this.updateLineGaps(this.ensureLineGaps(refresh ? [] : this.lineGaps))
     result |= this.computeVisibleRanges()
 
@@ -329,44 +334,50 @@ export class ViewState {
     // This won't work at all in predominantly right-to-left text.
     if (this.heightOracle.direction != Direction.LTR) return gaps
     this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.state.doc, 0, 0, line => {
-      if (line.length < LG.Margin) return
+      if (line.length < LG.DoubleMargin) return
       let structure = lineStructure(line.from, line.to, this.state)
-      if (structure.total < LG.Margin) return
+      if (structure.total < LG.DoubleMargin) return
       let viewFrom, viewTo
       if (this.heightOracle.lineWrapping) {
+        let marginHeight = (LG.Margin / this.heightOracle.lineLength) * this.heightOracle.lineHeight
         if (line.from != this.viewport.from) viewFrom = line.from
-        else viewFrom = findPosition(structure, (this.visibleTop - line.top) / line.height)
+        else viewFrom = findPosition(structure, (this.visibleTop - line.top - marginHeight) / line.height)
         if (line.to != this.viewport.to) viewTo = line.to
-        else viewTo = findPosition(structure, (this.visibleBottom - line.top) / line.height)
+        else viewTo = findPosition(structure, (this.visibleBottom - line.top + marginHeight) / line.height)
       } else {
         let totalWidth = structure.total * this.heightOracle.charWidth
-        viewFrom = findPosition(structure, this.pixelViewport.left / totalWidth)
-        viewTo = findPosition(structure, this.pixelViewport.right / totalWidth)
+        let marginWidth = LG.Margin * this.heightOracle.charWidth
+        viewFrom = findPosition(structure, (this.pixelViewport.left - marginWidth) / totalWidth)
+        viewTo = findPosition(structure, (this.pixelViewport.right + marginWidth) / totalWidth)
       }
+
+      let outside = []
+      if (viewFrom > line.from) outside.push({from: line.from, to: viewFrom})
+      if (viewTo < line.to) outside.push({from: viewTo, to: line.to})
       let sel = this.state.selection.main
-      // Make sure the gap doesn't cover a selection end
-      if (sel.from <= viewFrom && sel.to >= line.from) viewFrom = sel.from
-      if (sel.from <= line.to && sel.to >= viewTo) viewTo = sel.to
-      let gapTo = viewFrom - LG.Margin, gapFrom = viewTo + LG.Margin
-      if (gapTo > line.from + LG.HalfMargin)
-        gaps.push(find(current, gap => gap.from == line.from && gap.to > gapTo - LG.HalfMargin && gap.to < gapTo + LG.HalfMargin) ||
-                  new LineGap(line.from, gapTo, this.gapSize(line, gapTo, true, structure)))
-      if (gapFrom < line.to - LG.HalfMargin)
-        gaps.push(find(current, gap => gap.to == line.to && gap.from > gapFrom - LG.HalfMargin &&
-                       gap.from < gapFrom + LG.HalfMargin) ||
-                  new LineGap(gapFrom, line.to, this.gapSize(line, gapFrom, false, structure)))
+      // Make sure the gaps don't cover a selection end
+      if (sel.from >= line.from && sel.from <= line.to)
+        cutRange(outside, sel.from - LG.SelectionMargin, sel.from + LG.SelectionMargin)
+      if (!sel.empty && sel.to >= line.from && sel.to <= line.to)
+        cutRange(outside, sel.to - LG.SelectionMargin, sel.to + LG.SelectionMargin)
+
+      for (let {from, to} of outside) if (to - from > LG.HalfMargin) {
+        gaps.push(
+          find(current, gap => gap.from >= line.from && gap.to <= line.to &&
+            Math.abs(gap.from - from) < LG.HalfMargin && Math.abs(gap.to - to) < LG.HalfMargin) ||
+          new LineGap(from, to, this.gapSize(line, from, to, structure)))
+      }
     })
     return gaps
   }
 
-  gapSize(line: BlockInfo, pos: number, start: boolean,
+  gapSize(line: BlockInfo, from: number, to: number,
           structure: {total: number, ranges: {from: number, to: number}[]}) {
+    let fraction = findFraction(structure, to) - findFraction(structure, from)
     if (this.heightOracle.lineWrapping) {
-      let height = line.height * findFraction(structure, pos)
-      return start ? height : line.height - height
+      return line.height * fraction
     } else {
-      let ratio = findFraction(structure, pos)
-      return structure.total * this.heightOracle.charWidth * (start ? ratio : 1 - ratio)
+      return structure.total * this.heightOracle.charWidth * fraction
     }
   }
 
@@ -462,6 +473,19 @@ function findFraction(structure: {total: number, ranges: {from: number, to: numb
     counted += to - from
   }
   return counted / structure.total
+}
+
+function cutRange(ranges: {from: number, to: number}[], from: number, to: number) {
+  for (let i = 0; i < ranges.length; i++) {
+    let r = ranges[i]
+    if (r.from < to && r.to > from) {
+      let pieces = []
+      if (r.from < from) pieces.push({from: r.from, to: from})
+      if (r.to > to) pieces.push({from: to, to: r.to})
+      ranges.splice(i, 1, ...pieces)
+      i += pieces.length - 1
+    }
+  }
 }
 
 function find<T>(array: readonly T[], f: (value: T) => boolean): T | undefined {
