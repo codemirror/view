@@ -13,10 +13,6 @@ export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
 
-  // On iOS, some keys need to have their default behavior happen
-  // (after which we retroactively handle them and reset the DOM) to
-  // avoid messing up the virtual keyboard state.
-  //
   // On Chrome Android, backspace near widgets is just completely
   // broken, and there are no key events, so we need to handle the
   // beforeinput event. Deleting stuff will often create a flurry of
@@ -133,17 +129,6 @@ export class InputState {
     this.lastKeyCode = event.keyCode
     this.lastKeyTime = Date.now()
     if (this.screenKeyEvent(view, event as KeyboardEvent)) return true
-    // Prevent the default behavior of Enter on iOS makes the
-    // virtual keyboard get stuck in the wrong (lowercase)
-    // state. So we let it go through, and then, in
-    // applyDOMChange, notify key handlers of it and reset to
-    // the state they produce.
-    let pending
-    if (browser.ios && (pending = PendingKeys.find(key => key.keyCode == event.keyCode)) &&
-        !(event.ctrlKey || event.altKey || event.metaKey) && !(event as any).synthetic) {
-      this.setPendingKey(view, pending)
-      return true
-    }
     return false
   }
 
