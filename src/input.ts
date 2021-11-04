@@ -697,20 +697,17 @@ handlers.beforeinput = (view, event) => {
   let pending
   if (browser.chrome && browser.android && (pending = PendingKeys.find(key => key.inputType == event.inputType))) {
     view.inputState.setPendingKey(view, pending)
-
-    if (pending.key === "Enter") {
-      return
+    if (pending.key == "Backspace" || pending.key == "Delete") {
+      let startViewHeight = window.visualViewport?.height || 0
+      setTimeout(() => {
+        // Backspacing near uneditable nodes on Chrome Android sometimes
+        // closes the virtual keyboard. This tries to crudely detect
+        // that and refocus to get it back.
+        if ((window.visualViewport?.height || 0) > startViewHeight + 10 && view.hasFocus) {
+          view.contentDOM.blur()
+          view.focus()
+        }
+      }, 100)
     }
-
-    let startViewHeight = window.visualViewport?.height || 0
-    setTimeout(() => {
-      // Backspacing near uneditable nodes on Chrome Android sometimes
-      // closes the virtual keyboard. This tries to crudely detect
-      // that and refocus to get it back.
-      if ((window.visualViewport?.height || 0) > startViewHeight + 10 && view.hasFocus) {
-        view.contentDOM.blur()
-        view.focus()
-      }
-    }, 100)
   }
 }
