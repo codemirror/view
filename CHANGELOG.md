@@ -1,3 +1,11 @@
+## 0.19.12 (2021-11-04)
+
+### Bug fixes
+
+Make sure the workaround for the lost virtual keyboard on Chrome Android also works on slower phones. Slight style change in beforeinput handler
+
+Avoid failure cases in viewport-based rendering of very long lines.
+
 ## 0.19.11 (2021-11-03)
 
 ### Breaking changes
