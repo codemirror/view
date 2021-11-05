@@ -193,13 +193,16 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       }
       let arrow = !!tooltip.arrow, above = !!tooltip.above
       let width = size.right - size.left, height = size.bottom - size.top + (arrow ? Arrow.Size : 0)
+      let offset = tView.offset || noOffset
       let left = this.view.textDirection == Direction.LTR
-        ? Math.min(pos.left - (arrow ? Arrow.Offset : 0), measured.innerWidth - width)
-        : Math.max(0, pos.left - width + (arrow ? Arrow.Offset : 0))
-      if (!tooltip.strictSide &&
-          (above ? pos.top - (size.bottom - size.top) < 0 : pos.bottom + (size.bottom - size.top) > measured.innerHeight))
+        ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, measured.innerWidth - width)
+        : Math.max(0, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x)
+      if (!tooltip.strictSide && (above
+            ? pos.top - (size.bottom - size.top) - offset.y < 0
+            : pos.bottom + (size.bottom - size.top) + offset.y > measured.innerHeight))
         above = !above
-      let top = above ? pos.top - height : pos.bottom + (arrow ? Arrow.Size : 0), right = left + width
+      let top = above ? pos.top - height - offset.y : pos.bottom + (arrow ? Arrow.Size : 0) + offset.y
+      let right = left + width
       for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
         top = above ? r.top - height : r.bottom
       if (this.position == "absolute") {
@@ -317,13 +320,22 @@ export interface Tooltip {
 export interface TooltipView {
   /// The DOM element to position over the editor.
   dom: HTMLElement
+  /// Adjust the position of the tooltip relative to its anchor
+  /// position. A positive `x` value will move the tooltip
+  /// horizontally along with the text direction (so right in
+  /// left-to-right context, left in right-to-left). A positive `y`
+  /// will move the tooltip up when it is above its anchor, and down
+  /// otherwise.
+  offset?: {x: number, y: number}
   /// Called after the tooltip is added to the DOM for the first time.
   mount?(view: EditorView): void
   /// Update the DOM element for a change in the view's state.
   update?(update: ViewUpdate): void
   /// Called when the tooltip has been (re)positioned.
-  positioned?(): void
+  positioned?(): void,
 }
+
+const noOffset = {x: 0, y: 0}
 
 /// Behavior by which an extension can provide a tooltip to be shown.
 export const showTooltip = Facet.define<Tooltip | null>({
