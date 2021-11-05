@@ -156,7 +156,11 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   createTooltip(tooltip: Tooltip) {
     let tooltipView = tooltip.create(this.view)
     tooltipView.dom.classList.add("cm-tooltip")
-    if (tooltip.arrow) tooltipView.dom.classList.add("cm-tooltip-arrow")
+    if (tooltip.arrow && !tooltipView.dom.querySelector("cm-tooltip > cm-tooltip-arrow")) {
+      let arrow = document.createElement("div")
+      arrow.className = "cm-tooltip-arrow"
+      tooltipView.dom.appendChild(arrow)
+    }
     tooltipView.dom.style.position = this.position
     tooltipView.dom.style.top = Outside
     this.container.appendChild(tooltipView.dom)
@@ -192,7 +196,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         continue
       }
       let arrow = !!tooltip.arrow, above = !!tooltip.above
-      let width = size.right - size.left, height = size.bottom - size.top + (arrow ? Arrow.Size : 0)
+      let width = size.right - size.left, height = size.bottom - size.top
       let offset = tView.offset || noOffset
       let left = this.view.textDirection == Direction.LTR
         ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, measured.innerWidth - width)
@@ -201,10 +205,11 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
             ? pos.top - (size.bottom - size.top) - offset.y < 0
             : pos.bottom + (size.bottom - size.top) + offset.y > measured.innerHeight))
         above = !above
-      let top = above ? pos.top - height - offset.y : pos.bottom + (arrow ? Arrow.Size : 0) + offset.y
+      let arrowHeight = arrow ? Arrow.Size : 0
+      let top = above ? pos.top - height  - arrowHeight - offset.y : pos.bottom + arrowHeight + offset.y
       let right = left + width
       for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
-        top = above ? r.top - height : r.bottom
+        top = above ? r.top - height - 2 - arrowHeight : r.bottom + arrowHeight + 2
       if (this.position == "absolute") {
         dom.style.top = (top - measured.parent.top) + "px"
         dom.style.left = (left - measured.parent.left) + "px"
@@ -252,41 +257,51 @@ const baseTheme = EditorView.baseTheme({
     backgroundColor: "#333338",
     color: "white"
   },
-  ".cm-tooltip.cm-tooltip-arrow:before, .cm-tooltip.cm-tooltip-arrow:after": {
-    position: "absolute",
-    content: "''",
+  ".cm-tooltip-arrow": {
     [insetInlineStart]: `${Arrow.Offset - Arrow.Size}px`,
-    width: 0,
-    height: 0,
-    borderLeft: `${Arrow.Size}px solid transparent`,
-    borderRight: `${Arrow.Size}px solid transparent`,
-    zIndex: -1
+    height: `${Arrow.Size}px`,
+    width: `${Arrow.Size * 2}px`,
+    position: "absolute",
+    zIndex: -1,
+    overflow: "hidden",
+    "&:before, &:after": {
+      content: "''",
+      position: "absolute",
+      width: 0,
+      height: 0,
+      borderLeft: `${Arrow.Size}px solid transparent`,
+      borderRight: `${Arrow.Size}px solid transparent`,
+    },
+    ".cm-tooltip-above &": {
+      bottom: `-${Arrow.Size}px`,
+      "&:before": {
+        borderTop: `${Arrow.Size}px solid #bbb`,
+      },
+      "&:after": {
+        borderTop: `${Arrow.Size}px solid #f5f5f5`,
+        bottom: "1px"
+      }
+    },
+    ".cm-tooltip-below &": {
+      top: `-${Arrow.Size}px`,
+      "&:before": {
+        borderBottom: `${Arrow.Size}px solid #bbb`,
+      },
+      "&:after": {
+        borderBottom: `${Arrow.Size}px solid #f5f5f5`,
+        top: "1px"
+      }
+    },
   },
-  ".cm-tooltip-above.cm-tooltip-arrow:before": {
-    borderTop: `${Arrow.Size}px solid #f5f5f5`,
-    bottom: `-${Arrow.Size - 1}px`
-  },
-  ".cm-tooltip-below.cm-tooltip-arrow:before": {
-    borderBottom: `${Arrow.Size}px solid #f5f5f5`,
-    top: `-${Arrow.Size - 1}px`
-  },
-  ".cm-tooltip-above.cm-tooltip-arrow:after": {
-    borderTop: `${Arrow.Size}px solid #bbb`,
-    bottom: `-${Arrow.Size}px`,
-    zIndex: -2
-  },
-  ".cm-tooltip-below.cm-tooltip-arrow:after": {
-    borderBottom: `${Arrow.Size}px solid #bbb`,
-    top: `-${Arrow.Size}px`,
-    zIndex: -2
-  },
-  "&dark .cm-tooltip.cm-tooltip-arrow:before": {
-    borderTopColor: "#333338",
-    borderBottomColor: "#333338"
-  },
-  "&dark .cm-tooltip.cm-tooltip-arrow:after": {
-    borderTopColor: "transparent",
-    borderBottomColor: "transparent"
+  "&dark .cm-tooltip .cm-tooltip-arrow": {
+    "&:before": {
+      borderTopColor: "#333338",
+      borderBottomColor: "#333338"
+    },
+    "&:after": {
+      borderTopColor: "transparent",
+      borderBottomColor: "transparent"
+    }
   }
 })
 
