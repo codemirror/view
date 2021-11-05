@@ -195,17 +195,18 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         dom.style.top = Outside
         continue
       }
-      let arrow = !!tooltip.arrow, above = !!tooltip.above
+      let arrow: HTMLElement | null = tooltip.arrow ? tView.dom.querySelector(".cm-tooltip-arrow") : null
+      let arrowHeight = arrow ? Arrow.Size : 0
       let width = size.right - size.left, height = size.bottom - size.top
       let offset = tView.offset || noOffset
       let left = this.view.textDirection == Direction.LTR
         ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, measured.innerWidth - width)
         : Math.max(0, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x)
+      let above = !!tooltip.above
       if (!tooltip.strictSide && (above
             ? pos.top - (size.bottom - size.top) - offset.y < 0
             : pos.bottom + (size.bottom - size.top) + offset.y > measured.innerHeight))
         above = !above
-      let arrowHeight = arrow ? Arrow.Size : 0
       let top = above ? pos.top - height  - arrowHeight - offset.y : pos.bottom + arrowHeight + offset.y
       let right = left + width
       for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
@@ -217,6 +218,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         dom.style.top = top + "px"
         dom.style.left = left + "px"
       }
+      if (arrow) arrow.style.left = `${pos.left - (left + Arrow.Offset - Arrow.Size)}px`
       others.push({left, top, right, bottom: top + height})
       dom.classList.toggle("cm-tooltip-above", above)
       dom.classList.toggle("cm-tooltip-below", !above)
@@ -239,9 +241,6 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 })
 
-const insetInlineStart = typeof document == 'undefined' || document.body?.style.insetInlineStart != null
-  ? 'insetInlineStart' : 'left';
-
 const baseTheme = EditorView.baseTheme({
   ".cm-tooltip": {
     zIndex: 100
@@ -258,7 +257,6 @@ const baseTheme = EditorView.baseTheme({
     color: "white"
   },
   ".cm-tooltip-arrow": {
-    [insetInlineStart]: `${Arrow.Offset - Arrow.Size}px`,
     height: `${Arrow.Size}px`,
     width: `${Arrow.Size * 2}px`,
     position: "absolute",
