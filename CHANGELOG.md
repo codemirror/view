@@ -1,3 +1,9 @@
+## 0.19.13 (2021-11-06)
+
+### Bug fixes
+
+Fix a bug where backspace, enter, and delete would get applied twice on iOS.
+
 ## 0.19.12 (2021-11-04)
 
 ### Bug fixes
