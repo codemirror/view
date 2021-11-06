@@ -149,7 +149,7 @@ export class InputState {
 
   setPendingKey(view: EditorView, pending: {key: string, keyCode: number}) {
     this.pendingKey = pending
-    requestAnimationFrame(() => {
+    let flush = () => {
       if (!this.pendingKey) return false
       let key = this.pendingKey
       this.pendingKey = undefined
@@ -157,7 +157,9 @@ export class InputState {
       let startState = view.state
       dispatchKey(view.contentDOM, key.key, key.keyCode)
       if (view.state == startState) view.docView.reset(true)
-    })
+    }
+    if (browser.ios) setTimeout(() => requestAnimationFrame(flush), 50)
+    else requestAnimationFrame(flush)
   }
 
   ignoreDuringComposition(event: Event): boolean {
