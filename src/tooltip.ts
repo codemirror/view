@@ -198,8 +198,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let arrow: HTMLElement | null = tooltip.arrow ? tView.dom.querySelector(".cm-tooltip-arrow") : null
       let arrowHeight = arrow ? Arrow.Size : 0
       let width = size.right - size.left, height = size.bottom - size.top
-      let offset = tView.offset || noOffset
-      let left = this.view.textDirection == Direction.LTR
+      let offset = tView.offset || noOffset, ltr = this.view.textDirection == Direction.LTR
+      let left = ltr
         ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, measured.innerWidth - width)
         : Math.max(0, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x)
       let above = !!tooltip.above
@@ -218,7 +218,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         dom.style.top = top + "px"
         dom.style.left = left + "px"
       }
-      if (arrow) arrow.style.left = `${pos.left - (left + Arrow.Offset - Arrow.Size)}px`
+      if (arrow) arrow.style.left = `${pos.left + (ltr ? offset.x : -offset.x) - (left + Arrow.Offset - Arrow.Size)}px`
       others.push({left, top, right, bottom: top + height})
       dom.classList.toggle("cm-tooltip-above", above)
       dom.classList.toggle("cm-tooltip-below", !above)
@@ -413,7 +413,7 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
   }
 })
 
-const enum Hover { Time = 750, MaxDist = 6 }
+const enum Hover { Time = 600, MaxDist = 6 }
 
 class HoverPlugin {
   lastMove: {x: number, y: number, target: HTMLElement, time: number}
