@@ -262,9 +262,9 @@ export function contentEditablePlainTextSupported() {
 
 export function getRoot(node: Node | null | undefined): DocumentOrShadowRoot | null {
   while (node) {
-    node = (node as HTMLElement).assignedSlot || node.parentNode
     if (node && (node.nodeType == 9 || node.nodeType == 11 && (node as ShadowRoot).host))
       return node as unknown as DocumentOrShadowRoot
+    node = (node as HTMLElement).assignedSlot || node.parentNode
   }
   return null
 }
