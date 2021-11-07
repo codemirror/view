@@ -1,3 +1,11 @@
+## 0.19.14 (2021-11-07)
+
+### Bug fixes
+
+Fix an issue where typing into a read-only editor would move the selection.
+
+Fix slowness when backspace is held down on iOS.
+
 ## 0.19.13 (2021-11-06)
 
 ### Bug fixes
