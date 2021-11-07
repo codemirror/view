@@ -1,13 +1,13 @@
 import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
 import {inputHandler, editable} from "./extension"
-import {contains, dispatchKey} from "./dom"
+import {contains} from "./dom"
 import browser from "./browser"
 import {EditorSelection, Text} from "@codemirror/state"
 
 export function applyDOMChange(view: EditorView, start: number, end: number, typeOver: boolean) {
   let change: undefined | {from: number, to: number, insert: Text}, newSel
-  let sel = view.state.selection.main, bounds
+  let sel = view.state.selection.main
   if (start > -1) {
     let bounds = view.docView.domBoundsAround(start, end, 0)
     if (!bounds || view.state.readOnly) return
@@ -66,16 +66,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     // backspace, or delete. So this detects changes that look like
     // they're caused by those keys, and reinterprets them as key
     // events.
-    if (browser.android &&
-        ((change.from == sel.from && change.to == sel.to &&
-          change.insert.length == 1 && change.insert.lines == 2 &&
-          dispatchKey(view.contentDOM, "Enter", 13)) ||
-         (change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 &&
-          dispatchKey(view.contentDOM, "Backspace", 8)) ||
-         (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
-          dispatchKey(view.contentDOM, "Delete", 46)))) {
-      return
-    }
+    if (browser.ios && view.inputState.flushIOSKey(view)) return
 
     let text = change.insert.toString()
     if (view.state.facet(inputHandler).some(h => h(view, change!.from, change!.to, text)))
