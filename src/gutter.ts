@@ -155,6 +155,7 @@ const gutterView = ViewPlugin.fromClass(class {
     this.dom = document.createElement("div")
     this.dom.className = "cm-gutters"
     this.dom.setAttribute("aria-hidden", "true")
+    this.dom.style.minHeight = this.view.contentHeight + "px"
     this.gutters = view.state.facet(activeGutters).map(conf => new SingleGutterView(view, conf))
     for (let gutter of this.gutters) this.dom.appendChild(gutter.dom)
     this.fixed = !view.state.facet(unfixGutters)
@@ -384,7 +385,7 @@ class NumberMarker extends GutterMarker {
 
   eq(other: NumberMarker) { return this.number == other.number }
 
-  toDOM(_view: EditorView) { return document.createTextNode(this.number) }
+  toDOM() { return document.createTextNode(this.number) }
 }
 
 function formatNumber(view: EditorView, number: number) {
