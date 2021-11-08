@@ -247,19 +247,6 @@ export function dispatchKey(elt: HTMLElement, name: string, code: number): boole
   return down.defaultPrevented || up.defaultPrevented
 }
 
-let _plainTextSupported: boolean | null = null
-export function contentEditablePlainTextSupported() {
-  if (_plainTextSupported == null) {
-    _plainTextSupported = false
-    let dummy = document.createElement("div")
-    try {
-      dummy.contentEditable = "plaintext-only"
-      _plainTextSupported = dummy.contentEditable == "plaintext-only"
-    } catch(_) {}
-  }
-  return _plainTextSupported
-}
-
 export function getRoot(node: Node | null | undefined): DocumentOrShadowRoot | null {
   while (node) {
     if (node && (node.nodeType == 9 || node.nodeType == 11 && (node as ShadowRoot).host))

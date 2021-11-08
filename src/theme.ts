@@ -61,7 +61,11 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     boxSizing: "border-box",
 
     padding: "4px 0",
-    outline: "none"
+    outline: "none",
+
+    "&[contenteditable=true]": {
+      WebkitUserModify: "read-write-plaintext-only",
+    }
   },
 
   ".cm-lineWrapping": {
