@@ -12,20 +12,22 @@ function visiblePixelRange(dom: HTMLElement, paddingTop: number): Rect {
   let rect = dom.getBoundingClientRect()
   let left = Math.max(0, rect.left), right = Math.min(innerWidth, rect.right)
   let top = Math.max(0, rect.top), bottom = Math.min(innerHeight, rect.bottom)
-  for (let parent = dom.parentNode as any; parent;) { // (Cast to any because TypeScript is useless with Node types)
+  let body = dom.ownerDocument.body
+  for (let parent = dom.parentNode as Node | null; parent && parent != body;) {
     if (parent.nodeType == 1) {
-      let style = window.getComputedStyle(parent)
-      if ((parent.scrollHeight > parent.clientHeight || parent.scrollWidth > parent.clientWidth) &&
+      let elt = parent as HTMLElement
+      let style = window.getComputedStyle(elt)
+      if ((elt.scrollHeight > elt.clientHeight || elt.scrollWidth > elt.clientWidth) &&
           style.overflow != "visible") {
-        let parentRect = parent.getBoundingClientRect()
+        let parentRect = elt.getBoundingClientRect()
         left = Math.max(left, parentRect.left)
         right = Math.min(right, parentRect.right)
         top = Math.max(top, parentRect.top)
         bottom = Math.min(bottom, parentRect.bottom)
       }
-      parent = style.position == "absolute" || style.position == "fixed" ? parent.offsetParent : parent.parentNode
+      parent = style.position == "absolute" || style.position == "fixed" ? elt.offsetParent : elt.parentNode
     } else if (parent.nodeType == 11) { // Shadow root
-      parent = parent.host
+      parent = (parent as ShadowRoot).host
     } else {
       break
     }
