@@ -1,3 +1,11 @@
+## 0.19.15 (2021-11-09)
+
+### Bug fixes
+
+Fix a bug where the editor would think it was invisible when the document body was given screen height and scroll behavior.
+
+Fix selection reading inside a shadow root on iOS.
+
 ## 0.19.14 (2021-11-07)
 
 ### Bug fixes
