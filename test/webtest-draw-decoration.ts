@@ -452,7 +452,7 @@ describe("EditorView decoration", () => {
     return Decoration.widget({widget: new BlockWidget(name), side, block: true}).range(pos)
   }
 
-  function br(from: number, to: number, name = "r", inclusive = false) {
+  function br(from: number, to: number, name = "r", inclusive?: boolean) {
     return Decoration.replace({widget: new BlockWidget(name), inclusive, block: true}).range(from, to)
   }
 

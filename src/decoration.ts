@@ -60,7 +60,8 @@ interface ReplaceDecorationSpec {
   widget?: WidgetType
   /// Whether this range covers the positions on its sides. This
   /// influences whether new content becomes part of the range and
-  /// whether the cursor can be drawn on its sides. Defaults to false.
+  /// whether the cursor can be drawn on its sides. Defaults to false
+  /// for inline replacements, and true for block replacements.
   inclusive?: boolean
   /// Set inclusivity at the start.
   inclusiveStart?: boolean
@@ -131,7 +132,7 @@ export abstract class WidgetType {
 /// [`RangeSet`](#rangeset.RangeSet) for its methods.
 export type DecorationSet = RangeSet<Decoration>
 
-const enum Side { BigInline = 1e8, BigBlock = 2e8 }
+const enum Side { Big = 1e8 }
 
 /// The different types of blocks that can occur in an editor view.
 export enum BlockType {
@@ -186,7 +187,6 @@ export abstract class Decoration extends RangeValue {
   /// position.
   static widget(spec: WidgetDecorationSpec): Decoration {
     let side = spec.side || 0
-    if (spec.block) side += (Side.BigBlock + 1) * (side > 0 ? 1 : -1)
     return new PointDecoration(spec, side, side, !!spec.block, spec.widget || null, false)
   }
 
@@ -194,9 +194,9 @@ export abstract class Decoration extends RangeValue {
   /// a widget, or simply hides it.
   static replace(spec: ReplaceDecorationSpec): Decoration {
     let block = !!spec.block
-    let {start, end} = getInclusive(spec)
-    let startSide = block ? -Side.BigBlock * (start ? 2 : 1) : Side.BigInline * (start ? -1 : 1)
-    let endSide = block ? Side.BigBlock * (end ? 2 : 1) : Side.BigInline * (end ? 1 : -1)
+    let {start, end} = getInclusive(spec, block)
+    let startSide = Side.Big * (start ? -1 : 1) * (block ? 2 : 1)
+    let endSide = Side.Big * (end ? 1 : -1) * (block ? 2 : 1)
     return new PointDecoration(spec, startSide, endSide, block, spec.widget || null, true)
   }
 
@@ -227,8 +227,8 @@ export class MarkDecoration extends Decoration {
 
   constructor(spec: MarkDecorationSpec) {
     let {start, end} = getInclusive(spec)
-    super(Side.BigInline * (start ? -1 : 1),
-          Side.BigInline * (end ? 1 : -1),
+    super(Side.Big * (start ? -1 : 1),
+          Side.Big * (end ? 1 : -1),
           null, spec)
     this.tagName = spec.tagName || "span"
     this.class = spec.class || ""
@@ -253,7 +253,7 @@ MarkDecoration.prototype.point = false
 
 export class LineDecoration extends Decoration {
   constructor(spec: LineDecorationSpec) {
-    super(-Side.BigInline, -Side.BigInline, null, spec)
+    super(-Side.Big, -Side.Big, null, spec)
   }
 
   eq(other: Decoration): boolean {
@@ -305,11 +305,15 @@ export class PointDecoration extends Decoration {
 
 PointDecoration.prototype.point = true
 
-function getInclusive(spec: {inclusive?: boolean, inclusiveStart?: boolean, inclusiveEnd?: boolean}): {start: boolean, end: boolean} {
+function getInclusive(spec: {
+  inclusive?: boolean,
+  inclusiveStart?: boolean,
+  inclusiveEnd?: boolean
+}, block = false): {start: boolean, end: boolean} {
   let {inclusiveStart: start, inclusiveEnd: end} = spec
   if (start == null) start = spec.inclusive
   if (end == null) end = spec.inclusive
-  return {start: start || false, end: end || false}
+  return {start: start ?? block, end: end ?? block}
 }
 
 function widgetsEq(a: WidgetType | null, b: WidgetType | null): boolean {

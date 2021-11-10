@@ -18,7 +18,7 @@ describe("HeightMap", () => {
   })
 
   function mk(text: Text, deco: any = []) {
-    return HeightMap.empty().applyChanges([Decoration.set(deco)], Text.empty, o(text),
+    return HeightMap.empty().applyChanges([Decoration.set(deco, true)], Text.empty, o(text),
                                           [new ChangedRange(0, 0, 0, text.length)])
   }
   function doc(... lineLen: number[]) {
@@ -90,15 +90,15 @@ describe("HeightMap", () => {
   it("stores information about block ranges", () => {
     let text = doc(3, 3, 3, 3, 3, 3)
     let map = mk(text, [Decoration.widget({widget: new MyWidget(10), side: -1, block: true}).range(4),
-                        Decoration.replace({widget: new MyWidget(40), block: true}).range(4, 11),
+                        Decoration.replace({widget: new MyWidget(40), block: true, inclusive: false}).range(4, 11),
                         Decoration.widget({widget: new MyWidget(15), side: 1, block: true}).range(11),
                         // This one covers the block widgets around it (due to being inclusive)
-                        Decoration.replace({widget: new MyWidget(50), block: true, inclusive: true}).range(16, 19),
+                        Decoration.replace({widget: new MyWidget(50), block: true}).range(16, 19),
                         Decoration.widget({widget: new MyWidget(20), side: -1, block: true}).range(16),
                         Decoration.widget({widget: new MyWidget(10), side: 1, block: true}).range(19)])
-    ist(map.toString(), "gap(3) block(0)-block(7)-block(0) gap(3) block(3) gap(3)")
-    map = map.updateHeight(o(text), 0, false, new MeasuredHeights(4, [5, 5, 5, 10, 5]))
-    ist(map.height, 2 * o(text).lineHeight + 30)
+    ist(map.toString(), "gap(3) block(0)-line(0)-block(7)-block(0) gap(3) block(3) gap(3)")
+    map = map.updateHeight(o(text), 0, false, new MeasuredHeights(4, [5, 5, 5, 5, 10, 5]))
+    ist(map.height, 2 * o(text).lineHeight + 35)
   })
 
   it("handles empty lines correctly", () => {
