@@ -170,7 +170,9 @@ export class BlockWidgetView extends ContentView implements BlockView {
   split(at: number) {
     let len = this.length - at
     this.length = at
-    return new BlockWidgetView(this.widget, len, this.type)
+    let end = new BlockWidgetView(this.widget, len, this.type)
+    end.breakAfter = this.breakAfter
+    return end
   }
 
   get children() { return none }
