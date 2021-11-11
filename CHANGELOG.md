@@ -1,3 +1,15 @@
+## 0.19.16 (2021-11-11)
+
+### Breaking changes
+
+Block replacement decorations now default to inclusive, because non-inclusive block decorations are rarely what you need.
+
+### Bug fixes
+
+Fix an issue that caused block widgets to always have a large side value, making it impossible to show them between to replacement decorations.
+
+Fix a crash that could happen after some types of viewport changes, due to a bug in the block widget view data structure.
+
 ## 0.19.15 (2021-11-09)
 
 ### Bug fixes
