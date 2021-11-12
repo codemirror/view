@@ -157,7 +157,7 @@ function textCoords(text: Text, pos: number, side: number): Rect {
   if (!rects.length) return Rect0
   let rect = rects[(flatten ? flatten < 0 : side >= 0) ? 0 : rects.length - 1]
   if (browser.safari && !flatten && rect.width == 0) rect = Array.prototype.find.call(rects, r => r.width) || rect
-  return flatten ? flattenRect(rect!, flatten < 0) : rect!
+  return flatten ? flattenRect(rect!, flatten < 0) : rect || null
 }
 
 // Also used for collapsed ranges that don't have a placeholder widget!
@@ -283,9 +283,9 @@ export class WidgetBufferView extends InlineView {
 
   domBoundsAround() { return null }
 
-  coordsAt(pos: number): Rect {
+  coordsAt(pos: number): Rect | null {
     let rects = clientRectsFor(this.dom!)
-    return rects[rects.length - 1]
+    return rects[rects.length - 1] || null
   }
 
   get overrideDOMText() {
@@ -419,5 +419,5 @@ export function coordsInChildren(view: ContentView & {children: InlineView[]}, p
   let last = view.dom!.lastChild
   if (!last) return (view.dom as HTMLElement).getBoundingClientRect()
   let rects = clientRectsFor(last)
-  return rects[rects.length - 1]
+  return rects[rects.length - 1] || null
 }
