@@ -48,13 +48,17 @@ interface GutterConfig {
   markers?: (view: EditorView) => (RangeSet<GutterMarker> | readonly RangeSet<GutterMarker>[])
   /// Can be used to optionally add a single marker to every line.
   lineMarker?: (view: EditorView, line: BlockInfo, otherMarkers: readonly GutterMarker[]) => GutterMarker | null
+  /// If line markers depend on additional state, and should be
+  /// updated when that changes, pass a predicate here that checks
+  /// whether a given view update might change the line markers.
+  lineMarkerChange?: null | ((update: ViewUpdate) => boolean)
   /// Add a hidden spacer element that gives the gutter its base
   /// width.
   initialSpacer?: null | ((view: EditorView) => GutterMarker)
   /// Update the spacer element when the view is updated.
   updateSpacer?: null | ((spacer: GutterMarker, update: ViewUpdate) => GutterMarker)
   /// Supply event handlers for DOM events on this gutter.
-  domEventHandlers?: Handlers
+  domEventHandlers?: Handlers,
 }
 
 const defaults = {
@@ -63,6 +67,7 @@ const defaults = {
   elementStyle: "",
   markers: () => RangeSet.empty,
   lineMarker: () => null,
+  lineMarkerChange: null,
   initialSpacer: null,
   updateSpacer: null,
   domEventHandlers: {}
@@ -314,7 +319,8 @@ class SingleGutterView {
       if (updated != this.spacer.markers[0]) this.spacer.update(update.view, 0, 0, [updated])
     }
     let vp = update.view.viewport
-    return !RangeSet.eq(this.markers, prevMarkers, vp.from, vp.to)
+    return !RangeSet.eq(this.markers, prevMarkers, vp.from, vp.to) ||
+      (this.config.lineMarkerChange ? this.config.lineMarkerChange(update) : false)
   }
 }
 
@@ -400,6 +406,7 @@ const lineNumberGutter = activeGutters.compute([lineNumberConfig], state => ({
     if (others.some(m => m.toDOM)) return null
     return new NumberMarker(formatNumber(view, view.state.doc.lineAt(line.from).number))
   },
+  lineMarkerChange: update => update.startState.facet(lineNumberConfig) != update.state.facet(lineNumberConfig),
   initialSpacer(view: EditorView) {
     return new NumberMarker(formatNumber(view, maxLineNumber(view.state.doc.lines)))
   },
