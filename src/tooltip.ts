@@ -40,7 +40,7 @@ class TooltipViewManager {
     let tooltips = input.filter(x => x) as Tooltip[]
     if (input === this.input) {
       for (let t of this.tooltipViews) if (t.update) t.update(update)
-      return {shouldMeasure: false}
+      return false
     }
 
     let tooltipViews = []
@@ -63,7 +63,7 @@ class TooltipViewManager {
     this.input = input
     this.tooltips = tooltips
     this.tooltipViews = tooltipViews
-    return {shouldMeasure: true}
+    return true
   }
 }
 
@@ -134,7 +134,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   update(update: ViewUpdate) {
-    let {shouldMeasure} = this.manager.update(update)
+    let shouldMeasure = this.manager.update(update)
     let newConfig = update.state.facet(tooltipConfig)
     if (newConfig.position != this.position) {
       this.position = newConfig.position
