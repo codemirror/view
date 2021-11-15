@@ -119,6 +119,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.createContainer()
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
+    this.maybeMeasure = this.maybeMeasure.bind(this)
+    window.addEventListener("resize", this.maybeMeasure)
     this.maybeMeasure()
   }
 
@@ -134,7 +136,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   update(update: ViewUpdate) {
-    let shouldMeasure = this.manager.update(update)
+    let shouldMeasure = this.manager.update(update) || update.geometryChanged
     let newConfig = update.state.facet(tooltipConfig)
     if (newConfig.position != this.position) {
       this.position = newConfig.position
@@ -170,6 +172,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   destroy() {
     for (let {dom} of this.manager.tooltipViews) dom.remove()
+    window.removeEventListener("resize", this.maybeMeasure)
   }
 
   readMeasure() {
