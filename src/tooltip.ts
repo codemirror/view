@@ -580,10 +580,10 @@ export function hoverTooltip(
 
 /// Returns true if any hover tooltips are currently active.
 export function hasHoverTooltips(state: EditorState) {
-  return state.facet(showHoverTooltip).some(x => x);
+  return state.facet(showHoverTooltip).some(x => x)
 }
 
-const closeHoverTooltipEffect = StateEffect.define<null>();
+const closeHoverTooltipEffect = StateEffect.define<null>()
 
 /// Transaction effect that closes all hover tooltips.
-export const closeHoverTooltips = closeHoverTooltipEffect.of(null);
+export const closeHoverTooltips = closeHoverTooltipEffect.of(null)
