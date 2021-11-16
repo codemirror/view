@@ -5,7 +5,7 @@ import {DecorationSet, PointDecoration, Decoration, BlockType, addRange} from ".
 import {ChangedRange} from "./extension"
 import {Direction} from "./bidi"
 
-const wrappingWhiteSpace = ["pre-wrap", "normal", "pre-line"]
+const wrappingWhiteSpace = ["pre-wrap", "normal", "pre-line", "break-spaces"]
 
 export class HeightOracle {
   doc: Text = Text.empty
