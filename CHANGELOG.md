@@ -1,3 +1,9 @@
+## 0.19.17 (2021-11-16)
+
+### Bug fixes
+
+Avoid an issue where stretches of whitespace on line wrap points could cause the cursor to be placed outside of the content.
+
 ## 0.19.16 (2021-11-11)
 
 ### Breaking changes
