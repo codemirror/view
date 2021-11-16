@@ -69,7 +69,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   },
 
   ".cm-lineWrapping": {
-    whiteSpace: "pre-wrap",
+    whiteSpace_fallback: "pre-wrap", // For IE
+    whiteSpace: "break-spaces",
     wordBreak: "break-word", // For Safari, which doesn't support overflow-wrap: anywhere
     overflowWrap: "anywhere"
   },
