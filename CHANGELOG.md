@@ -1,3 +1,9 @@
+## 0.19.18 (2021-11-16)
+
+### Bug fixes
+
+Fix an issue where the editor wasn't aware it was line-wrapping with its own `lineWrapping` extension enabled.
+
 ## 0.19.17 (2021-11-16)
 
 ### Bug fixes
