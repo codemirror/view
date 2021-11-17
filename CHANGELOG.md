@@ -1,3 +1,9 @@
+## 0.19.19 (2021-11-17)
+
+### Bug fixes
+
+Fix a bug that caused the precedence of `editorAttributes` and `contentAttributes` to be inverted, making lower-precedence extensions override higher-precedence ones.
+
 ## 0.19.18 (2021-11-16)
 
 ### Bug fixes
