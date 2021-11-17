@@ -1,5 +1,5 @@
 import {tempView} from "@codemirror/buildhelper/lib/tempview"
-import {EditorSelection} from "@codemirror/state"
+import {EditorSelection, Prec} from "@codemirror/state"
 import {EditorView, ViewPlugin} from "@codemirror/view"
 import ist from "ist"
 
@@ -266,5 +266,14 @@ describe("EditorView drawing", () => {
     editor.measure()
     ist(getComputedStyle(editor.dom).display, "flex")
     wrap.remove()
+  })
+
+  it("allows editor attributes to override each other", () => {
+    let cm = tempView("", [
+      EditorView.contentAttributes.of({"data-x": "x"}),
+      EditorView.contentAttributes.of({"data-x": "y"}),
+      Prec.highest(EditorView.contentAttributes.of({"data-x": "z"})),
+    ])
+    ist(cm.contentDOM.getAttribute("data-x"), "z")
   })
 })

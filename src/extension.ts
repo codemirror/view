@@ -267,12 +267,18 @@ export interface MeasureRequest<T> {
   key?: any
 }
 
+function combineFacetAttrs(values: readonly Attr[]) {
+  let result = {}
+  for (let i = values.length - 1; i >= 0; i--) combineAttrs(values[i], result)
+  return result
+}
+
 export const editorAttributes = Facet.define<Attrs, Attrs>({
-  combine: values => values.reduce((a, b) => combineAttrs(b, a), {})
+  combine: combineFacetAttrs
 })
 
 export const contentAttributes = Facet.define<Attrs, Attrs>({
-  combine: values => values.reduce((a, b) => combineAttrs(b, a), {})
+  combine: combineFacetAttrs
 })
 
 // Provide decorations
