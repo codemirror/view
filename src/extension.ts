@@ -267,7 +267,7 @@ export interface MeasureRequest<T> {
   key?: any
 }
 
-function combineFacetAttrs(values: readonly Attr[]) {
+function combineFacetAttrs(values: readonly Attrs[]) {
   let result = {}
   for (let i = values.length - 1; i >= 0; i--) combineAttrs(values[i], result)
   return result
