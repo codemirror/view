@@ -110,6 +110,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   parent: ParentNode | null
   container!: HTMLElement
   classes: string
+  intersectionObserver: IntersectionObserver | null
+  lastLayoutWrite = 0
 
   constructor(readonly view: EditorView) {
     let config = view.state.facet(tooltipConfig)
@@ -119,8 +121,12 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.createContainer()
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
-    this.maybeMeasure = this.maybeMeasure.bind(this)
-    window.addEventListener("resize", this.maybeMeasure)
+    this.intersectionObserver = typeof IntersectionObserver == "function" ? new IntersectionObserver(entries => {
+      if (Date.now() > this.lastLayoutWrite - 20 &&
+          entries.length > 0 && entries[entries.length - 1].intersectionRatio < 1)
+        this.maybeMeasure()
+    }, {threshold: [1]}) : null
+    this.observeIntersection()
     this.maybeMeasure()
   }
 
@@ -135,8 +141,18 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     }
   }
 
+  observeIntersection() {
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect()
+      for (let tooltip of this.manager.tooltipViews)
+        this.intersectionObserver.observe(tooltip.dom)
+    }
+  }
+
   update(update: ViewUpdate) {
-    let shouldMeasure = this.manager.update(update) || update.geometryChanged
+    let updated = this.manager.update(update)
+    if (updated) this.observeIntersection()
+    let shouldMeasure = updated || update.geometryChanged
     let newConfig = update.state.facet(tooltipConfig)
     if (newConfig.position != this.position) {
       this.position = newConfig.position
@@ -172,7 +188,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   destroy() {
     for (let {dom} of this.manager.tooltipViews) dom.remove()
-    window.removeEventListener("resize", this.maybeMeasure)
+    this.intersectionObserver?.disconnect()
   }
 
   readMeasure() {
@@ -188,6 +204,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   writeMeasure(measured: Measured) {
+    this.lastLayoutWrite = Date.now()
     let {editor} = measured
     let others = []
     for (let i = 0; i < this.manager.tooltips.length; i++) {
