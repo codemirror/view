@@ -314,7 +314,7 @@ export class EditorView {
   measure(flush = true) {
     if (this.destroyed) return
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
-    this.measureScheduled = -1 // Prevent requestMeasure calls from scheduling another animation frame
+    this.measureScheduled = 0 // Prevent requestMeasure calls from scheduling another animation frame
 
     if (flush) this.observer.flush()
 
@@ -358,9 +358,11 @@ export class EditorView {
         }
         if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to && this.measureRequests.length == 0) break
       }
-    } finally { this.updateState = UpdateState.Idle }
+    } finally {
+      this.updateState = UpdateState.Idle
+      this.measureScheduled = -1
+    }
 
-    this.measureScheduled = -1
     if (updated && !updated.empty) for (let listener of this.state.facet(updateListener)) listener(updated)
   }
 
