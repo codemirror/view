@@ -112,6 +112,7 @@ export class ViewState {
   paddingTop = 0
   paddingBottom = 0
   contentWidth = 0
+  editorHeight = 0
 
   heightOracle: HeightOracle = new HeightOracle
   heightMap: HeightMap
@@ -236,6 +237,10 @@ export class ViewState {
       }
       if (this.contentWidth != contentWidth) {
         this.contentWidth = contentWidth
+        result |= UpdateFlag.Geometry
+      }
+      if (this.editorHeight != docView.view.scrollDOM.clientHeight) {
+        this.editorHeight = docView.view.scrollDOM.clientHeight
         result |= UpdateFlag.Geometry
       }
 
