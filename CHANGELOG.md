@@ -1,3 +1,9 @@
+## 0.19.20 (2021-11-19)
+
+### Bug fixes
+
+Run a measure cycle when the editor's size spontaneously changes.
+
 ## 0.19.19 (2021-11-17)
 
 ### Bug fixes
