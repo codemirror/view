@@ -36,6 +36,10 @@ export class DocView extends ContentView {
 
   dom!: HTMLElement
 
+  // Used by the resize observer to ignore resizes that we caused
+  // ourselves
+  lastUpdate = 0
+
   get root() { return this.view.root }
 
   get editorView() { return this.view }
@@ -55,6 +59,7 @@ export class DocView extends ContentView {
   // position, if we know the editor is going to scroll that position
   // into view.
   update(update: ViewUpdate) {
+    this.lastUpdate = Date.now()
     let changedRanges = update.changedRanges
     if (this.minWidth > 0 && changedRanges.length) {
       if (!changedRanges.every(({fromA, toA}) => toA < this.minWidthFrom || fromA > this.minWidthTo)) {
