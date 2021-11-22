@@ -12,8 +12,7 @@ type Measured = {
   parent: Rect,
   pos: (Rect | null)[],
   size: Rect[],
-  innerWidth: number,
-  innerHeight: number
+  space: {left: number, top: number, right: number, bottom: number}
 }
 
 const Outside = "-10000px"
@@ -86,19 +85,31 @@ export function tooltips(config: {
   /// issues, and you need to use a different parent to work around
   /// those.
   parent?: HTMLElement
+  /// By default, when figuring out whether there is room for a
+  /// tooltip at a given position, the extension considers the entire
+  /// space between 0,0 and `innerWidth`,`innerHeight` to be available
+  /// for showing tooltips. You can provide a function here that
+  /// returns an alternative rectangle.
+  tooltipSpace?: (view: EditorView) => {top: number, left: number, bottom: number, right: number}
 } = {}): Extension {
   return tooltipConfig.of(config)
 }
 
 type TooltipConfig = {
   position: "fixed" | "absolute",
-  parent: ParentNode | null
+  parent: ParentNode | null,
+  tooltipSpace: (view: EditorView) => {top: number, left: number, bottom: number, right: number}
+}
+
+function windowSpace() {
+  return {top: 0, left: 0, bottom: innerHeight, right: innerWidth}
 }
 
 const tooltipConfig = Facet.define<Partial<TooltipConfig>, TooltipConfig>({
   combine: values => ({
     position: ios ? "absolute" : values.find(conf => conf.position)?.position || "fixed",
-    parent: values.find(conf => conf.parent)?.parent || null
+    parent: values.find(conf => conf.parent)?.parent || null,
+    tooltipSpace: values.find(conf => conf.tooltipSpace)?.tooltipSpace || windowSpace,
   })
 })
 
@@ -198,20 +209,22 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       parent: this.parent ? this.container.getBoundingClientRect() : editor,
       pos: this.manager.tooltips.map(t => this.view.coordsAtPos(t.pos)),
       size: this.manager.tooltipViews.map(({dom}) => dom.getBoundingClientRect()),
-      innerWidth: window.innerWidth,
-      innerHeight: window.innerHeight
+      space: this.view.state.facet(tooltipConfig).tooltipSpace(this.view),
     }
   }
 
   writeMeasure(measured: Measured) {
     this.lastLayoutWrite = Date.now()
-    let {editor} = measured
+    let {editor, space} = measured
     let others = []
     for (let i = 0; i < this.manager.tooltips.length; i++) {
       let tooltip = this.manager.tooltips[i], tView = this.manager.tooltipViews[i], {dom} = tView
       let pos = measured.pos[i], size = measured.size[i]
       // Hide tooltips that are outside of the editor.
-      if (!pos || pos.bottom <= editor.top || pos.top >= editor.bottom || pos.right <= editor.left || pos.left >= editor.right) {
+      if (!pos || pos.bottom <= Math.max(editor.top, space.top) ||
+          pos.top >= Math.min(editor.bottom, space.bottom) ||
+          pos.right <= Math.max(editor.left, space.left) ||
+          pos.left >= Math.min(editor.right, space.right)) {
         dom.style.top = Outside
         continue
       }
@@ -220,12 +233,12 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let width = size.right - size.left, height = size.bottom - size.top
       let offset = tView.offset || noOffset, ltr = this.view.textDirection == Direction.LTR
       let left = ltr
-        ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, measured.innerWidth - width)
-        : Math.max(0, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x)
+        ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, space.right - width)
+        : Math.max(space.left, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x)
       let above = !!tooltip.above
       if (!tooltip.strictSide && (above
-            ? pos.top - (size.bottom - size.top) - offset.y < 0
-            : pos.bottom + (size.bottom - size.top) + offset.y > measured.innerHeight))
+            ? pos.top - (size.bottom - size.top) - offset.y < space.top
+            : pos.bottom + (size.bottom - size.top) + offset.y > space.bottom))
         above = !above
       let top = above ? pos.top - height  - arrowHeight - offset.y : pos.bottom + arrowHeight + offset.y
       let right = left + width
