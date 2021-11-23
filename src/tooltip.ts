@@ -122,7 +122,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   container!: HTMLElement
   classes: string
   intersectionObserver: IntersectionObserver | null
-  lastLayoutWrite = 0
+  lastTransaction = 0
+  intersectionTimeout = -1
 
   constructor(readonly view: EditorView) {
     let config = view.state.facet(tooltipConfig)
@@ -133,9 +134,12 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
     this.intersectionObserver = typeof IntersectionObserver == "function" ? new IntersectionObserver(entries => {
-      if (Date.now() > this.lastLayoutWrite - 20 &&
+      if (this.intersectionTimeout < 0 && Date.now() > this.lastTransaction - 50 &&
           entries.length > 0 && entries[entries.length - 1].intersectionRatio < 1)
-        this.maybeMeasure()
+        this.intersectionTimeout = setTimeout(() => {
+          this.intersectionTimeout = -1
+          this.maybeMeasure()
+        }, 50)
     }, {threshold: [1]}) : null
     this.observeIntersection()
     this.maybeMeasure()
@@ -161,6 +165,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   update(update: ViewUpdate) {
+    if (update.transactions.length) this.lastTransaction = Date.now()
     let updated = this.manager.update(update)
     if (updated) this.observeIntersection()
     let shouldMeasure = updated || update.geometryChanged
@@ -200,6 +205,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   destroy() {
     for (let {dom} of this.manager.tooltipViews) dom.remove()
     this.intersectionObserver?.disconnect()
+    clearTimeout(this.intersectionTimeout)
   }
 
   readMeasure() {
@@ -214,7 +220,6 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   writeMeasure(measured: Measured) {
-    this.lastLayoutWrite = Date.now()
     let {editor, space} = measured
     let others = []
     for (let i = 0; i < this.manager.tooltips.length; i++) {
