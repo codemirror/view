@@ -623,3 +623,11 @@ const closeHoverTooltipEffect = StateEffect.define<null>()
 
 /// Transaction effect that closes all hover tooltips.
 export const closeHoverTooltips = closeHoverTooltipEffect.of(null)
+
+/// Tell the tooltip extension to recompute the position of the active
+/// tooltips. This can be useful when something happens (such as a
+/// re-positioning or CSS change affecting the editor) that could
+/// invalidate the existing tooltip positions.
+export function repositionTooltips(view: EditorView) {
+  view.plugin(tooltipPlugin)?.maybeMeasure()
+}
