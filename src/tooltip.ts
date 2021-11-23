@@ -8,10 +8,10 @@ const ios = typeof navigator != "undefined" &&
 type Rect = {left: number, right: number, top: number, bottom: number}
 
 type Measured = {
-  editor: Rect,
-  parent: Rect,
+  editor: DOMRect,
+  parent: DOMRect,
   pos: (Rect | null)[],
-  size: Rect[],
+  size: DOMRect[],
   space: {left: number, top: number, right: number, bottom: number}
 }
 
@@ -237,13 +237,14 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let arrowHeight = arrow ? Arrow.Size : 0
       let width = size.right - size.left, height = size.bottom - size.top
       let offset = tView.offset || noOffset, ltr = this.view.textDirection == Direction.LTR
-      let left = ltr
-        ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, space.right - width)
+      let left = size.width > space.right - space.left ? (ltr ? space.left : space.right - size.width)
+        : ltr ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, space.right - width)
         : Math.max(space.left, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x)
       let above = !!tooltip.above
       if (!tooltip.strictSide && (above
             ? pos.top - (size.bottom - size.top) - offset.y < space.top
-            : pos.bottom + (size.bottom - size.top) + offset.y > space.bottom))
+            : pos.bottom + (size.bottom - size.top) + offset.y > space.bottom) &&
+          above == (space.bottom - pos.bottom > pos.top - space.top))
         above = !above
       let top = above ? pos.top - height  - arrowHeight - offset.y : pos.bottom + arrowHeight + offset.y
       let right = left + width
