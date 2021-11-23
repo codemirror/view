@@ -24,6 +24,7 @@ export class DOMObserver {
   ignoreSelection: DOMSelection = new DOMSelection
 
   delayedFlush = -1
+  resizeTimeout = -1
   queue: MutationRecord[] = []
   lastFlush = 0
 
@@ -77,7 +78,11 @@ export class DOMObserver {
     this.onSelectionChange = this.onSelectionChange.bind(this)
     if (typeof ResizeObserver == "function") {
       this.resize = new ResizeObserver(() => {
-        if (this.view.docView.lastUpdate < Date.now() - 100) this.view.requestMeasure()
+        if (this.view.docView.lastUpdate < Date.now() - 50 && this.resizeTimeout < 0)
+          this.resizeTimeout = setTimeout(() => {
+            this.resizeTimeout = -1
+            this.view.requestMeasure()
+          }, 50)
       })
       this.resize.observe(view.scrollDOM)
     }
@@ -295,6 +300,7 @@ export class DOMObserver {
     for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
     window.removeEventListener("scroll", this.onScroll)
     clearTimeout(this.parentCheck)
+    clearTimeout(this.resizeTimeout)
   }
 }
 
