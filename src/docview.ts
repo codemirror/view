@@ -33,6 +33,7 @@ export class DocView extends ContentView {
   // we don't mess it up when reading it back it
   impreciseAnchor: DOMPos | null = null
   impreciseHead: DOMPos | null = null
+  forceSelection = false
 
   dom!: HTMLElement
 
@@ -78,22 +79,21 @@ export class DocView extends ContentView {
     // getSelection than the one that it actually shows to the user.
     // This forces a selection update when lines are joined to work
     // around that. Issue #54
-    let forceSelection = (browser.ie || browser.chrome) && !this.compositionDeco.size && update &&
-      update.state.doc.lines != update.startState.doc.lines
+    if ((browser.ie || browser.chrome) && !this.compositionDeco.size && update &&
+        update.state.doc.lines != update.startState.doc.lines)
+      this.forceSelection = true
 
     let prevDeco = this.decorations, deco = this.updateDeco()
     let decoDiff = findChangedDeco(prevDeco, deco, update.changes)
     changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff)
 
-    let pointerSel = update.transactions.some(tr => tr.isUserEvent("select.pointer"))
     if (this.dirty == Dirty.Not && changedRanges.length == 0 &&
         !(update.flags & UpdateFlag.Viewport) &&
         update.state.selection.main.from >= this.view.viewport.from &&
         update.state.selection.main.to <= this.view.viewport.to) {
-      this.updateSelection(forceSelection, pointerSel)
       return false
     } else {
-      this.updateInner(changedRanges, deco, update.startState.doc.length, forceSelection, pointerSel)
+      this.updateInner(changedRanges, deco, update.startState.doc.length)
       return true
     }
   }
@@ -102,14 +102,15 @@ export class DocView extends ContentView {
     if (this.dirty) {
       this.view.observer.ignore(() => this.view.docView.sync())
       this.dirty = Dirty.Not
+      this.updateSelection(true)
+    } else {
+      this.updateSelection()
     }
-    if (sel) this.updateSelection()
   }
 
   // Used both by update and checkLayout do perform the actual DOM
   // update
-  private updateInner(changes: readonly ChangedRange[], deco: readonly DecorationSet[],
-                      oldLength: number, forceSelection = false, pointerSel = false) {
+  private updateInner(changes: readonly ChangedRange[], deco: readonly DecorationSet[], oldLength: number) {
     this.updateChildren(changes, deco, oldLength)
 
     let {observer} = this.view
@@ -127,8 +128,7 @@ export class DocView extends ContentView {
       let track = browser.chrome || browser.ios ? {node: observer.selectionRange.focusNode!, written: false} : undefined
       this.sync(track)
       this.dirty = Dirty.Not
-      if (track && (track.written || observer.selectionRange.focusNode != track.node)) forceSelection = true
-      this.updateSelection(forceSelection, pointerSel)
+      if (track && (track.written || observer.selectionRange.focusNode != track.node)) this.forceSelection = true
       this.dom.style.height = ""
     })
     let gaps = []
@@ -211,9 +211,12 @@ export class DocView extends ContentView {
   }
 
   // Sync the DOM selection to this.state.selection
-  updateSelection(force = false, fromPointer = false) {
+  updateSelection(mustRead = false, fromPointer = false) {
+    if (mustRead) this.view.observer.readSelectionRange()
     if (!(fromPointer || this.mayControlSelection()) ||
         browser.ios && this.view.inputState.rapidCompositionStart) return
+    let force = this.forceSelection
+    this.forceSelection = false
 
     let main = this.view.state.selection.main
     // FIXME need to handle the case where the selection falls inside a block range

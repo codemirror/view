@@ -255,6 +255,7 @@ export class EditorView {
       if (this.state.facet(styleModule) != this.styleModules) this.mountStyles()
       this.updateAttrs()
       this.showAnnouncements(transactions)
+      this.docView.updateSelection(redrawn, transactions.some(tr => tr.isUserEvent("select.pointer")))
     } finally { this.updateState = UpdateState.Idle }
     if (redrawn || scrollTarget || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
@@ -347,7 +348,7 @@ export class EditorView {
           this.inputState.update(update)
         }
         this.updateAttrs()
-        if (changed) this.docView.update(update)
+        let redrawn = changed > 0 && this.docView.update(update)
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {
           try { measuring[i].write(measured[i], this) }
           catch(e) { logException(this.state, e) }
@@ -356,6 +357,7 @@ export class EditorView {
           this.docView.scrollIntoView(this.viewState.scrollTarget)
           this.viewState.scrollTarget = null
         }
+        if (changed) this.docView.updateSelection(redrawn)
         if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to && this.measureRequests.length == 0) break
       }
     } finally {
@@ -377,8 +379,6 @@ export class EditorView {
     let editorAttrs = combineAttrs(this.state.facet(editorAttributes), {
       class: "cm-editor" + (this.hasFocus ? " cm-focused " : " ") + this.themeClasses
     })
-    updateAttrs(this.dom, this.editorAttrs, editorAttrs)
-    this.editorAttrs = editorAttrs
     let contentAttrs: Attrs = {
       spellcheck: "false",
       autocorrect: "off",
@@ -392,7 +392,12 @@ export class EditorView {
     }
     if (this.state.readOnly) contentAttrs["aria-readonly"] = "true"
     combineAttrs(this.state.facet(contentAttributes), contentAttrs)
-    updateAttrs(this.contentDOM, this.contentAttrs, contentAttrs)
+
+    this.observer.ignore(() => {
+      updateAttrs(this.contentDOM, this.contentAttrs, contentAttrs)
+      updateAttrs(this.dom, this.editorAttrs, editorAttrs)
+    })
+    this.editorAttrs = editorAttrs
     this.contentAttrs = contentAttrs
   }
 

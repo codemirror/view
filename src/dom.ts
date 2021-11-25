@@ -11,11 +11,6 @@ export function getSelection(root: DocumentOrShadowRoot): Selection {
   return target.getSelection()!
 }
 
-export type SelectionRange = {
-  focusNode: Node | null, focusOffset: number,
-  anchorNode: Node | null, anchorOffset: number
-}
-
 export function contains(dom: HTMLElement, node: Node | null) {
   return node ? dom.contains(node.nodeType != 1 ? node.parentNode : node) : false
 }
@@ -182,7 +177,12 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1, c
   }
 }
 
-export class DOMSelection {
+export interface SelectionRange {
+  focusNode: Node | null, focusOffset: number,
+  anchorNode: Node | null, anchorOffset: number
+}
+
+export class DOMSelectionState implements SelectionRange {
   anchorNode: Node | null = null
   anchorOffset: number = 0
   focusNode: Node | null = null
@@ -193,9 +193,13 @@ export class DOMSelection {
       this.focusNode == domSel.focusNode && this.focusOffset == domSel.focusOffset
   }
 
-  set(domSel: SelectionRange) {
-    this.anchorNode = domSel.anchorNode; this.anchorOffset = domSel.anchorOffset
-    this.focusNode = domSel.focusNode; this.focusOffset = domSel.focusOffset
+  setRange(range: SelectionRange) {
+    this.set(range.anchorNode, range.anchorOffset, range.focusNode, range.focusOffset)
+  }
+
+  set(anchorNode: Node | null, anchorOffset: number, focusNode: Node | null, focusOffset: number) {
+    this.anchorNode = anchorNode; this.anchorOffset = anchorOffset
+    this.focusNode = focusNode; this.focusOffset = focusOffset
   }
 }
 
