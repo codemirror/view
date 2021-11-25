@@ -39,7 +39,7 @@ export class DocView extends ContentView {
 
   // Used by the resize observer to ignore resizes that we caused
   // ourselves
-  lastUpdate = 0
+  lastUpdate = Date.now()
 
   get root() { return this.view.root }
 
@@ -60,7 +60,6 @@ export class DocView extends ContentView {
   // position, if we know the editor is going to scroll that position
   // into view.
   update(update: ViewUpdate) {
-    if (update.transactions.length) this.lastUpdate = Date.now()
     let changedRanges = update.changedRanges
     if (this.minWidth > 0 && changedRanges.length) {
       if (!changedRanges.every(({fromA, toA}) => toA < this.minWidthFrom || fromA > this.minWidthTo)) {
@@ -94,6 +93,7 @@ export class DocView extends ContentView {
       return false
     } else {
       this.updateInner(changedRanges, deco, update.startState.doc.length)
+      if (update.transactions.length) this.lastUpdate = Date.now()
       return true
     }
   }

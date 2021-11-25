@@ -82,7 +82,7 @@ export class DOMObserver {
     this.onSelectionChange = this.onSelectionChange.bind(this)
     if (typeof ResizeObserver == "function") {
       this.resize = new ResizeObserver(() => {
-        if (this.view.docView.lastUpdate < Date.now() - 50 && this.resizeTimeout < 0)
+        if (this.view.docView.lastUpdate < Date.now() - 75 && this.resizeTimeout < 0)
           this.resizeTimeout = setTimeout(() => {
             this.resizeTimeout = -1
             this.view.requestMeasure()
