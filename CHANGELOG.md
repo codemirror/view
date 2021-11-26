@@ -1,3 +1,9 @@
+## 0.19.21 (2021-11-26)
+
+### Bug fixes
+
+Fix a problem where the DOM update would unnecessarily trigger browser relayouts.
+
 ## 0.19.20 (2021-11-19)
 
 ### Bug fixes
