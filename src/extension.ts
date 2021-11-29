@@ -261,7 +261,7 @@ export interface MeasureRequest<T> {
   read(view: EditorView): T
   /// Called in a DOM write phase to update the document. Should _not_
   /// do anything that triggers DOM layout.
-  write(measure: T, view: EditorView): void
+  write?(measure: T, view: EditorView): void
   /// When multiple requests with the same key are scheduled, only the
   /// last one will actually be ran.
   key?: any

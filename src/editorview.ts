@@ -350,8 +350,10 @@ export class EditorView {
         this.updateAttrs()
         let redrawn = changed > 0 && this.docView.update(update)
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {
-          try { measuring[i].write(measured[i], this) }
-          catch(e) { logException(this.state, e) }
+          try {
+            let m = measuring[i]
+            if (m.write) m.write(measured[i], this)
+          } catch(e) { logException(this.state, e) }
         }
         if (this.viewState.scrollTarget) {
           this.docView.scrollIntoView(this.viewState.scrollTarget)
