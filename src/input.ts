@@ -267,7 +267,7 @@ class MouseSelection {
     this.extend = startEvent.shiftKey
     this.multiple = view.state.facet(EditorState.allowMultipleSelections) && addsSelectionRange(view, startEvent)
     this.dragMove = dragMovesSelection(view, startEvent)
-    this.dragging = isInPrimarySelection(view, startEvent) ? null : false
+    this.dragging = isInPrimarySelection(view, startEvent) && getClickType(startEvent) == 1 ? null : false
     // When clicking outside of the selection, immediately apply the
     // effect of starting the selection
     if (this.dragging === false) {
@@ -486,7 +486,7 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
   let last = start, lastEvent: MouseEvent | null = event
   return {
     update(update) {
-      if (update.changes) {
+      if (update.docChanged) {
         if (start) start.pos = update.changes.mapPos(start.pos)
         startSel = startSel.map(update.changes)
         lastEvent = null
