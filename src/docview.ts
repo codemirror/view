@@ -119,7 +119,7 @@ export class DocView extends ContentView {
       // messes with the scroll position during DOM mutation (though
       // no relayout is triggered and I cannot imagine how it can
       // recompute the scroll position without a layout)
-      this.dom.style.height = this.view.viewState.domHeight + "px"
+      this.dom.style.height = this.view.viewState.contentHeight + "px"
       this.dom.style.minWidth = this.minWidth ? this.minWidth + "px" : ""
       // Chrome will sometimes, when DOM mutations occur directly
       // around the selection, get confused and report a different

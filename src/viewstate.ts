@@ -432,11 +432,7 @@ export class ViewState {
   }
 
   get contentHeight() {
-    return this.domHeight + this.paddingTop + this.paddingBottom
-  }
-
-  get domHeight() {
-    return this.scaler.toDOM(this.heightMap.height, this.paddingTop)
+    return this.scaler.toDOM(this.heightMap.height, this.paddingTop) + this.paddingTop + this.paddingBottom
   }
 }
 
