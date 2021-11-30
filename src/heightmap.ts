@@ -119,7 +119,7 @@ export enum QueryType { ByPos, ByHeight, ByPosNoHeight }
 
 const enum Flag { Break = 1, Outdated = 2, SingleLine = 4 }
 
-const Epsilon = 1e-4
+const Epsilon = 1e-3
 
 export abstract class HeightMap {
   constructor(
@@ -349,19 +349,25 @@ class HeightMapGap extends HeightMap {
       // can't be widgets or collapsed ranges in those lines, because
       // they would already have been added to the heightmap (gaps
       // only contain plain text).
-      let nodes = [], pos = Math.max(offset, measured.from)
+      let nodes = [], pos = Math.max(offset, measured.from), singleHeight = -1
+      let wasChanged = oracle.heightChanged
       if (measured.from > offset) nodes.push(new HeightMapGap(measured.from - offset - 1).updateHeight(oracle, offset))
       while (pos <= end && measured.more) {
         let len = oracle.doc.lineAt(pos).length
         if (nodes.length) nodes.push(null)
-        let line = new HeightMapText(len, measured.heights[measured.index++])
+        let height = measured.heights[measured.index++]
+        if (singleHeight == -1) singleHeight = height
+        else if (Math.abs(height - singleHeight) >= Epsilon) singleHeight = -2
+        let line = new HeightMapText(len, height)
         line.outdated = false
         nodes.push(line)
         pos += len + 1
       }
       if (pos <= end) nodes.push(null, new HeightMapGap(end - pos).updateHeight(oracle, pos))
-      oracle.heightChanged = true
-      return HeightMap.of(nodes)
+      let result = HeightMap.of(nodes)
+      oracle.heightChanged = wasChanged || singleHeight < 0 || Math.abs(result.height - this.height) >= Epsilon ||
+        Math.abs(singleHeight - this.lines(oracle.doc, offset).lineHeight) >= Epsilon
+      return result
     } else if (force || this.outdated) {
       this.setHeight(oracle, oracle.heightForGap(offset, offset + this.length))
       this.outdated = false
