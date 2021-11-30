@@ -1,3 +1,19 @@
+## 0.19.22 (2021-11-30)
+
+### Bug fixes
+
+Fix an issue where editors with large vertical padding (for example via `scrollPastEnd`) could sometimes lose their scroll position on Chrome.
+
+Avoid some unnecessary DOM measuring work by more carefully checking whether it is needed.
+
+### New features
+
+The new `elementAtHeight`, `lineBlockAtHeight`, and `lineBlockAt` methods provide a simpler and more efficient replacement for the (now deprecated) `blockAtHeight`, `visualLineAtHeight`, and `visualLineAt` methods.
+
+The editor view now exports a `documentTop` getter that gives you the vertical position of the top of the document. All height info is queried and reported relative to this top.
+
+The editor view's new `viewportLineBlocks` property provides an array of in-viewport line blocks, and replaces the (now deprecated) `viewportLines` method.
+
 ## 0.19.21 (2021-11-26)
 
 ### Bug fixes
