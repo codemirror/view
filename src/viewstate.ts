@@ -198,10 +198,10 @@ export class ViewState {
     if (scrollTarget && (scrollTarget.range.head < viewport.from || scrollTarget.range.head > viewport.to) ||
         !this.viewportIsAppropriate(viewport))
       viewport = this.getViewport(0, scrollTarget)
-    if (!update.changes.empty || (update.flags & UpdateFlag.Height) ||
-        viewport.from != this.viewport.from || viewport.to != this.viewport.to)
-      this.updateViewportLines()
+    let updateLines = !update.changes.empty || (update.flags & UpdateFlag.Height) ||
+      viewport.from != this.viewport.from || viewport.to != this.viewport.to
     this.viewport = viewport
+    if (updateLines) this.updateViewportLines()
     this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
