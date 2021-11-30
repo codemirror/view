@@ -389,7 +389,7 @@ export class ViewUpdate {
 
   /// Whether the document changed in this update.
   get docChanged() {
-    return this.transactions.some(tr => tr.docChanged)
+    return !this.changes.empty
   }
 
   /// Whether the selection was explicitly set in this update.
