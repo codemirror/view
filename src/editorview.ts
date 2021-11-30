@@ -324,10 +324,10 @@ export class EditorView {
       for (let i = 0;; i++) {
         this.updateState = UpdateState.Measuring
         let oldViewport = this.viewport
-        let changed = this.viewState.measure(this.docView, i > 0)
+        let changed = this.viewState.measure(this)
         if (!changed && !this.measureRequests.length && this.viewState.scrollTarget == null) break
         if (i > 5) {
-          console.warn("Viewport failed to stabilize")
+          console.warn(this.measureRequests.length ? "Measure loop restarted more than 5 times" : "Viewport failed to stabilize")
           break
         }
         let measuring: MeasureRequest<any>[] = []
@@ -338,7 +338,7 @@ export class EditorView {
           try { return m.read(this) }
           catch(e) { logException(this.state, e); return BadMeasure }
         })
-        let update = new ViewUpdate(this, this.state)
+        let update = new ViewUpdate(this, this.state), redrawn = false
         update.flags |= changed
         if (!updated) updated = update
         else updated.flags |= changed
@@ -346,9 +346,9 @@ export class EditorView {
         if (!update.empty) {
           this.updatePlugins(update)
           this.inputState.update(update)
+          this.updateAttrs()
+          redrawn = this.docView.update(update)
         }
-        this.updateAttrs()
-        let redrawn = changed > 0 && this.docView.update(update)
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {
           try {
             let m = measuring[i]
@@ -359,7 +359,7 @@ export class EditorView {
           this.docView.scrollIntoView(this.viewState.scrollTarget)
           this.viewState.scrollTarget = null
         }
-        if (changed) this.docView.updateSelection(redrawn)
+        if (redrawn) this.docView.updateSelection(true)
         if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to && this.measureRequests.length == 0) break
       }
     } finally {

@@ -8,7 +8,7 @@ import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./decoration"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView, getSelection, hasSelection} from "./dom"
 import {ViewUpdate, PluginField, decorations as decorationsFacet,
-        UpdateFlag, editable, ChangedRange} from "./extension"
+        editable, ChangedRange} from "./extension"
 import {EditorView} from "./editorview"
 import {ScrollTarget} from "./viewstate"
 
@@ -86,10 +86,7 @@ export class DocView extends ContentView {
     let decoDiff = findChangedDeco(prevDeco, deco, update.changes)
     changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff)
 
-    if (this.dirty == Dirty.Not && changedRanges.length == 0 &&
-        !(update.flags & UpdateFlag.Viewport) &&
-        update.state.selection.main.from >= this.view.viewport.from &&
-        update.state.selection.main.to <= this.view.viewport.to) {
+    if (this.dirty == Dirty.Not && changedRanges.length == 0) {
       return false
     } else {
       this.updateInner(changedRanges, deco, update.startState.doc.length)
@@ -111,6 +108,7 @@ export class DocView extends ContentView {
   // Used both by update and checkLayout do perform the actual DOM
   // update
   private updateInner(changes: readonly ChangedRange[], deco: readonly DecorationSet[], oldLength: number) {
+    this.view.viewState.mustMeasureContent = true
     this.updateChildren(changes, deco, oldLength)
 
     let {observer} = this.view

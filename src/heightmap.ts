@@ -33,7 +33,11 @@ export class HeightOracle {
 
   setDoc(doc: Text): this { this.doc = doc; return this }
 
-  mustRefresh(lineHeights: number[], whiteSpace: string, direction: Direction): boolean {
+  mustRefreshForStyle(whiteSpace: string, direction: Direction): boolean {
+    return (wrappingWhiteSpace.indexOf(whiteSpace) > -1) != this.lineWrapping || this.direction != direction
+  }
+
+  mustRefreshForHeights(lineHeights: number[]): boolean {
     let newHeight = false
     for (let i = 0; i < lineHeights.length; i++) {
       let h = lineHeights[i]
@@ -44,7 +48,7 @@ export class HeightOracle {
         this.heightSamples[Math.floor(h * 10)] = true
       }
     }
-    return newHeight || (wrappingWhiteSpace.indexOf(whiteSpace) > -1) != this.lineWrapping || this.direction != direction
+    return newHeight
   }
 
   refresh(whiteSpace: string, direction: Direction, lineHeight: number, charWidth: number,

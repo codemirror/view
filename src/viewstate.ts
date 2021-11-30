@@ -5,7 +5,7 @@ import {Rect} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
 import {decorations, ViewUpdate, UpdateFlag, ChangedRange} from "./extension"
 import {WidgetType, Decoration, DecorationSet} from "./decoration"
-import {DocView} from "./docview"
+import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 
 function visiblePixelRange(dom: HTMLElement, paddingTop: number): Rect {
@@ -111,7 +111,8 @@ export class ViewState {
 
   paddingTop = 0
   paddingBottom = 0
-  contentWidth = 0
+  contentDOMWidth = 0
+  contentDOMHeight = 0
   editorHeight = 0
 
   heightOracle: HeightOracle = new HeightOracle
@@ -122,6 +123,9 @@ export class ViewState {
   scrollTarget: ScrollTarget | null = null
   // Briefly set to true when printing, to disable viewport limiting
   printing = false
+  // Flag set when editor content was redrawn, so that the next
+  // measure stage knows it must read DOM layout
+  mustMeasureContent = true
 
   // The main viewport for the visible part of the document
   viewport: Viewport
@@ -197,15 +201,19 @@ export class ViewState {
       this.mustEnforceCursorAssoc = true
   }
 
-  measure(docView: DocView, repeated: boolean) {
-    let dom = docView.dom, whiteSpace = "", direction: Direction = Direction.LTR
+  measure(view: EditorView) {
+    let dom = view.contentDOM, style = window.getComputedStyle(dom)
+    let oracle = this.heightOracle
+    let whiteSpace = style.whiteSpace!, direction = style.direction == "rtl" ? Direction.RTL : Direction.LTR
 
-    let result = 0
+    let refresh = this.heightOracle.mustRefreshForStyle(whiteSpace, direction)
+    let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != dom.clientHeight
+    let result = 0, bias = 0
 
-    if (!repeated) {
+    if (measureContent) {
+      this.mustMeasureContent = false
+      this.contentDOMHeight = dom.clientHeight
       // Vertical padding
-      let style = window.getComputedStyle(dom)
-      whiteSpace = style.whiteSpace!, direction = (style.direction == "rtl" ? Direction.RTL : Direction.LTR) as any
       let paddingTop = parseInt(style.paddingTop!) || 0, paddingBottom = parseInt(style.paddingBottom!) || 0
       if (this.paddingTop != paddingTop || this.paddingBottom != paddingBottom) {
         result |= UpdateFlag.Geometry
@@ -221,38 +229,35 @@ export class ViewState {
     this.inView = this.pixelViewport.bottom > this.pixelViewport.top && this.pixelViewport.right > this.pixelViewport.left
     if (!this.inView) return 0
 
-    let lineHeights = docView.measureVisibleLineHeights()
-    let refresh = false, bias = 0, oracle = this.heightOracle
-
-    if (!repeated) {
-      let contentWidth = docView.dom.clientWidth
-      if (oracle.mustRefresh(lineHeights, whiteSpace, direction) ||
-          oracle.lineWrapping && Math.abs(contentWidth - this.contentWidth) > oracle.charWidth) {
-        let {lineHeight, charWidth} = docView.measureTextSize()
+    if (measureContent) {
+      let lineHeights = view.docView.measureVisibleLineHeights()
+      if (oracle.mustRefreshForHeights(lineHeights)) refresh = true
+      let contentWidth = dom.clientWidth
+      if (refresh || oracle.lineWrapping && Math.abs(contentWidth - this.contentDOMWidth) > oracle.charWidth) {
+        let {lineHeight, charWidth} = view.docView.measureTextSize()
         refresh = oracle.refresh(whiteSpace, direction, lineHeight, charWidth, contentWidth / charWidth, lineHeights)
         if (refresh) {
-          docView.minWidth = 0
+          view.docView.minWidth = 0
           result |= UpdateFlag.Geometry
         }
       }
-      if (this.contentWidth != contentWidth) {
-        this.contentWidth = contentWidth
+      if (this.contentDOMWidth != contentWidth) {
+        this.contentDOMWidth = contentWidth
         result |= UpdateFlag.Geometry
       }
-      if (this.editorHeight != docView.view.scrollDOM.clientHeight) {
-        this.editorHeight = docView.view.scrollDOM.clientHeight
+      if (this.editorHeight != view.scrollDOM.clientHeight) {
+        this.editorHeight = view.scrollDOM.clientHeight
         result |= UpdateFlag.Geometry
       }
 
       if (dTop > 0 && dBottom > 0) bias = Math.max(dTop, dBottom)
       else if (dTop < 0 && dBottom < 0) bias = Math.min(dTop, dBottom)
+
+      oracle.heightChanged = false
+      this.heightMap = this.heightMap.updateHeight(
+        oracle, 0, refresh, new MeasuredHeights(this.viewport.from, lineHeights))
+      if (oracle.heightChanged) result |= UpdateFlag.Height
     }
-
-    oracle.heightChanged = false
-    this.heightMap = this.heightMap.updateHeight(
-      oracle, 0, refresh, new MeasuredHeights(this.viewport.from, lineHeights))
-
-    if (oracle.heightChanged) result |= UpdateFlag.Height
     if (!this.viewportIsAppropriate(this.viewport, bias) ||
         this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from || this.scrollTarget.range.head > this.viewport.to))
       this.viewport = this.getViewport(bias, this.scrollTarget)
@@ -268,7 +273,7 @@ export class ViewState {
       // to a line end is going to trigger a layout anyway, so it
       // can't be a pure write. It should be rare that it does any
       // writing.
-      docView.enforceCursorAssoc()
+      view.docView.enforceCursorAssoc()
     }
 
     return result
