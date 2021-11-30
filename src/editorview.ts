@@ -461,6 +461,12 @@ export class EditorView {
     return null
   }
 
+  /// The top position of the document, in screen coordinates. This
+  /// may be negative when the editor is scrolled down.
+  get documentTop() {
+    return this.contentDOM.getBoundingClientRect().top + this.viewState.paddingTop
+  }
+
   /// Find the line or block widget at the given vertical position.
   ///
   /// By default, this position is interpreted as a screen position,
@@ -470,9 +476,19 @@ export class EditorView {
   /// position, or a precomputed document top
   /// (`view.contentDOM.getBoundingClientRect().top`) to limit layout
   /// queries.
+  ///
+  /// *Deprecated: use `blockAtHeight` instead.*
   blockAtHeight(height: number, docTop?: number) {
+    let top = ensureTop(docTop, this)
+    return this.elementAtHeight(height - top).moveY(top)
+  }
+
+  /// Find the text line or block widget at the given vertical
+  /// position (which is interpreted as relative to the [top of the
+  /// document](#view.EditorView.documentTop)
+  elementAtHeight(height: number) {
     this.readMeasured()
-    return this.viewState.blockAtHeight(height, ensureTop(docTop, this.contentDOM))
+    return this.viewState.elementAtHeight(height)
   }
 
   /// Find information for the visual line (see
@@ -484,18 +500,38 @@ export class EditorView {
   /// Defaults to treating `height` as a screen position. See
   /// [`blockAtHeight`](#view.EditorView.blockAtHeight) for the
   /// interpretation of the `docTop` parameter.
+  ///
+  /// *Deprecated: use `lineBlockAtHeight` instead.*
   visualLineAtHeight(height: number, docTop?: number): BlockInfo {
+    let top = ensureTop(docTop, this)
+    return this.lineBlockAtHeight(height - top).moveY(top)
+  }
+
+  /// Find the line block (see
+  /// [`lineBlockAt`](#view.EditorView.lineBlockAt) at the given
+  /// height.
+  lineBlockAtHeight(height: number): BlockInfo {
     this.readMeasured()
-    return this.viewState.lineAtHeight(height, ensureTop(docTop, this.contentDOM))
+    return this.viewState.lineBlockAtHeight(height)
   }
 
   /// Iterate over the height information of the visual lines in the
   /// viewport. The heights of lines are reported relative to the
   /// given document top, which defaults to the screen position of the
   /// document (forcing a layout).
+  ///
+  /// *Deprecated: use `viewportLineBlocks` instead.*
   viewportLines(f: (line: BlockInfo) => void, docTop?: number) {
-    let {from, to} = this.viewport
-    this.viewState.forEachLine(from, to, f, ensureTop(docTop, this.contentDOM))
+    let top = ensureTop(docTop, this)
+    for (let line of this.viewportLineBlocks) f(line.moveY(top))
+  }
+
+  /// Get the extent and vertical position of all [line
+  /// blocks](#view.EditorView.lineBlockAt) in the viewport. Positions
+  /// are relative to the [top of the
+  /// document](#view.EditorView.documentTop);
+  get viewportLineBlocks() {
+    return this.viewState.viewportLines
   }
 
   /// Find the extent and height of the visual line (a range delimited
@@ -506,8 +542,20 @@ export class EditorView {
   /// argument, which defaults to 0 for this method. You can pass
   /// `view.contentDOM.getBoundingClientRect().top` here to get screen
   /// coordinates.
+  ///
+  /// *Deprecated: use `lineBlockAt` instead.*
   visualLineAt(pos: number, docTop: number = 0): BlockInfo {
-    return this.viewState.lineAt(pos, docTop)
+    return this.lineBlockAt(pos).moveY(docTop + this.viewState.paddingTop)
+  }
+
+  /// Find the line block around the given document position. A line
+  /// block is a range delimited on both sides by either a
+  /// non-[hidden](#view.Decoration^range) line breaks, or the
+  /// start/end of the document. It will usually just hold a line of
+  /// text, but may be broken into multiple textblocks by block
+  /// widgets.
+  lineBlockAt(pos: number): BlockInfo {
+    return this.viewState.lineBlockAt(pos)
   }
 
   /// The editor's total content height.
@@ -821,8 +869,9 @@ export type DOMEventHandlers<This> = {
 // Maximum line length for which we compute accurate bidi info
 const MaxBidiLine = 4096
 
-function ensureTop(given: number | undefined, dom: HTMLElement) {
-  return given == null ? dom.getBoundingClientRect().top : given
+// FIXME remove this and its callers on next breaking release
+function ensureTop(given: number | undefined, view: EditorView) {
+  return (given == null ? view.contentDOM.getBoundingClientRect().top : given) + view.viewState.paddingTop
 }
 
 let registeredGlobalHandler = false, resizeDebounce = -1

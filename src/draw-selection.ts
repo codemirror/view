@@ -174,7 +174,7 @@ function wrappedLine(view: EditorView, pos: number, inside: {from: number, to: n
 }
 
 function blockAt(view: EditorView, pos: number): BlockInfo {
-  let line = view.visualLineAt(pos)
+  let line = view.lineBlockAt(pos)
   if (Array.isArray(line.type)) for (let l of line.type) {
     if (l.to > pos || l.to == pos && (l.to == line.to || l.type == BlockType.Text)) return l
   }

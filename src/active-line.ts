@@ -26,7 +26,7 @@ const activeLineHighlighter = ViewPlugin.fromClass(class {
     let lastLineStart = -1, deco = []
     for (let r of view.state.selection.ranges) {
       if (!r.empty) return Decoration.none
-      let line = view.visualLineAt(r.head)
+      let line = view.lineBlockAt(r.head)
       if (line.from > lastLineStart) {
         deco.push(lineDeco.range(line.from))
         lastLineStart = line.from

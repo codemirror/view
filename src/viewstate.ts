@@ -127,6 +127,8 @@ export class ViewState {
   // measure stage knows it must read DOM layout
   mustMeasureContent = true
 
+  viewportLines!: BlockInfo[]
+
   // The main viewport for the visible part of the document
   viewport: Viewport
   // If the main selection starts or ends outside of the main
@@ -151,6 +153,7 @@ export class ViewState {
     this.heightMap = HeightMap.empty().applyChanges(state.facet(decorations), Text.empty, this.heightOracle.setDoc(state.doc),
                                                     [new ChangedRange(0, 0, 0, state.doc.length)])
     this.viewport = this.getViewport(0, null)
+    this.updateViewportLines()
     this.updateForViewport()
     this.lineGaps = this.ensureLineGaps([])
     this.lineGapDeco = Decoration.set(this.lineGaps.map(gap => gap.draw(false)))
@@ -162,7 +165,7 @@ export class ViewState {
     for (let i = 0; i <= 1; i++) {
       let pos = i ? main.head : main.anchor
       if (!viewports.some(({from, to}) => pos >= from && pos <= to)) {
-        let {from, to} = this.lineAt(pos, 0)
+        let {from, to} = this.lineBlockAt(pos)
         viewports.push(new Viewport(from, to))
       }
     }
@@ -170,6 +173,13 @@ export class ViewState {
 
     this.scaler = this.heightMap.height <= VP.MaxDOMHeight ? IdScaler :
       new BigScaler(this.heightOracle.doc, this.heightMap, this.viewports)
+  }
+
+  updateViewportLines() {
+    this.viewportLines = []
+    this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.state.doc, 0, 0, block => {
+      this.viewportLines.push(this.scaler.scale == 1 ? block : scaleBlock(block, this.scaler))
+    })
   }
 
   update(update: ViewUpdate, scrollTarget: ScrollTarget | null = null) {
@@ -188,6 +198,9 @@ export class ViewState {
     if (scrollTarget && (scrollTarget.range.head < viewport.from || scrollTarget.range.head > viewport.to) ||
         !this.viewportIsAppropriate(viewport))
       viewport = this.getViewport(0, scrollTarget)
+    if (!update.changes.empty || (update.flags & UpdateFlag.Height) ||
+        viewport.from != this.viewport.from || viewport.to != this.viewport.to)
+      this.updateViewportLines()
     this.viewport = viewport
     this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
@@ -258,9 +271,10 @@ export class ViewState {
         oracle, 0, refresh, new MeasuredHeights(this.viewport.from, lineHeights))
       if (oracle.heightChanged) result |= UpdateFlag.Height
     }
-    if (!this.viewportIsAppropriate(this.viewport, bias) ||
-        this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from || this.scrollTarget.range.head > this.viewport.to))
-      this.viewport = this.getViewport(bias, this.scrollTarget)
+    let viewportChange = !this.viewportIsAppropriate(this.viewport, bias) ||
+      this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from || this.scrollTarget.range.head > this.viewport.to)
+    if (viewportChange) this.viewport = this.getViewport(bias, this.scrollTarget)
+    if ((result & UpdateFlag.Height) || viewportChange) this.updateViewportLines()
 
     this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
@@ -279,8 +293,8 @@ export class ViewState {
     return result
   }
 
-  get visibleTop() { return this.scaler.fromDOM(this.pixelViewport.top, 0) }
-  get visibleBottom() { return this.scaler.fromDOM(this.pixelViewport.bottom, 0) }
+  get visibleTop() { return this.scaler.fromDOM(this.pixelViewport.top) }
+  get visibleBottom() { return this.scaler.fromDOM(this.pixelViewport.bottom) }
 
   getViewport(bias: number, scrollTarget: ScrollTarget | null): Viewport {
     // This will divide VP.Margin between the top and the
@@ -345,10 +359,10 @@ export class ViewState {
     let gaps: LineGap[] = []
     // This won't work at all in predominantly right-to-left text.
     if (this.heightOracle.direction != Direction.LTR) return gaps
-    this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.state.doc, 0, 0, line => {
-      if (line.length < LG.DoubleMargin) return
+    for (let line of this.viewportLines) {
+      if (line.length < LG.DoubleMargin) continue
       let structure = lineStructure(line.from, line.to, this.state)
-      if (structure.total < LG.DoubleMargin) return
+      if (structure.total < LG.DoubleMargin) continue
       let viewFrom, viewTo
       if (this.heightOracle.lineWrapping) {
         let marginHeight = (LG.Margin / this.heightOracle.lineLength) * this.heightOracle.lineHeight
@@ -377,7 +391,7 @@ export class ViewState {
             Math.abs(gap.from - from) < LG.HalfMargin && Math.abs(gap.to - to) < LG.HalfMargin) ||
           new LineGap(from, to, this.gapSize(line, from, to, structure)))
       }
-    })
+    }
     return gaps
   }
 
@@ -412,32 +426,21 @@ export class ViewState {
     return changed ? UpdateFlag.Viewport : 0
   }
 
-  lineAt(pos: number, editorTop: number): BlockInfo {
-    editorTop += this.paddingTop
-    return scaleBlock(this.heightMap.lineAt(pos, QueryType.ByPos, this.state.doc, editorTop, 0),
-                      this.scaler, editorTop)
+  lineBlockAt(pos: number): BlockInfo {
+    return (pos >= this.viewport.from && pos <= this.viewport.to && this.viewportLines.find(b => b.from <= pos && b.to <= pos)) ||
+      scaleBlock(this.heightMap.lineAt(pos, QueryType.ByPos, this.state.doc, 0, 0), this.scaler)
   }
 
-  lineAtHeight(height: number, editorTop: number): BlockInfo {
-    editorTop += this.paddingTop
-    return scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height, editorTop), QueryType.ByHeight,
-                                            this.state.doc, editorTop, 0), this.scaler, editorTop)
+  lineBlockAtHeight(height: number): BlockInfo {
+    return scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height), QueryType.ByHeight, this.state.doc, 0, 0), this.scaler)
   }
 
-  blockAtHeight(height: number, editorTop: number): BlockInfo {
-    editorTop += this.paddingTop
-    return scaleBlock(this.heightMap.blockAt(this.scaler.fromDOM(height, editorTop), this.state.doc, editorTop, 0),
-                      this.scaler, editorTop)
-  }
-
-  forEachLine(from: number, to: number, f: (line: BlockInfo) => void, editorTop: number) {
-    editorTop += this.paddingTop
-    return this.heightMap.forEachLine(from, to, this.state.doc, editorTop, 0,
-                                      this.scaler.scale == 1 ? f : b => f(scaleBlock(b, this.scaler, editorTop)))
+  elementAtHeight(height: number): BlockInfo {
+    return scaleBlock(this.heightMap.blockAt(this.scaler.fromDOM(height), this.state.doc, 0, 0), this.scaler)
   }
 
   get contentHeight() {
-    return this.scaler.toDOM(this.heightMap.height, this.paddingTop) + this.paddingTop + this.paddingBottom
+    return this.scaler.toDOM(this.heightMap.height) + this.paddingTop + this.paddingBottom
   }
 }
 
@@ -502,8 +505,8 @@ function find<T>(array: readonly T[], f: (value: T) => boolean): T | undefined {
 // Convert between heightmap heights and DOM heights (see
 // VP.MaxDOMHeight)
 type YScaler = {
-  toDOM(n: number, top: number): number
-  fromDOM(n: number, top: number): number
+  toDOM(n: number): number
+  fromDOM(n: number): number
   scale: number
 }
 
@@ -538,30 +541,28 @@ class BigScaler implements YScaler {
     }
   }
 
-  toDOM(n: number, top: number) {
-    n -= top
+  toDOM(n: number) {
     for (let i = 0, base = 0, domBase = 0;; i++) {
       let vp = i < this.viewports.length ? this.viewports[i] : null
-      if (!vp || n < vp.top) return domBase + (n - base) * this.scale + top
-      if (n <= vp.bottom) return vp.domTop + (n - vp.top) + top
+      if (!vp || n < vp.top) return domBase + (n - base) * this.scale
+      if (n <= vp.bottom) return vp.domTop + (n - vp.top)
       base = vp.bottom; domBase = vp.domBottom
     }
   }
   
-  fromDOM(n: number, top: number) {
-    n -= top
+  fromDOM(n: number) {
     for (let i = 0, base = 0, domBase = 0;; i++) {
       let vp = i < this.viewports.length ? this.viewports[i] : null
-      if (!vp || n < vp.domTop) return base + (n - domBase) / this.scale + top
-      if (n <= vp.domBottom) return vp.top + (n - vp.domTop) + top
+      if (!vp || n < vp.domTop) return base + (n - domBase) / this.scale
+      if (n <= vp.domBottom) return vp.top + (n - vp.domTop)
       base = vp.bottom; domBase = vp.domBottom
     }
   }
 }
 
-function scaleBlock(block: BlockInfo, scaler: YScaler, top: number): BlockInfo {
+function scaleBlock(block: BlockInfo, scaler: YScaler): BlockInfo {
   if (scaler.scale == 1) return block
-  let bTop = scaler.toDOM(block.top, top), bBottom = scaler.toDOM(block.bottom, top)
+  let bTop = scaler.toDOM(block.top), bBottom = scaler.toDOM(block.bottom)
   return new BlockInfo(block.from, block.length, bTop, bBottom - bTop,
-                       Array.isArray(block.type) ? block.type.map(b => scaleBlock(b, scaler, top)) : block.type)
+                       Array.isArray(block.type) ? block.type.map(b => scaleBlock(b, scaler)) : block.type)
 }

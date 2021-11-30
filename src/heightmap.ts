@@ -92,7 +92,8 @@ export class BlockInfo {
     readonly from: number,
     /// The length of the element.
     readonly length: number,
-    /// The top position of the element.
+    /// The top position of the element (relative to the top of the
+    /// document).
     readonly top: number,
     /// Its height.
     readonly height: number,
@@ -112,6 +113,12 @@ export class BlockInfo {
       .concat(Array.isArray(other.type) ? other.type : [other])
     return new BlockInfo(this.from, this.length + other.length,
                          this.top, this.height + other.height, detail)
+  }
+
+  /// FIXME remove on next breaking release @internal
+  moveY(offset: number) {
+    return !offset ? this : new BlockInfo(this.from, this.length, this.top + offset, this.height,
+                                          Array.isArray(this.type) ? this.type.map(b => b.moveY(offset)) : this.type)
   }
 }
 
