@@ -462,9 +462,15 @@ export class EditorView {
   }
 
   /// The top position of the document, in screen coordinates. This
-  /// may be negative when the editor is scrolled down.
+  /// may be negative when the editor is scrolled down. Points
+  /// directly to the top of the first line, not above the padding.
   get documentTop() {
     return this.contentDOM.getBoundingClientRect().top + this.viewState.paddingTop
+  }
+
+  /// Reports the padding above and below the document.
+  get documentPadding() {
+    return {top: this.viewState.paddingTop, bottom: this.viewState.paddingBottom}
   }
 
   /// Find the line or block widget at the given vertical position.
