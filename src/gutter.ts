@@ -155,8 +155,10 @@ const gutterView = ViewPlugin.fromClass(class {
   gutters: SingleGutterView[]
   dom: HTMLElement
   fixed: boolean
+  prevViewport: {from: number, to: number}
 
   constructor(readonly view: EditorView) {
+    this.prevViewport = view.viewport
     this.dom = document.createElement("div")
     this.dom.className = "cm-gutters"
     this.dom.setAttribute("aria-hidden", "true")
@@ -170,20 +172,30 @@ const gutterView = ViewPlugin.fromClass(class {
       // gutter (or just force fixed=false on IE11?)
       this.dom.style.position = "sticky"
     }
+    this.syncGutters(false)
     view.scrollDOM.insertBefore(this.dom, view.contentDOM)
-    this.syncGutters()
   }
 
   update(update: ViewUpdate) {
-    if (this.updateGutters(update)) this.syncGutters()
+    if (this.updateGutters(update)) {
+      // Detach during sync when the viewport changed significantly
+      // (such as during scrolling), since for large updates that is
+      // faster.
+      let vpA = this.prevViewport, vpB = update.view.viewport
+      let vpOverlap = Math.min(vpA.to, vpB.to) - Math.max(vpA.from, vpB.from)
+      this.syncGutters(vpOverlap < (vpB.to - vpB.from) * 0.8)
+    }
     if (update.geometryChanged) this.dom.style.minHeight = this.view.contentHeight + "px"
     if (this.view.state.facet(unfixGutters) != !this.fixed) {
       this.fixed = !this.fixed
       this.dom.style.position = this.fixed ? "sticky" : ""
     }
+    this.prevViewport = update.view.viewport
   }
 
-  syncGutters() {
+  syncGutters(detach: boolean) {
+    let after = this.dom.nextSibling
+    if (detach) this.dom.remove()
     let lineClasses = RangeSet.iter(this.view.state.facet(gutterLineClass), this.view.viewport.from)
     let classSet: GutterMarker[] = []
     let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport))
@@ -201,6 +213,7 @@ const gutterView = ViewPlugin.fromClass(class {
       for (let cx of contexts) cx.line(this.view, text, classSet)
     }, 0)
     for (let cx of contexts) cx.finish()
+    if (detach) this.view.scrollDOM.insertBefore(this.dom, after)
   }
 
   updateGutters(update: ViewUpdate) {
