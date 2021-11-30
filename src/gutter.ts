@@ -199,7 +199,7 @@ const gutterView = ViewPlugin.fromClass(class {
     let lineClasses = RangeSet.iter(this.view.state.facet(gutterLineClass), this.view.viewport.from)
     let classSet: GutterMarker[] = []
     let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport))
-    this.view.viewportLines(line => {
+    for (let line of this.view.viewportLineBlocks) {
       let text: BlockInfo | undefined
       if (Array.isArray(line.type)) {
         for (let b of line.type) if (b.type == BlockType.Text) { text = b; break }
@@ -211,7 +211,7 @@ const gutterView = ViewPlugin.fromClass(class {
       if (classSet.length) classSet = []
       advanceCursor(lineClasses, classSet, line.from)
       for (let cx of contexts) cx.line(this.view, text, classSet)
-    }, 0)
+    }
     for (let cx of contexts) cx.finish()
     if (detach) this.view.scrollDOM.insertBefore(this.dom, after)
   }
@@ -312,7 +312,7 @@ class SingleGutterView {
     this.dom.className = "cm-gutter" + (this.config.class ? " " + this.config.class : "")
     for (let prop in config.domEventHandlers) {
       this.dom.addEventListener(prop, (event: Event) => {
-        let line = view.visualLineAtHeight((event as MouseEvent).clientY, view.contentDOM.getBoundingClientRect().top)
+        let line = view.lineBlockAtHeight((event as MouseEvent).clientY - view.documentTop)
         if (config.domEventHandlers[prop](view, line, event)) event.preventDefault()
       })
     }
