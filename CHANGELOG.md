@@ -1,3 +1,13 @@
+## 0.19.23 (2021-11-30)
+
+### Bug fixes
+
+Fix an issue where after some kinds of changes, `EditorView.viewportLineBlocks` held an out-of-date set of blocks.
+
+### New features
+
+Export `EditorView.documentPadding`, with information about the vertical padding of the document.
+
 ## 0.19.22 (2021-11-30)
 
 ### Bug fixes
