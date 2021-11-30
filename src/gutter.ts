@@ -198,7 +198,7 @@ const gutterView = ViewPlugin.fromClass(class {
     if (detach) this.dom.remove()
     let lineClasses = RangeSet.iter(this.view.state.facet(gutterLineClass), this.view.viewport.from)
     let classSet: GutterMarker[] = []
-    let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport))
+    let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport, -this.view.documentPadding.top))
     for (let line of this.view.viewportLineBlocks) {
       let text: BlockInfo | undefined
       if (Array.isArray(line.type)) {
@@ -265,9 +265,8 @@ class UpdateContext {
   cursor: RangeCursor<GutterMarker>
   localMarkers: GutterMarker[] = []
   i = 0
-  height = 0
 
-  constructor(readonly gutter: SingleGutterView, viewport: {from: number, to: number}) {
+  constructor(readonly gutter: SingleGutterView, viewport: {from: number, to: number}, public height: number) {
     this.cursor = RangeSet.iter(gutter.markers, viewport.from)
   }
 
