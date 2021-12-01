@@ -132,7 +132,19 @@ export abstract class WidgetType {
 /// [`RangeSet`](#rangeset.RangeSet) for its methods.
 export type DecorationSet = RangeSet<Decoration>
 
-const enum Side { Big = 1e8 }
+const enum Side {
+  Line = -5e8, // (line widget)
+  NonIncEnd = -4e8, // (end of non-inclusive range)
+  BlockBefore = -3e8, // + widget side option (block widget before)
+  BlockIncStart = -2e8, // (start of inclusive block range)
+  InlineBefore = -1e8, // + widget side (inline widget before)
+  InlineIncStart = -1, // (start of inclusive inline range)
+  InlineIncEnd = 1, // (end of inclusive inline range)
+  InlineAfter = 1e8, // + widget side (inline widget after)
+  BlockIncEnd = 2e8, // (end of inclusive block range)
+  BlockAfter = 3e8, // + widget side (block widget after)
+  NonIncStart = 4e8 // (start of non-inclusive range)
+}
 
 /// The different types of blocks that can occur in an editor view.
 export enum BlockType {
@@ -186,8 +198,9 @@ export abstract class Decoration extends RangeValue {
   /// Create a widget decoration, which adds an element at the given
   /// position.
   static widget(spec: WidgetDecorationSpec): Decoration {
-    let side = spec.side || 0
-    return new PointDecoration(spec, side, side, !!spec.block, spec.widget || null, false)
+    let side = spec.side || 0, block = !!spec.block
+    side += block ? (side > 0 ? Side.BlockAfter : Side.BlockBefore) : (side > 0 ? Side.InlineAfter : Side.InlineBefore)
+    return new PointDecoration(spec, side, side, block, spec.widget || null, false)
   }
 
   /// Create a replace decoration which replaces the given range with
@@ -195,8 +208,8 @@ export abstract class Decoration extends RangeValue {
   static replace(spec: ReplaceDecorationSpec): Decoration {
     let block = !!spec.block
     let {start, end} = getInclusive(spec, block)
-    let startSide = Side.Big * (start ? -1 : 1) * (block ? 2 : 1)
-    let endSide = Side.Big * (end ? 1 : -1) * (block ? 2 : 1)
+    let startSide = block ? (start ? Side.BlockIncStart : Side.InlineIncStart) : Side.NonIncStart
+    let endSide = block ? (end ? Side.BlockIncEnd : Side.InlineIncEnd) : Side.NonIncEnd
     return new PointDecoration(spec, startSide, endSide, block, spec.widget || null, true)
   }
 
@@ -227,8 +240,8 @@ export class MarkDecoration extends Decoration {
 
   constructor(spec: MarkDecorationSpec) {
     let {start, end} = getInclusive(spec)
-    super(Side.Big * (start ? -1 : 1),
-          Side.Big * (end ? 1 : -1),
+    super(start ? Side.InlineIncStart : Side.NonIncStart,
+          end ? Side.InlineIncEnd : Side.NonIncEnd,
           null, spec)
     this.tagName = spec.tagName || "span"
     this.class = spec.class || ""
@@ -253,7 +266,7 @@ MarkDecoration.prototype.point = false
 
 export class LineDecoration extends Decoration {
   constructor(spec: LineDecorationSpec) {
-    super(-Side.Big, -Side.Big, null, spec)
+    super(Side.Line, Side.Line, null, spec)
   }
 
   eq(other: Decoration): boolean {

@@ -39,7 +39,7 @@ function l(pos: number, attrs: any) {
 }
 
 function decoEditor(doc: string, decorations: any = []) {
-  return tempView(doc, decos(Decoration.set(decorations)))
+  return tempView(doc, decos(Decoration.set(decorations, true)))
 }
 
 describe("EditorView decoration", () => {
@@ -319,9 +319,9 @@ describe("EditorView decoration", () => {
     })
   })
 
-  describe("replaced", () => {
-    function r(from: number, to: number, spec: any = {}) { return Decoration.replace(spec).range(from, to) }
+  function r(from: number, to: number, spec: any = {}) { return Decoration.replace(spec).range(from, to) }
 
+  describe("replaced", () => {
     it("omits replaced content", () => {
       let cm = decoEditor("foobar", [r(1, 4)])
       ist(text(cm.contentDOM), "far")
@@ -551,6 +551,25 @@ describe("EditorView decoration", () => {
         effects: [filterDeco.of(_ => false), addDeco.of([br(1, 3, "X"), br(7, 9, "X")])]
       })
       widgets(cm, [], ["X"], ["X"], [])
+    })
+
+    it("block replacements cover inline widgets but not block widgets on their sides", () => {
+      let cm = decoEditor("1\n2\n3", [
+        br(2, 3, "X"),
+        w(2, new WordWidget("I1"), -1), w(3, new WordWidget("I1"), 1),
+        bw(2, -1, "B1"), bw(3, 1, "B2")
+      ])
+      ist(!cm.contentDOM.querySelector("strong"))
+      widgets(cm, [], ["B1", "X", "B2"], [])
+    })
+
+    it("block replacements cover inline replacements at their sides", () => {
+      let cm = decoEditor("1\n234\n5", [
+        br(2, 5, "X"),
+        r(2, 3, {widget: new WordWidget("I1"), inclusive: true}),
+        r(4, 5, {widget: new WordWidget("I1"), inclusive: true}),
+      ])
+      ist(!cm.contentDOM.querySelector("strong"))
     })
   })
 })
