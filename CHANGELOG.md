@@ -1,3 +1,9 @@
+## 0.19.24 (2021-12-01)
+
+### Bug fixes
+
+Fix a bug where `lineBlockAt`, for queries inside the viewport, would always return the first line in the viewport.
+
 ## 0.19.23 (2021-11-30)
 
 ### Bug fixes
