@@ -206,7 +206,7 @@ const gutterView = ViewPlugin.fromClass(class {
       } else {
         text = line.type == BlockType.Text ? line : undefined
       }
-      if (!text) return
+      if (!text) continue
 
       if (classSet.length) classSet = []
       advanceCursor(lineClasses, classSet, line.from)
