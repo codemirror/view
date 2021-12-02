@@ -1,3 +1,17 @@
+## 0.19.25 (2021-12-02)
+
+### Bug fixes
+
+Widgets around replaced ranges are now visible when their side does not point towards the replaced range.
+
+A replaced line with a line decoration no longer creates an extra empty line block in the editor.
+
+The `scrollPastEnd` extension will now over-reserve space at the bottom of the editor on startup, to prevent restored scroll positions from being clipped.
+
+### New features
+
+`EditorView.editorAttributes` and `contentAttributes` may now hold functions that produce the attributes.
+
 ## 0.19.24 (2021-12-01)
 
 ### Bug fixes
