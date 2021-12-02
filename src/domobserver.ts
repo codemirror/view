@@ -298,6 +298,7 @@ export class DOMObserver {
     this.resize?.disconnect()
     for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
     window.removeEventListener("scroll", this.onScroll)
+    this.dom.ownerDocument.removeEventListener("selectionchange", this.onSelectionChange)
     clearTimeout(this.parentCheck)
     clearTimeout(this.resizeTimeout)
   }
