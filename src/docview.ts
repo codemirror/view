@@ -19,12 +19,12 @@ export class DocView extends ContentView {
   decorations: readonly DecorationSet[] = []
 
   // Track a minimum width for the editor. When measuring sizes in
-  // checkLayout, this is updated to point at the width of a given
-  // element and its extent in the document. When a change happens in
-  // that range, these are reset. That way, once we've seen a
-  // line/element of a given length, we keep the editor wide enough to
-  // fit at least that element, until it is changed, at which point we
-  // forget it again.
+  // measureVisibleLineHeights, this is updated to point at the width
+  // of a given element and its extent in the document. When a change
+  // happens in that range, these are reset. That way, once we've seen
+  // a line/element of a given length, we keep the editor wide enough
+  // to fit at least that element, until it is changed, at which point
+  // we forget it again.
   minWidth = 0
   minWidthFrom = 0
   minWidthTo = 0
@@ -105,7 +105,7 @@ export class DocView extends ContentView {
     }
   }
 
-  // Used both by update and checkLayout do perform the actual DOM
+  // Used by update and the constructor do perform the actual DOM
   // update
   private updateInner(changes: readonly ChangedRange[], deco: readonly DecorationSet[], oldLength: number) {
     this.view.viewState.mustMeasureContent = true
