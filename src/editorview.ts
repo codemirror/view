@@ -1,5 +1,5 @@
 import {EditorState, Transaction, TransactionSpec, Extension, Prec, ChangeDesc,
-        EditorSelection, SelectionRange, StateEffect} from "@codemirror/state"
+        EditorSelection, SelectionRange, StateEffect, Facet} from "@codemirror/state"
 import {Line} from "@codemirror/text"
 import {StyleModule, StyleSpec} from "style-mod"
 
@@ -11,7 +11,7 @@ import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, sk
 import {BlockInfo} from "./heightmap"
 import {ViewState, ScrollTarget} from "./viewstate"
 import {ViewUpdate, styleModule,
-        contentAttributes, editorAttributes, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
+        contentAttributes, editorAttributes, AttrSource, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
         decorations, MeasureRequest, editable, inputHandler, scrollTo, centerOn, UpdateFlag} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
@@ -378,7 +378,7 @@ export class EditorView {
   }
 
   private updateAttrs() {
-    let editorAttrs = combineAttrs(this.state.facet(editorAttributes), {
+    let editorAttrs = attrsFromFacet(this, editorAttributes, {
       class: "cm-editor" + (this.hasFocus ? " cm-focused " : " ") + this.themeClasses
     })
     let contentAttrs: Attrs = {
@@ -393,7 +393,7 @@ export class EditorView {
       "aria-multiline": "true"
     }
     if (this.state.readOnly) contentAttrs["aria-readonly"] = "true"
-    combineAttrs(this.state.facet(contentAttributes), contentAttrs)
+    attrsFromFacet(this, contentAttributes, contentAttrs)
 
     this.observer.ignore(() => {
       updateAttrs(this.contentDOM, this.contentAttrs, contentAttrs)
@@ -918,4 +918,12 @@ class CachedOrder {
     }
     return result
   }
+}
+
+function attrsFromFacet(view: EditorView, facet: Facet<AttrSource>, base: Attrs) {
+  for (let sources = view.state.facet(facet), i = sources.length - 1; i >= 0; i--) {
+    let source = sources[i], value = typeof source == "function" ? source(view) : source
+    if (value) combineAttrs(value, base)
+  }
+  return base
 }

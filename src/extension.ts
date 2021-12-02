@@ -3,7 +3,7 @@ import {RangeSet} from "@codemirror/rangeset"
 import {StyleModule} from "style-mod"
 import {DecorationSet} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
-import {Attrs, combineAttrs} from "./attributes"
+import {Attrs} from "./attributes"
 import {Rect} from "./dom"
 import {MakeSelectionStyle} from "./input"
 
@@ -267,19 +267,11 @@ export interface MeasureRequest<T> {
   key?: any
 }
 
-function combineFacetAttrs(values: readonly Attrs[]) {
-  let result = {}
-  for (let i = values.length - 1; i >= 0; i--) combineAttrs(values[i], result)
-  return result
-}
+export type AttrSource = Attrs | ((view: EditorView) => Attrs | null)
 
-export const editorAttributes = Facet.define<Attrs, Attrs>({
-  combine: combineFacetAttrs
-})
+export const editorAttributes = Facet.define<AttrSource>()
 
-export const contentAttributes = Facet.define<Attrs, Attrs>({
-  combine: combineFacetAttrs
-})
+export const contentAttributes = Facet.define<AttrSource>()
 
 // Provide decorations
 export const decorations = Facet.define<DecorationSet>()
