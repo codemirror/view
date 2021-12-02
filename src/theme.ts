@@ -156,7 +156,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     color: "inherit",
     fontSize: "70%",
     padding: ".2em 1em",
-    borderRadius: "3px"
+    borderRadius: "1px"
   },
 
   "&light .cm-button": {
