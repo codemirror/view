@@ -11,8 +11,10 @@ import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, sk
 import {BlockInfo} from "./heightmap"
 import {ViewState, ScrollTarget} from "./viewstate"
 import {ViewUpdate, styleModule,
-        contentAttributes, editorAttributes, AttrSource, clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
-        exceptionSink, updateListener, logException, viewPlugin, ViewPlugin, PluginInstance, PluginField,
+        contentAttributes, editorAttributes, AttrSource,
+        clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
+        exceptionSink, updateListener, logException,
+        viewPlugin, ViewPlugin, PluginInstance, PluginField,
         decorations, MeasureRequest, editable, inputHandler, scrollTo, centerOn, UpdateFlag} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
@@ -125,6 +127,7 @@ export class EditorView {
   public docView: DocView
 
   private plugins: PluginInstance[] = []
+  private pluginMap: Map<ViewPlugin<any>, PluginInstance | null> = new Map
   private editorAttrs: Attrs = {}
   private contentAttrs: Attrs = {}
   private styleModules!: readonly StyleModule[]
@@ -278,6 +281,7 @@ export class EditorView {
       for (let plugin of this.plugins) plugin.destroy(this)
       this.viewState = new ViewState(newState)
       this.plugins = newState.facet(viewPlugin).map(spec => new PluginInstance(spec).update(this))
+      this.pluginMap.clear()
       this.docView = new DocView(this)
       this.inputState.ensureHandlers(this)
       this.mountStyles()
@@ -303,12 +307,12 @@ export class EditorView {
       }
       for (let plugin of this.plugins) if (plugin.mustUpdate != update) plugin.destroy(this)
       this.plugins = newPlugins
+      this.pluginMap.clear()
       this.inputState.ensureHandlers(this)
     } else {
       for (let p of this.plugins) p.mustUpdate = update
     }
-    for (let i = 0; i < this.plugins.length; i++)
-      this.plugins[i] = this.plugins[i].update(this)
+    for (let i = 0; i < this.plugins.length; i++) this.plugins[i].update(this)
   }
 
   /// @internal
@@ -457,8 +461,10 @@ export class EditorView {
   /// know you registered a given plugin, it is recommended to check
   /// the return value of this method.
   plugin<T>(plugin: ViewPlugin<T>): T | null {
-    for (let inst of this.plugins) if (inst.spec == plugin) return inst.update(this).value as T
-    return null
+    let known = this.pluginMap.get(plugin)
+    if (known === undefined || known && known.spec != plugin)
+      this.pluginMap.set(plugin, known = this.plugins.find(p => p.spec == plugin) || null)
+    return known && known.update(this).value as T
   }
 
   /// The top position of the document, in screen coordinates. This

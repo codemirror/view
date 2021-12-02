@@ -217,29 +217,33 @@ export class PluginInstance {
   // initialized on the first update.
   value: PluginValue | null = null
 
-  constructor(readonly spec: ViewPlugin<any>) {}
+  constructor(public spec: ViewPlugin<any> | null) {}
 
   takeField<T>(type: PluginField<T>, target: T[]) {
-    for (let {field, get} of this.spec.fields) if (field == type) target.push(get(this.value))
+    if (this.spec) for (let {field, get} of this.spec.fields)
+      if (field == type) target.push(get(this.value))
   }
 
   update(view: EditorView) {
     if (!this.value) {
-      try { this.value = this.spec.create(view) }
-      catch (e) {
-        logException(view.state, e, "CodeMirror plugin crashed")
-        return PluginInstance.dummy
+      if (this.spec) {
+        try { this.value = this.spec.create(view) }
+        catch (e) {
+          logException(view.state, e, "CodeMirror plugin crashed")
+          this.deactivate()
+        }
       }
     } else if (this.mustUpdate) {
       let update = this.mustUpdate
       this.mustUpdate = null
-      if (!this.value.update) return this
-      try {
-        this.value.update(update)
-      } catch (e) {
-        logException(update.state, e, "CodeMirror plugin crashed")
-        if (this.value.destroy) try { this.value.destroy() } catch (_) {}
-        return PluginInstance.dummy
+      if (this.value.update) {
+        try {
+          this.value.update(update)
+        } catch (e) {
+          logException(update.state, e, "CodeMirror plugin crashed")
+          if (this.value.destroy) try { this.value.destroy() } catch (_) {}
+          this.deactivate()
+        }
       }
     }
     return this
@@ -252,7 +256,9 @@ export class PluginInstance {
     }
   }
 
-  static dummy = new PluginInstance(ViewPlugin.define(() => ({})))
+  deactivate() {
+    this.spec = this.value = null
+  }
 }
 
 export interface MeasureRequest<T> {
