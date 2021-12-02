@@ -133,10 +133,10 @@ export abstract class WidgetType {
 export type DecorationSet = RangeSet<Decoration>
 
 const enum Side {
-  Line = -5e8, // (line widget)
-  NonIncEnd = -4e8, // (end of non-inclusive range)
-  BlockBefore = -3e8, // + widget side option (block widget before)
-  BlockIncStart = -2e8, // (start of inclusive block range)
+  NonIncEnd = -5e8, // (end of non-inclusive range)
+  BlockBefore = -4e8, // + widget side option (block widget before)
+  BlockIncStart = -3e8, // (start of inclusive block range)
+  Line = -2e8, // (line widget)
   InlineBefore = -1e8, // + widget side (inline widget before)
   InlineIncStart = -1, // (start of inclusive inline range)
   InlineIncEnd = 1, // (end of inclusive inline range)

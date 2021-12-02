@@ -571,5 +571,13 @@ describe("EditorView decoration", () => {
       ])
       ist(!cm.contentDOM.querySelector("strong"))
     })
+
+    it("doesn't draw replaced lines even when decorated", () => {
+      let cm = decoEditor("1\n234\n5", [
+        br(2, 5, "X"),
+        l(2, {class: "line"})
+      ])
+      ist(!cm.contentDOM.querySelector(".line"))
+    })
   })
 })
