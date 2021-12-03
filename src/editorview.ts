@@ -173,7 +173,8 @@ export class EditorView {
     this.root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
 
     this.viewState = new ViewState(config.state || EditorState.create())
-    this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec).update(this))
+    this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec))
+    for (let plugin of this.plugins) plugin.update(this)
     this.observer = new DOMObserver(this, (from, to, typeOver) => {
       applyDOMChange(this, from, to, typeOver)
     }, event => {
@@ -280,8 +281,9 @@ export class EditorView {
     try {
       for (let plugin of this.plugins) plugin.destroy(this)
       this.viewState = new ViewState(newState)
-      this.plugins = newState.facet(viewPlugin).map(spec => new PluginInstance(spec).update(this))
+      this.plugins = newState.facet(viewPlugin).map(spec => new PluginInstance(spec))
       this.pluginMap.clear()
+      for (let plugin of this.plugins) plugin.update(this)
       this.docView = new DocView(this)
       this.inputState.ensureHandlers(this)
       this.mountStyles()
