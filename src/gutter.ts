@@ -444,10 +444,6 @@ class NumberMarker extends GutterMarker {
   eq(other: NumberMarker) { return this.number == other.number }
 
   toDOM() { return document.createTextNode(this.number) }
-
-  destroy(dom: Node) { 
-    console.log("destroy", dom.nodeValue)
-  }
 }
 
 function formatNumber(view: EditorView, number: number) {
