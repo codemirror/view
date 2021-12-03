@@ -317,6 +317,19 @@ describe("EditorView decoration", () => {
                                                        w(3, new WordWidget("x"), -1), w(3, new WordWidget("x"), -1)]))])
       ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "1_xx23xx_4")
     })
+
+    it("calls the destroy method on destroyed widgets", () => {
+      let destroyed: string[] = []
+      class W extends WordWidget {
+        destroy() { destroyed.push(this.word) }
+      }
+      let w1 = new W("A"), w2 = new W("B")
+      let cm = tempView("abcde", [decos(Decoration.set([w(1, w1), w(2, w2), w(4, w2)]))])
+      cm.dispatch({changes: {from: 0, to: 3}})
+      ist(destroyed.sort().join(), "A,B")
+      cm.dispatch({changes: {from: 0, to: 2}})
+      ist(destroyed.sort().join(), "A,B,B")
+    })
   })
 
   function r(from: number, to: number, spec: any = {}) { return Decoration.replace(spec).range(from, to) }

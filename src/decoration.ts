@@ -125,6 +125,10 @@ export abstract class WidgetType {
 
   /// @internal
   get customView(): null | typeof WidgetView { return null }
+
+  /// This is called when the an instance of the widget is removed
+  /// from the editor view.
+  destroy(_dom: HTMLElement) {}
 }
 
 /// A decoration set represents a collection of decorated ranges,

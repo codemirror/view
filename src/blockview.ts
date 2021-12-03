@@ -42,7 +42,7 @@ export class LineView extends ContentView implements BlockView {
       i++
     }
     for (let j = i; j < this.children.length; j++) end.append(this.children[j], 0)
-    while (i > 0 && this.children[i - 1].length == 0) { this.children[i - 1].parent = null; i-- }
+    while (i > 0 && this.children[i - 1].length == 0) this.children[--i].destroy()
     this.children.length = i
     this.markDirty()
     this.length = at
@@ -197,4 +197,9 @@ export class BlockWidgetView extends ContentView implements BlockView {
 
   ignoreMutation(): boolean { return true }
   ignoreEvent(event: Event): boolean { return this.widget.ignoreEvent(event) }
+
+  destroy() {
+    super.destroy()
+    if (this.dom) this.widget.destroy(this.dom)
+  }
 }

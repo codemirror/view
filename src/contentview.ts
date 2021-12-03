@@ -192,7 +192,7 @@ export abstract class ContentView {
     this.markDirty()
     for (let i = from; i < to; i++) {
       let child = this.children[i]
-      if (child.parent == this) child.parent = null
+      if (child.parent == this) child.destroy()
     }
     this.children.splice(from, to - from, ...children)
     for (let i = 0; i < children.length; i++) children[i].setParent(this)
@@ -232,6 +232,10 @@ export abstract class ContentView {
   // number <= 0 to indicate it is before its position, or a
   // number > 0 when after its position.
   getSide() { return 0 }
+
+  destroy() {
+    this.parent = null
+  }
 }
 
 ContentView.prototype.breakAfter = 0
