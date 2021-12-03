@@ -1,7 +1,8 @@
 import {SpanIterator, RangeSet} from "@codemirror/rangeset"
 import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, BlockType, WidgetType} from "./decoration"
+import {ContentView} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
-import {InlineView, WidgetView, TextView, MarkView, WidgetBufferView} from "./inlineview"
+import {WidgetView, TextView, MarkView, WidgetBufferView} from "./inlineview"
 import {Text, TextIterator} from "@codemirror/text"
 
 const enum T { Chunk = 512 }
@@ -146,7 +147,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   }
 }
 
-function wrapMarks(view: InlineView, active: readonly MarkDecoration[]) {
+function wrapMarks(view: ContentView, active: readonly MarkDecoration[]) {
   for (let mark of active) view = new MarkView(mark, [view], view.length)
   return view
 }

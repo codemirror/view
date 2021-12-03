@@ -1,36 +1,14 @@
 import {Text as DocText} from "@codemirror/text"
-import {ContentView, DOMPos, Dirty} from "./contentview"
+import {ContentView, DOMPos, Dirty, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
 import {Rect, Rect0, flattenRect, textRange, clientRectsFor} from "./dom"
 import {CompositionWidget} from "./docview"
 import browser from "./browser"
 
-const none: any[] = []
-
-export abstract class InlineView extends ContentView {
-  children!: ContentView[]
-  // Imperatively splice the given view into the current one, covering
-  // offsets `from` to `to` (defaults to `this.length`). When no
-  // source is given, just delete the given range from this view.
-  // Should check whether the merge is possible and return false if it
-  // isn't.
-  abstract merge(from: number, to: number, source: InlineView | null, openStart: number, openEnd: number): boolean
-  /// Return true when this view is equivalent to `other` and can take
-  /// on its role.
-  become(_other: InlineView) { return false }
-  // Return a new view representing the given part of this view.
-  abstract slice(from: number): InlineView
-  // When this is a zero-length view with a side, this should return a
-  // negative number to indicate it is before its position, or a
-  // positive number when after its position.
-  getSide() { return 0 }
-}
-
-InlineView.prototype.children = none
-
 const MaxJoinLen = 256
 
-export class TextView extends InlineView {
+export class TextView extends ContentView {
+  children!: ContentView[]
   dom!: Text | null
 
   constructor(public text: string) {
@@ -57,7 +35,7 @@ export class TextView extends InlineView {
     return true
   }
 
-  merge(from: number, to: number, source: InlineView | null): boolean {
+  merge(from: number, to: number, source: ContentView | null): boolean {
     if (source && (!(source instanceof TextView) || this.length - (to - from) + source.length > MaxJoinLen))
       return false
     this.text = this.text.slice(0, from) + (source ? source.text : "") + this.text.slice(to)
@@ -65,7 +43,7 @@ export class TextView extends InlineView {
     return true
   }
 
-  slice(from: number) {
+  split(from: number) {
     let result = new TextView(this.text.slice(from))
     this.text = this.text.slice(0, from)
     return result
@@ -86,11 +64,11 @@ export class TextView extends InlineView {
   }
 }
 
-export class MarkView extends InlineView {
+export class MarkView extends ContentView {
   dom!: HTMLElement | null
 
   constructor(readonly mark: MarkDecoration,
-              public children: InlineView[] = [],
+              public children: ContentView[] = [],
               public length = 0) {
     super()
     for (let ch of children) ch.setParent(this)
@@ -108,27 +86,30 @@ export class MarkView extends InlineView {
     super.sync(track)
   }
 
-  merge(from: number, to: number, source: InlineView | null, openStart: number, openEnd: number): boolean {
+  merge(from: number, to: number, source: ContentView | null, _hasStart: boolean, openStart: number, openEnd: number): boolean {
     if (source && (!(source instanceof MarkView && source.mark.eq(this.mark)) ||
                    (from && openStart <= 0) || (to < this.length && openEnd <= 0)))
       return false
-    mergeInlineChildren(this, from, to, source ? source.children : none, openStart - 1, openEnd - 1)
+    mergeChildrenInto(this, from, to, source ? source.children : [], openStart - 1, openEnd - 1)
     this.markDirty()
     return true
   }
 
-  slice(from: number) {
+  split(from: number) {
     let result = [], off = 0, detachFrom = -1, i = 0
     for (let elt of this.children) {
       let end = off + elt.length
-      if (end > from) result.push(off < from ? elt.slice(from - off) : elt)
+      if (end > from) result.push(off < from ? elt.split(from - off) : elt)
       if (detachFrom < 0 && off >= from) detachFrom = i
       off = end
       i++
     }
     let length = this.length - from
     this.length = from
-    if (detachFrom > -1) this.replaceChildren(detachFrom, this.children.length)
+    if (detachFrom > -1) {
+      this.children.length = detachFrom
+      this.markDirty()
+    }
     return new MarkView(this.mark, result, length)
   }
 
@@ -161,7 +142,8 @@ function textCoords(text: Text, pos: number, side: number): Rect {
 }
 
 // Also used for collapsed ranges that don't have a placeholder widget!
-export class WidgetView extends InlineView {
+export class WidgetView extends ContentView {
+  children!: ContentView[]
   dom!: HTMLElement | null
 
   static create(widget: WidgetType, length: number, side: number) {
@@ -172,7 +154,7 @@ export class WidgetView extends InlineView {
     super()
   }
 
-  slice(from: number) {
+  split(from: number) {
     let result = WidgetView.create(this.widget, this.length - from, this.side)
     this.length -= from
     return result
@@ -187,7 +169,7 @@ export class WidgetView extends InlineView {
 
   getSide() { return this.side }
 
-  merge(from: number, to: number, source: InlineView | null, openStart: number, openEnd: number) {
+  merge(from: number, to: number, source: ContentView | null, hasStart: boolean, openStart: number, openEnd: number) {
     if (source && (!(source instanceof WidgetView) || !this.widget.compare(source.widget) ||
                    from > 0 && openStart <= 0 || to < this.length && openEnd <= 0))
       return false
@@ -195,7 +177,7 @@ export class WidgetView extends InlineView {
     return true
   }
 
-  become(other: InlineView): boolean {
+  become(other: ContentView): boolean {
     if (other.length == this.length && other instanceof WidgetView && other.side == this.side) {
       if (this.widget.constructor == other.widget.constructor) {
         if (!this.widget.eq(other.widget)) this.markDirty(true)
@@ -259,18 +241,20 @@ export class CompositionView extends WidgetView {
 // These are drawn around uneditable widgets to avoid a number of
 // browser bugs that show up when the cursor is directly next to
 // uneditable inline content.
-export class WidgetBufferView extends InlineView {
+export class WidgetBufferView extends ContentView {
+  children!: ContentView[]
+
   constructor(readonly side: number) { super() }
 
   get length() { return 0 }
 
   merge() { return false }
 
-  become(other: InlineView): boolean {
+  become(other: ContentView): boolean {
     return other instanceof WidgetBufferView && other.side == this.side
   }
 
-  slice() { return new WidgetBufferView(this.side) }
+  split() { return new WidgetBufferView(this.side) }
 
   sync() {
     if (!this.dom) this.setDOM(document.createTextNode("\u200b"))
@@ -293,86 +277,9 @@ export class WidgetBufferView extends InlineView {
   }
 }
 
-export function mergeInlineChildren(parent: ContentView & {children: InlineView[]},
-                                    from: number, to: number,
-                                    elts: InlineView[], openStart: number, openEnd: number) {
-  let cur = parent.childCursor()
-  let {i: toI, off: toOff} = cur.findPos(to, 1)
-  let {i: fromI, off: fromOff} = cur.findPos(from, -1)
-  let dLen = from - to
-  for (let view of elts) dLen += view.length
-  parent.length += dLen
+TextView.prototype.children = WidgetView.prototype.children = WidgetBufferView.prototype.children = noChildren
 
-  let {children} = parent
-  // Both from and to point into the same child view
-  if (fromI == toI && fromOff) {
-    let start = children[fromI]
-    // Maybe just update that view and be done
-    if (elts.length == 1 && start.merge(fromOff, toOff, elts[0], openStart, openEnd)) return
-    if (elts.length == 0) { start.merge(fromOff, toOff, null, openStart, openEnd); return }
-    // Otherwise split it, so that we don't have to worry about aliasing front/end afterwards
-    let after = start.slice(toOff)
-    if (after.merge(0, 0, elts[elts.length - 1], 0, openEnd)) elts[elts.length - 1] = after
-    else elts.push(after)
-    toI++
-    openEnd = toOff = 0
-  }
-
-  // Make sure start and end positions fall on node boundaries
-  // (fromOff/toOff are no longer used after this), and that if the
-  // start or end of the elts can be merged with adjacent nodes,
-  // this is done
-  if (toOff) {
-    let end = children[toI]
-    if (elts.length && end.merge(0, toOff, elts[elts.length - 1], 0, openEnd)) {
-      elts.pop()
-      openEnd = elts.length ? 0 : openStart
-    } else {
-      end.merge(0, toOff, null, 0, 0)
-    }
-  } else if (toI < children.length && elts.length &&
-             children[toI].merge(0, 0, elts[elts.length - 1], 0, openEnd)) {
-    elts.pop()
-    openEnd = elts.length ? 0 : openStart
-  }
-  if (fromOff) {
-    let start = children[fromI]
-    if (elts.length && start.merge(fromOff, start.length, elts[0], openStart, 0)) {
-      elts.shift()
-      openStart = elts.length ? 0 : openEnd
-    } else {
-      start.merge(fromOff, start.length, null, 0, 0)
-    }
-    fromI++
-  } else if (fromI && elts.length) {
-    let end = children[fromI - 1]
-    if (end.merge(end.length, end.length, elts[0], openStart, 0)) {
-      elts.shift()
-      openStart = elts.length ? 0 : openEnd
-    }
-  }
-
-  // Then try to merge any mergeable nodes at the start and end of
-  // the changed range
-  while (fromI < toI && elts.length && children[toI - 1].become(elts[elts.length - 1])) {
-    elts.pop()
-    toI--
-    openEnd = elts.length ? 0 : openStart
-  }
-  while (fromI < toI && elts.length && children[fromI].become(elts[0])) {
-    elts.shift()
-    fromI++
-    openStart = elts.length ? 0 : openEnd
-  }
-  if (!elts.length && fromI && toI < children.length &&
-      children[toI].merge(0, 0, children[fromI - 1], openStart, openEnd))
-    fromI--
-
-  // And if anything remains, splice the child array to insert the new elts
-  if (elts.length || fromI != toI) parent.replaceChildren(fromI, toI, elts)
-}
-
-export function inlineDOMAtPos(dom: HTMLElement, children: readonly InlineView[], pos: number) {
+export function inlineDOMAtPos(dom: HTMLElement, children: readonly ContentView[], pos: number) {
   let i = 0
   for (let off = 0; i < children.length; i++) {
     let child = children[i], end = off + child.length
@@ -389,7 +296,7 @@ export function inlineDOMAtPos(dom: HTMLElement, children: readonly InlineView[]
 }
 
 // Assumes `view`, if a mark view, has precisely 1 child.
-export function joinInlineInto(parent: ContentView, view: InlineView, open: number) {
+export function joinInlineInto(parent: ContentView, view: ContentView, open: number) {
   let last, {children} = parent
   if (open > 0 && view instanceof MarkView && children.length &&
       (last = children[children.length - 1]) instanceof MarkView && last.mark.eq(view.mark)) {
@@ -401,7 +308,7 @@ export function joinInlineInto(parent: ContentView, view: InlineView, open: numb
   parent.length += view.length
 }
 
-export function coordsInChildren(view: ContentView & {children: InlineView[]}, pos: number, side: number): Rect | null {
+export function coordsInChildren(view: ContentView, pos: number, side: number): Rect | null {
   for (let off = 0, i = 0; i < view.children.length; i++) {
     let child = view.children[i], end = off + child.length, next
     if ((side <= 0 || end == view.length || child.getSide() > 0 ? end >= pos : end > pos) &&

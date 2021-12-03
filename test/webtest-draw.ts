@@ -157,7 +157,13 @@ describe("EditorView drawing", () => {
       changes.push({from, to, insert: "XYZ"})
     }
     cm.dispatch({changes})
-    ist(domText(cm), cm.state.doc.slice(cm.viewport.from, cm.viewport.to))
+    ist(domText(cm), cm.state.sliceDoc(cm.viewport.from, cm.viewport.to))
+  })
+
+  it("can replace across line boundaries", () => {
+    let cm = tempView("ab\ncd\nef")
+    cm.dispatch({changes: {from: 1, to: 4, insert: "XYZ"}})
+    ist(domText(cm), cm.state.doc.toString())
   })
 
   it("can handle deleting a line's content", () => {

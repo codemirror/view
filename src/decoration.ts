@@ -289,13 +289,13 @@ export class PointDecoration extends Decoration {
               widget: WidgetType | null,
               readonly isReplace: boolean) {
     super(startSide, endSide, widget, spec)
-    this.mapMode = !block ? MapMode.TrackDel : startSide < 0 ? MapMode.TrackBefore : MapMode.TrackAfter
+    this.mapMode = !block ? MapMode.TrackDel : startSide <= 0 ? MapMode.TrackBefore : MapMode.TrackAfter
   }
 
   // Only relevant when this.block == true
   get type() {
     return this.startSide < this.endSide ? BlockType.WidgetRange
-      : this.startSide < 0 ? BlockType.WidgetBefore : BlockType.WidgetAfter
+      : this.startSide <= 0 ? BlockType.WidgetBefore : BlockType.WidgetAfter
   }
 
   get heightRelevant() { return this.block || !!this.widget && this.widget.estimatedHeight >= 5 }
@@ -308,7 +308,7 @@ export class PointDecoration extends Decoration {
   }
 
   range(from: number, to = from) {
-    if (this.isReplace && (from > to || (from == to && this.startSide > 0 && this.endSide < 0)))
+    if (this.isReplace && (from > to || (from == to && this.startSide > 0 && this.endSide <= 0)))
       throw new RangeError("Invalid range for replacement decoration")
     if (!this.isReplace && to != from)
       throw new RangeError("Widget decorations can only have zero-length ranges")

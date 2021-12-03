@@ -1,8 +1,8 @@
 import {RangeSet} from "@codemirror/rangeset"
 import {ChangeSet} from "@codemirror/state"
-import {ContentView, ChildCursor, Dirty, DOMPos} from "./contentview"
+import {ContentView, ChildCursor, Dirty, DOMPos, replaceRange} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
-import {InlineView, CompositionView} from "./inlineview"
+import {CompositionView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./decoration"
@@ -144,68 +144,8 @@ export class DocView extends ContentView {
       let {content, breakAtStart, openStart, openEnd} = ContentBuilder.build(this.view.state.doc, fromB, toB, deco)
       let {i: toI, off: toOff} = cursor.findPos(toA, 1)
       let {i: fromI, off: fromOff} = cursor.findPos(fromA, -1)
-      this.replaceRange(fromI, fromOff, toI, toOff, content, breakAtStart, openStart, openEnd)
+      replaceRange(this, fromI, fromOff, toI, toOff, content, breakAtStart, openStart, openEnd)
     }
-  }
-
-  private replaceRange(fromI: number, fromOff: number, toI: number, toOff: number,
-                       content: BlockView[], breakAtStart: number, openStart: number, openEnd: number) {
-    let before = this.children[fromI], last = content.length ? content[content.length - 1] : null
-    let breakAtEnd = last ? last.breakAfter : breakAtStart
-    // Change within a single line
-    if (fromI == toI && !breakAtStart && !breakAtEnd && content.length < 2 &&
-        before.merge(fromOff, toOff, content.length ? last : null, fromOff == 0, openStart, openEnd))
-      return
-
-    let after = this.children[toI]
-    // Make sure the end of the line after the update is preserved in `after`
-    if (toOff < after.length) {
-      // If we're splitting a line, separate part of the start line to
-      // avoid that being mangled when updating the start line.
-      if (fromI == toI) {
-        after = after.split(toOff)
-        toOff = 0
-      }
-      // If the element after the replacement should be merged with
-      // the last replacing element, update `content`
-      if (!breakAtEnd && last && after.merge(0, toOff, last, true, 0, openEnd)) {
-        content[content.length - 1] = after
-      } else {
-        // Remove the start of the after element, if necessary, and
-        // add it to `content`.
-        if (toOff) after.merge(0, toOff, null, false, 0, openEnd)
-        content.push(after)
-      }
-    } else if (after.breakAfter) {
-      // The element at `toI` is entirely covered by this range.
-      // Preserve its line break, if any.
-      if (last) last.breakAfter = 1
-      else breakAtStart = 1
-    }
-    // Since we've handled the next element from the current elements
-    // now, make sure `toI` points after that.
-    toI++
-
-    before.breakAfter = breakAtStart
-    if (fromOff > 0) {
-      if (!breakAtStart && content.length && before.merge(fromOff, before.length, content[0], false, openStart, 0)) {
-        before.breakAfter = content.shift()!.breakAfter
-      } else if (fromOff < before.length || before.children.length && before.children[before.children.length - 1].length == 0) {
-        before.merge(fromOff, before.length, null, false, openStart, 0)
-      }
-      fromI++
-    }
-
-    // Try to merge widgets on the boundaries of the replacement
-    while (fromI < toI && content.length) {
-      if (this.children[toI - 1].match(content[content.length - 1]))
-        toI--, content.pop()
-      else if (this.children[fromI].match(content[0]))
-        fromI++, content.shift()
-      else
-        break
-    }
-    if (fromI < toI || content.length) this.replaceChildren(fromI, toI, content)
   }
 
   // Sync the DOM selection to this.state.selection
@@ -433,6 +373,9 @@ export class DocView extends ContentView {
       right: rect.right + mRight, bottom: rect.bottom + mBottom
     }, range.head < range.anchor ? -1 : 1, center)
   }
+
+  // Will never be called but needs to be present
+  split!: () => ContentView
 }
 
 function betweenUneditable(pos: DOMPos) {
@@ -465,19 +408,23 @@ export function computeCompositionDeco(view: EditorView, changes: ChangeSet): De
   let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
   if (!textNode) return Decoration.none
   let cView = view.docView.nearest(textNode)
+  if (!cView) return Decoration.none
   let from: number, to: number, topNode: Node = textNode
-  if (cView instanceof InlineView) {
-    while (cView.parent instanceof InlineView) cView = cView.parent
-    from = cView.posAtStart
-    to = from + cView.length
-    topNode = cView.dom!
-  } else if (cView instanceof LineView) {
+  if (cView instanceof LineView) {
     while (topNode.parentNode != cView.dom) topNode = topNode.parentNode!
     let prev = topNode.previousSibling
     while (prev && !ContentView.get(prev)) prev = prev.previousSibling
     from = to = prev ? ContentView.get(prev)!.posAtEnd : cView.posAtStart
   } else {
-    return Decoration.none
+    for (;;) {
+      let {parent} = cView
+      if (!parent) return Decoration.none
+      if (parent instanceof LineView) break
+      cView = parent as ContentView
+    }
+    from = cView.posAtStart
+    to = from + cView.length
+    topNode = cView.dom!
   }
 
   let newFrom = changes.mapPos(from, 1), newTo = Math.max(newFrom, changes.mapPos(to, -1))
