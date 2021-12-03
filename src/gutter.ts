@@ -20,6 +20,10 @@ export abstract class GutterMarker extends RangeValue {
   /// This property can be used to add CSS classes to the gutter
   /// element that contains this marker.
   elementClass!: string
+
+  /// Called if the marker has a `toDOM` method and its representation
+  /// was removed from a gutter.
+  destroy(dom: Node) {}
 }
 
 GutterMarker.prototype.elementClass = ""
@@ -235,7 +239,10 @@ const gutterView = ViewPlugin.fromClass(class {
           gutters.push(this.gutters[known])
         }
       }
-      for (let g of this.gutters) g.dom.remove()
+      for (let g of this.gutters) {
+        g.dom.remove()
+        if (gutters.indexOf(g) < 0) g.destroy()
+      }
       for (let g of gutters) this.dom.appendChild(g.dom)
       this.gutters = gutters
     }
@@ -243,6 +250,7 @@ const gutterView = ViewPlugin.fromClass(class {
   }
 
   destroy() {
+    for (let view of this.gutters) view.destroy()
     this.dom.remove()
   }
 }, {
@@ -286,9 +294,7 @@ class UpdateContext {
       gutter.elements.push(newElt)
       gutter.dom.appendChild(newElt.dom)
     } else {
-      let elt = gutter.elements[this.i]
-      if (sameMarkers(localMarkers, elt.markers)) localMarkers = elt.markers as GutterMarker[]
-      elt.update(view, line.height, above, localMarkers)
+      gutter.elements[this.i].update(view, line.height, above, localMarkers)
     }
     this.height = line.bottom
     this.i++
@@ -296,7 +302,11 @@ class UpdateContext {
 
   finish() {
     let gutter = this.gutter
-    while (gutter.elements.length > this.i) gutter.dom.removeChild(gutter.elements.pop()!.dom)
+    while (gutter.elements.length > this.i) {
+      let last = gutter.elements.pop()!
+      gutter.dom.removeChild(last.dom)
+      last.destroy()
+    }
   }
 }
 
@@ -334,13 +344,17 @@ class SingleGutterView {
     return !RangeSet.eq(this.markers, prevMarkers, vp.from, vp.to) ||
       (this.config.lineMarkerChange ? this.config.lineMarkerChange(update) : false)
   }
+
+  destroy() {
+    for (let elt of this.elements) elt.destroy()
+  }
 }
 
 class GutterElement {
   dom: HTMLElement
   height: number = -1
   above: number = 0
-  markers!: readonly GutterMarker[]
+  markers: readonly GutterMarker[] = []
 
   constructor(view: EditorView, height: number, above: number, markers: readonly GutterMarker[]) {
     this.dom = document.createElement("div")
@@ -352,17 +366,43 @@ class GutterElement {
       this.dom.style.height = (this.height = height) + "px"
     if (this.above != above)
       this.dom.style.marginTop = (this.above = above) ? above + "px" : ""
-    if (this.markers != markers) {
-      this.markers = markers
-      for (let ch; ch = this.dom.lastChild;) ch.remove()
-      let cls = "cm-gutterElement"
-      for (let m of markers) {
-        if (m.toDOM) this.dom.appendChild(m.toDOM(view))
-        let c = m.elementClass
+    if (!sameMarkers(this.markers, markers)) this.setMarkers(view, markers)
+  }
+
+  setMarkers(view: EditorView, markers: readonly GutterMarker[]) {
+    let cls = "cm-gutterElement", domPos = this.dom.firstChild
+    for (let iNew = 0, iOld = 0;;) {
+      let skipTo = iOld, marker = iNew < markers.length ? markers[iNew++] : null, matched = false
+      if (marker) {
+        let c = marker.elementClass
         if (c) cls += " " + c
+        for (let i = iOld; i < this.markers.length; i++)
+          if (this.markers[i].compare(marker)) { skipTo = i; matched = true; break }
+      } else {
+        skipTo = this.markers.length
       }
-      this.dom.className = cls
+      while (iOld < skipTo) {
+        let next = this.markers[iOld++]
+        if (next.toDOM) {
+          next.destroy(domPos!)
+          let after = domPos!.nextSibling
+          domPos!.remove()
+          domPos = after
+        }
+      }
+      if (!marker) break
+      if (marker.toDOM) {
+        if (matched) domPos = domPos!.nextSibling
+        else this.dom.insertBefore(marker.toDOM(view), domPos)
+      }
+      if (matched) iOld++
     }
+    this.dom.className = cls
+    this.markers = markers
+  }
+
+  destroy() {
+    this.setMarkers(null as any, []) // First argument not used unless creating markers
   }
 }
 
@@ -404,6 +444,10 @@ class NumberMarker extends GutterMarker {
   eq(other: NumberMarker) { return this.number == other.number }
 
   toDOM() { return document.createTextNode(this.number) }
+
+  destroy(dom: Node) { 
+    console.log("destroy", dom.nodeValue)
+  }
 }
 
 function formatNumber(view: EditorView, number: number) {
