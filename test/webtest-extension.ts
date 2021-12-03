@@ -21,12 +21,13 @@ describe("EditorView extension", () => {
     cm.scrollDOM.style.overflow = "auto"
     cm.scrollDOM.scrollTop = 2000
     cm.measure()
-    ist(viewports.length, 2)
+    ist(viewports.length, 2, ">=")
     ist(viewports[1].from, 0, ">")
     ist(viewports[1].to, viewports[0].from, ">")
     cm.scrollDOM.scrollTop = 4000
+    let curLen = viewports.length
     cm.measure()
-    ist(viewports.length, 3, ">=")
+    ist(viewports.length, curLen, ">")
   })
 
   it("calls update on plugins", () => {
