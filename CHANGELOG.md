@@ -1,3 +1,9 @@
+## 0.19.26 (2021-12-03)
+
+### New features
+
+Widgets can now define a `destroy` method that is called when they are removed from the view.
+
 ## 0.19.25 (2021-12-02)
 
 ### Bug fixes
