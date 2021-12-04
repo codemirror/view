@@ -397,13 +397,13 @@ class HeightMapBranch extends HeightMap {
 
   blockAt(height: number, doc: Text, top: number, offset: number) {
     let mid = top + this.left.height
-    return height < mid || this.right.height == 0 ? this.left.blockAt(height, doc, top, offset)
+    return height < mid ? this.left.blockAt(height, doc, top, offset)
       : this.right.blockAt(height, doc, mid, offset + this.left.length + this.break)
   }
 
   lineAt(value: number, type: QueryType, doc: Text, top: number, offset: number) {
     let rightTop = top + this.left.height, rightOffset = offset + this.left.length + this.break
-    let left = type == QueryType.ByHeight ? value < rightTop || this.right.height == 0 : value < rightOffset
+    let left = type == QueryType.ByHeight ? value < rightTop : value < rightOffset
     let base = left ? this.left.lineAt(value, type, doc, top, offset)
       : this.right.lineAt(value, type, doc, rightTop, rightOffset)
     if (this.break || (left ? base.to < rightOffset : base.from > rightOffset)) return base
@@ -540,7 +540,8 @@ class NodeBuilder implements SpanIterator<Decoration> {
 
   point(from: number, to: number, deco: PointDecoration) {
     if (from < to || deco.heightRelevant) {
-      let height = deco.widget ? Math.max(0, deco.widget.estimatedHeight) : 0
+      let height = deco.widget ? deco.widget.estimatedHeight : 0
+      if (height < 0) height = this.oracle.lineHeight
       let len = to - from
       if (deco.block) {
         this.addBlock(new HeightMapBlock(len, height, deco.type))
