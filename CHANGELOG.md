@@ -1,3 +1,11 @@
+## 0.19.27 (2021-12-06)
+
+### Bug fixes
+
+Fix a bug that could cause `EditorView.plugin` to inappropriately return `null` during plugin initialization.
+
+Fix a bug where a block widget without `estimatedHeight` at the end of the document could fail to be drawn
+
 ## 0.19.26 (2021-12-03)
 
 ### New features
