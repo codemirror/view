@@ -1,7 +1,7 @@
 import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
 import {inputHandler, editable} from "./extension"
-import {contains} from "./dom"
+import {contains, dispatchKey} from "./dom"
 import browser from "./browser"
 import {EditorSelection, Text} from "@codemirror/state"
 
@@ -62,11 +62,22 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
 
   if (change) {
     let startState = view.state
+    if (browser.ios && view.inputState.flushIOSKey(view)) return
     // Android browsers don't fire reasonable key events for enter,
     // backspace, or delete. So this detects changes that look like
     // they're caused by those keys, and reinterprets them as key
-    // events.
-    if (browser.ios && view.inputState.flushIOSKey(view)) return
+    // events. (Some of these keys are also handled by beforeinput
+    // events and the pendingAndroidKey mechanism, but that's not
+    // reliable in all situations.)
+    if (browser.android &&
+        ((change.from == sel.from && change.to == sel.to &&
+          change.insert.length == 1 && change.insert.lines == 2 &&
+          dispatchKey(view.contentDOM, "Enter", 13)) ||
+         (change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 &&
+          dispatchKey(view.contentDOM, "Backspace", 8)) ||
+         (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
+          dispatchKey(view.contentDOM, "Delete", 46))))
+      return
 
     let text = change.insert.toString()
     if (view.state.facet(inputHandler).some(h => h(view, change!.from, change!.to, text)))
