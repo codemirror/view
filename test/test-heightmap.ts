@@ -258,7 +258,7 @@ describe("HeightMap", () => {
       ist(block3.top, top3); ist(block3.height, 30)
       ist(block3.type, BlockType.WidgetRange)
       let block4 = map.blockAt(block3.bottom + block1.height, text, 0, 0)
-      ist(block4.type, BlockType.WidgetAfter, "!=")
+      ist(block4.type, BlockType.WidgetAfter)
     })
   })
 
