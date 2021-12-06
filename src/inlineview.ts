@@ -243,6 +243,10 @@ export class CompositionView extends WidgetView {
   get isEditable() { return true }
 }
 
+// Use two characters on Android, to prevent Chrome from closing the
+// virtual keyboard when backspacing after a widget (#602).
+const ZeroWidthSpace = browser.android ? "\u200b\u200b" : "\u200b"
+
 // These are drawn around uneditable widgets to avoid a number of
 // browser bugs that show up when the cursor is directly next to
 // uneditable inline content.
@@ -262,13 +266,15 @@ export class WidgetBufferView extends ContentView {
   split() { return new WidgetBufferView(this.side) }
 
   sync() {
-    if (!this.dom) this.setDOM(document.createTextNode("\u200b"))
-    else if (this.dirty && this.dom.nodeValue != "\u200b") this.dom.nodeValue = "\u200b"
+    if (!this.dom) this.setDOM(document.createTextNode(ZeroWidthSpace))
+    else if (this.dirty && this.dom.nodeValue != ZeroWidthSpace) this.dom.nodeValue = ZeroWidthSpace
   }
 
   getSide() { return this.side }
 
   domAtPos(pos: number) { return DOMPos.before(this.dom!) }
+
+  localPosFromDOM() { return 0 }
 
   domBoundsAround() { return null }
 
