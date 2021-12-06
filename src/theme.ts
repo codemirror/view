@@ -148,7 +148,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
 
   ".cm-placeholder": {
     color: "#888",
-    display: "inline-block"
+    display: "inline-block",
+    verticalAlign: "top",
   },
 
   ".cm-button": {
