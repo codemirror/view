@@ -6,11 +6,13 @@ import {CompositionView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./decoration"
-import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView, getSelection, hasSelection} from "./dom"
+import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
+        getSelection, hasSelection} from "./dom"
 import {ViewUpdate, PluginField, decorations as decorationsFacet,
         editable, ChangedRange} from "./extension"
 import {EditorView} from "./editorview"
 import {ScrollTarget} from "./viewstate"
+import {Direction} from "./bidi"
 
 export class DocView extends ContentView {
   children!: BlockView[]
@@ -63,7 +65,7 @@ export class DocView extends ContentView {
     let changedRanges = update.changedRanges
     if (this.minWidth > 0 && changedRanges.length) {
       if (!changedRanges.every(({fromA, toA}) => toA < this.minWidthFrom || fromA > this.minWidthTo)) {
-        this.minWidth = 0
+        this.minWidth = this.minWidthFrom = this.minWidthTo = 0
       } else {
         this.minWidthFrom = update.changes.mapPos(this.minWidthFrom, 1)
         this.minWidthTo = update.changes.mapPos(this.minWidthTo, 1)
@@ -280,17 +282,29 @@ export class DocView extends ContentView {
 
   measureVisibleLineHeights() {
     let result = [], {from, to} = this.view.viewState.viewport
-    let minWidth = Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
+    let contentWidth = this.view.contentDOM.clientWidth
+    let isWider = contentWidth > Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
+    let widest = -1
     for (let pos = 0, i = 0; i < this.children.length; i++) {
       let child = this.children[i], end = pos + child.length
       if (end > to) break
       if (pos >= from) {
-        result.push(child.dom!.getBoundingClientRect().height)
-        let width = child.dom!.scrollWidth
-        if (width > minWidth) {
-          this.minWidth = minWidth = width
-          this.minWidthFrom = pos
-          this.minWidthTo = end
+        let childRect = child.dom!.getBoundingClientRect()
+        result.push(childRect.height)
+        if (isWider) {
+          let last = child.dom!.lastChild
+          let rects = last ? clientRectsFor(last) : []
+          if (rects.length) {
+            let rect = rects[rects.length - 1]
+            let width = this.view.textDirection == Direction.LTR ? rect.right - childRect.left
+              : childRect.right - rect.left
+            if (width > widest) {
+              widest = width
+              this.minWidth = contentWidth
+              this.minWidthFrom = pos
+              this.minWidthTo = end
+            }
+          }
         }
       }
       pos = end + child.breakAfter
