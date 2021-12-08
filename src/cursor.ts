@@ -131,7 +131,7 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
     if (block.top > yOffset || block.bottom < yOffset) {
       bias = block.top > yOffset ? -1 : 1
       yOffset = Math.min(block.bottom - halfLine, Math.max(block.top + halfLine, yOffset))
-      if (bounced) return precise ? null : 0
+      if (bounced) return precise ? null : block.top > yOffset ? 0 : view.state.doc.length
       else bounced = true
     }
     if (block.type == BlockType.Text) break
