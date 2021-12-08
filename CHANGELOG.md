@@ -1,3 +1,13 @@
+## 0.19.28 (2021-12-08)
+
+### Bug fixes
+
+Fix an issue where pressing Enter on Chrome Android during composition did not fire key handlers for Enter.
+
+Avoid a Chrome bug where the virtual keyboard closes when pressing backspace after a widget.
+
+Fix an issue where the editor could show a horizontal scroll bar even after all lines that caused it had been deleted or changed.
+
 ## 0.19.27 (2021-12-06)
 
 ### Bug fixes
