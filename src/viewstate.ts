@@ -32,9 +32,9 @@ function visiblePixelRange(dom: HTMLElement, paddingTop: number): Rect {
       break
     }
   }
-  
-  return {left: left - rect.left, right: right - rect.left,
-          top: top - (rect.top + paddingTop), bottom: bottom - (rect.top + paddingTop)}
+
+  return {left: left - rect.left, right: Math.max(left, right) - rect.left,
+          top: top - (rect.top + paddingTop), bottom: Math.max(top, bottom) - (rect.top + paddingTop)}
 }
 
 const enum VP {
@@ -306,7 +306,7 @@ export class ViewState {
                                 map.lineAt(visibleBottom + (1 - marginTop) * VP.Margin, QueryType.ByHeight, doc, 0, 0).to)
     // If scrollTarget is given, make sure the viewport includes that position
     if (scrollTarget) {
-      let {head} = scrollTarget.range, viewHeight = visibleBottom - visibleTop
+      let {head} = scrollTarget.range, viewHeight = this.editorHeight
       if (head < viewport.from || head > viewport.to) {
         let block = map.lineAt(head, QueryType.ByPos, doc, 0, 0), topPos
         if (scrollTarget.center)
@@ -331,6 +331,7 @@ export class ViewState {
   // Checks if a given viewport covers the visible part of the
   // document and not too much beyond that.
   viewportIsAppropriate({from, to}: Viewport, bias = 0) {
+    if (!this.inView) return true
     let {top} = this.heightMap.lineAt(from, QueryType.ByPos, this.state.doc, 0, 0)
     let {bottom} = this.heightMap.lineAt(to, QueryType.ByPos, this.state.doc, 0, 0)
     let {visibleTop, visibleBottom} = this
