@@ -196,9 +196,9 @@ export class InputState {
       event.type == "compositionend" && !browser.ios
   }
 
-  startMouseSelection(view: EditorView, event: MouseEvent, style: MouseSelectionStyle) {
+  startMouseSelection(mouseSelection: MouseSelection) {
     if (this.mouseSelection) this.mouseSelection.destroy()
-    this.mouseSelection = new MouseSelection(this, view, event, style)
+    this.mouseSelection = mouseSelection
   }
 
   update(update: ViewUpdate) {
@@ -256,9 +256,10 @@ class MouseSelection {
   multiple: boolean
   lastEvent: MouseEvent
 
-  constructor(private inputState: InputState, private view: EditorView,
+  constructor(private view: EditorView,
               startEvent: MouseEvent,
-              private style: MouseSelectionStyle) {
+              private style: MouseSelectionStyle,
+              private mustSelect: boolean) {
     this.lastEvent = startEvent
     let doc = view.contentDOM.ownerDocument!
     doc.addEventListener("mousemove", this.move = this.move.bind(this))
@@ -292,17 +293,19 @@ class MouseSelection {
     let doc = this.view.contentDOM.ownerDocument!
     doc.removeEventListener("mousemove", this.move)
     doc.removeEventListener("mouseup", this.up)
-    this.inputState.mouseSelection = null
+    this.view.inputState.mouseSelection = null
   }
 
   select(event: MouseEvent) {
     let selection = this.style.get(event, this.extend, this.multiple)
-    if (!selection.eq(this.view.state.selection) || selection.main.assoc != this.view.state.selection.main.assoc)
+    if (this.mustSelect || !selection.eq(this.view.state.selection) ||
+        selection.main.assoc != this.view.state.selection.main.assoc)
       this.view.dispatch({
         selection,
         userEvent: "select.pointer",
         scrollIntoView: true
       })
+    this.mustSelect = false
   }
 
   update(update: ViewUpdate) {
@@ -421,8 +424,9 @@ handlers.mousedown = (view, event: MouseEvent) => {
   }
   if (!style && event.button == 0) style = basicMouseSelection(view, event)
   if (style) {
-    if (view.root.activeElement != view.contentDOM) view.observer.ignore(() => focusPreventScroll(view.contentDOM))
-    view.inputState.startMouseSelection(view, event, style)
+    let mustFocus = view.root.activeElement != view.contentDOM
+    if (mustFocus) view.observer.ignore(() => focusPreventScroll(view.contentDOM))
+    view.inputState.startMouseSelection(new MouseSelection(view, event, style, mustFocus))
   }
 }
 
