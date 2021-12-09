@@ -270,7 +270,7 @@ export class DOMObserver {
     this.onChange(from, to, typeOver)
     
     // The view wasn't updated
-    if (this.view.state == startState) this.view.docView.reset(newSel)
+    if (this.view.state == startState) this.view.update([])
   }
 
   readMutation(rec: MutationRecord): {from: number, to: number, typeOver: boolean} | null {

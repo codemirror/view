@@ -13,6 +13,7 @@ import {ViewUpdate, PluginField, decorations as decorationsFacet,
 import {EditorView} from "./editorview"
 import {ScrollTarget} from "./viewstate"
 import {Direction} from "./bidi"
+import {DOMReader} from "./domreader"
 
 export class DocView extends ContentView {
   children!: BlockView[]
@@ -72,8 +73,10 @@ export class DocView extends ContentView {
       }
     }
 
-    if (this.view.inputState.composing < 0) this.compositionDeco = Decoration.none
-    else if (update.transactions.length) this.compositionDeco = computeCompositionDeco(this.view, update.changes)
+    if (this.view.inputState.composing < 0)
+      this.compositionDeco = Decoration.none
+    else if (update.transactions.length || this.dirty)
+      this.compositionDeco = computeCompositionDeco(this.view, update.changes)
 
     // When the DOM nodes around the selection are moved to another
     // parent, Chrome sometimes reports a different selection through
@@ -223,7 +226,7 @@ export class DocView extends ContentView {
   }
 
   enforceCursorAssoc() {
-    if (this.view.composing) return
+    if (this.compositionDeco.size) return
     let cursor = this.view.state.selection.main
     let sel = getSelection(this.root)
     if (!cursor.empty || !cursor.assoc || !sel.modify) return
@@ -417,7 +420,7 @@ class BlockGapWidget extends WidgetType {
   get estimatedHeight() { return this.height }
 }
 
-export function computeCompositionDeco(view: EditorView, changes: ChangeSet): DecorationSet {
+function computeCompositionDeco(view: EditorView, changes: ChangeSet): DecorationSet {
   let sel = view.observer.selectionRange
   let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
   if (!textNode) return Decoration.none
@@ -442,7 +445,9 @@ export function computeCompositionDeco(view: EditorView, changes: ChangeSet): De
   }
 
   let newFrom = changes.mapPos(from, 1), newTo = Math.max(newFrom, changes.mapPos(to, -1))
-  let text = textNode.nodeValue!, {state} = view
+  let {state} = view, text = topNode.nodeType == 3 ? topNode.nodeValue! :
+    new DOMReader([], view).readRange(topNode.firstChild, null).text
+
   if (newTo - newFrom < text.length) {
     if (state.sliceDoc(newFrom, Math.min(state.doc.length, newFrom + text.length)) == text) newTo = newFrom + text.length
     else if (state.sliceDoc(Math.max(0, newTo - text.length), newTo) == text) newFrom = newTo - text.length

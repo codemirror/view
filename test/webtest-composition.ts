@@ -232,6 +232,17 @@ describe("Composition", () => {
     ist(cm.state.doc.toString(), "one two \nthreexyz")
   })
 
+  it("can handle browsers inserting new wrapper nodes around the composition", () => {
+    let cm = requireFocus(tempView("one two", [wordHighlighter]))
+    compose(cm, () => {
+      let span = cm.domAtPos(1).node.parentNode!
+      let wrap = span.appendChild(document.createElement("font"))
+      let text = wrap.appendChild(document.createTextNode(""))
+      return up(text, "1")
+    }, [n => up(n, "2")])
+    ist(cm.state.doc.toString(), "one12 two")
+  })
+
   it("doesn't cancel composition when a newline is added immediately in front", () => {
     let cm = requireFocus(tempView("one\ntwo three", [wordHighlighter]))
     compose(cm, () => up(cm.domAtPos(9).node as Text, "x"), [
