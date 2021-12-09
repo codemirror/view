@@ -1,3 +1,15 @@
+## 0.19.29 (2021-12-09)
+
+### Bug fixes
+
+Fix a bug that could cause out-of-view editors to get a nonsensical viewport and fail to scroll into view when asked to.
+
+Fix a bug where  would return 0 when clicking below the content if the last line was replaced with a block widget decoration.
+
+Fix an issue where clicking at the position of the previous cursor in a blurred editor would cause the selection to reset to the start of the document.
+
+Fix an issue where composition could be interrupted if the browser created a new node inside a mark decoration node.
+
 ## 0.19.28 (2021-12-08)
 
 ### Bug fixes
