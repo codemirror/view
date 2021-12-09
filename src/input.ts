@@ -164,7 +164,7 @@ export class InputState {
       view.observer.processRecords()
       let startState = view.state
       dispatchKey(view.contentDOM, key.key, key.keyCode)
-      if (view.state == startState) view.docView.reset(true)
+      if (view.state == startState) view.update([])
     })
   }
 

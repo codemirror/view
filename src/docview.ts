@@ -100,16 +100,6 @@ export class DocView extends ContentView {
     }
   }
 
-  reset(sel: boolean) {
-    if (this.dirty) {
-      this.view.observer.ignore(() => this.view.docView.sync())
-      this.dirty = Dirty.Not
-      this.updateSelection(true)
-    } else {
-      this.updateSelection()
-    }
-  }
-
   // Used by update and the constructor do perform the actual DOM
   // update
   private updateInner(changes: readonly ChangedRange[], deco: readonly DecorationSet[], oldLength: number) {
