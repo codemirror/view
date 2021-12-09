@@ -634,6 +634,11 @@ export class EditorView {
   /// Find the DOM parent node and offset (child offset if `node` is
   /// an element, character offset when it is a text node) at the
   /// given document position.
+  ///
+  /// Note that for positions that aren't currently in
+  /// `visibleRanges`, the resulting DOM position isn't necessarily
+  /// meaningful (it may just point before or after a placeholder
+  /// element).
   domAtPos(pos: number): {node: Node, offset: number} {
     return this.docView.domAtPos(pos)
   }
