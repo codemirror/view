@@ -124,18 +124,25 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
 
 export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, precise: boolean, bias: -1 | 1 = -1): number | null {
   let content = view.contentDOM.getBoundingClientRect(), docTop = content.top + view.viewState.paddingTop
-  let halfLine = view.defaultLineHeight / 2
-  let block, yOffset = y - docTop
-  for (let bounced = false;;) {
+  let block, yOffset = y - docTop, {docHeight} = view.viewState
+  if (yOffset < 0 || yOffset > docHeight) {
+    if (precise) return null
+    yOffset = yOffset < 0 ? 0 : docHeight
+  }
+  // Scan for a text block near the queried y position
+  for (let halfLine = view.defaultLineHeight / 2, bounced = false;;) {
     block = view.elementAtHeight(yOffset)
-    if (block.top > yOffset || block.bottom < yOffset) {
-      bias = block.top > yOffset ? -1 : 1
-      yOffset = Math.min(block.bottom - halfLine, Math.max(block.top + halfLine, yOffset))
-      if (bounced) return precise ? null : 0
-      else bounced = true
-    }
     if (block.type == BlockType.Text) break
-    yOffset = bias > 0 ? block.bottom + halfLine : block.top - halfLine
+    for (;;) {
+      // Move the y position out of this block
+      yOffset = bias > 0 ? block.bottom + halfLine : block.top - halfLine
+      if (yOffset >= 0 && yOffset <= docHeight) break
+      // If the document consists entirely of replaced widgets, we
+      // won't find a text block, so return 0
+      if (bounced) return precise ? null : 0
+      bounced = true
+      bias = -bias as -1 | 1
+    }
   }
   y = docTop + yOffset
   let lineStart = block.from

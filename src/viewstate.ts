@@ -440,8 +440,12 @@ export class ViewState {
     return scaleBlock(this.heightMap.blockAt(this.scaler.fromDOM(height), this.state.doc, 0, 0), this.scaler)
   }
 
+  get docHeight() {
+    return this.scaler.toDOM(this.heightMap.height)
+  }
+
   get contentHeight() {
-    return this.scaler.toDOM(this.heightMap.height) + this.paddingTop + this.paddingBottom
+    return this.docHeight + this.paddingTop + this.paddingBottom
   }
 }
 
