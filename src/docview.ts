@@ -175,7 +175,8 @@ export class DocView extends ContentView {
         // inside an uneditable node, and not bring it back when we
         // move the cursor to its proper position. This tries to
         // restore the keyboard by cycling focus.
-        if (browser.android && browser.chrome && this.dom.contains(domSel.focusNode) && inUneditable(domSel.focusNode, this.dom)) {
+        if (browser.android && browser.chrome && this.dom.contains(domSel.focusNode) &&
+            inUneditable(domSel.focusNode, this.dom)) {
           this.dom.blur()
           this.dom.focus({preventScroll: true})
         }

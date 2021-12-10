@@ -2,7 +2,8 @@ import browser from "./browser"
 import {ContentView, Dirty} from "./contentview"
 import {EditorView} from "./editorview"
 import {editable} from "./extension"
-import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition, deepActiveElement} from "./dom"
+import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition,
+        deepActiveElement, dispatchKey} from "./dom"
 
 const observeOptions = {
   childList: true,
@@ -35,6 +36,7 @@ export class DOMObserver {
   delayedFlush = -1
   resizeTimeout = -1
   queue: MutationRecord[] = []
+  delayedAndroidKey: {key: string, keyCode: number} | null = null
 
   onCharData: any
 
@@ -128,7 +130,7 @@ export class DOMObserver {
   }
 
   onSelectionChange(event: Event) {
-    if (!this.readSelectionRange()) return
+    if (!this.readSelectionRange() || this.delayedAndroidKey) return
     let {view} = this, sel = this.selectionRange
     if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(view.dom, sel))
       return
@@ -219,6 +221,29 @@ export class DOMObserver {
     this.selectionChanged = false
   }
 
+  // Chrome Android, especially in combination with GBoard, not only
+  // doesn't reliably fire regular key events, but also often
+  // surrounds the effect of enter or backspace with a bunch of
+  // composition events that, when interrupted, cause text duplication
+  // or other kinds of corruption. This hack makes the editor back off
+  // from handling DOM changes for a moment when such a key is
+  // detected (via beforeinput or keydown), and then dispatches the
+  // key event, throwing away the DOM changes if it gets handled.
+  delayAndroidKey(key: string, keyCode: number) {
+    if (!this.delayedAndroidKey) requestAnimationFrame(() => {
+      let key = this.delayedAndroidKey!
+      this.delayedAndroidKey = null
+      let startState = this.view.state
+      if (dispatchKey(this.view.contentDOM, key.key, key.keyCode)) this.processRecords()
+      else this.flush()
+      if (this.view.state == startState) this.view.update([])
+    })
+    // Since backspace beforeinput is sometimes signalled spuriously,
+    // Enter always takes precedence.
+    if (!this.delayedAndroidKey || key == "Enter")
+      this.delayedAndroidKey = {key, keyCode}
+  }
+
   flushSoon() {
     if (this.delayedFlush < 0)
       this.delayedFlush = window.setTimeout(() => { this.delayedFlush = -1; this.flush() }, 20)
@@ -254,12 +279,12 @@ export class DOMObserver {
 
   // Apply pending changes, if any
   flush(readSelection = true) {
-    if (readSelection) this.readSelectionRange()
-
     // Completely hold off flushing when pending keys are set—the code
     // managing those will make sure processRecords is called and the
     // view is resynchronized after
-    if (this.delayedFlush >= 0 || this.view.inputState.pendingAndroidKey) return
+    if (this.delayedFlush >= 0 || this.delayedAndroidKey) return
+
+    if (readSelection) this.readSelectionRange()
 
     let {from, to, typeOver} = this.processRecords()
     let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)

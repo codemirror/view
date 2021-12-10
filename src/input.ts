@@ -13,15 +13,6 @@ export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
 
-  // On Chrome Android, backspace near widgets is just completely
-  // broken, and there are no key events, so we need to handle the
-  // beforeinput event. Deleting stuff will often create a flurry of
-  // events, and interrupting it before it is done just makes
-  // subsequent events even more broken, so again, we hold off doing
-  // anything until the browser is finished with whatever it is trying
-  // to do.
-  pendingAndroidKey: undefined | {key: string, keyCode: number} = undefined
-
   // On iOS, some keys need to have their default behavior happen
   // (after which we retroactively handle them and reset the DOM) to
   // avoid messing up the virtual keyboard state.
@@ -95,19 +86,12 @@ export class InputState {
 
   runCustomHandlers(type: string, view: EditorView, event: Event): boolean {
     for (let set of this.customHandlers) {
-      let handler = set.handlers[type], handled: boolean | void = false
+      let handler = set.handlers[type]
       if (handler) {
         try {
-          handled = handler.call(set.plugin, event as any, view)
+          if (handler.call(set.plugin, event as any, view)) return true
         } catch (e) {
           logException(view.state, e)
-        }
-        if (handled || event.defaultPrevented) {
-          // Chrome for Android often applies a bunch of nonsensical
-          // DOM changes after an enter press, even when
-          // preventDefault-ed. This tries to ignore those.
-          if (browser.android && type == "keydown" && (event as any).keyCode == 13) view.observer.flushSoon()
-          return true
         }
       }
     }
@@ -129,6 +113,16 @@ export class InputState {
     this.lastKeyCode = event.keyCode
     this.lastKeyTime = Date.now()
     if (this.screenKeyEvent(view, event as KeyboardEvent)) return true
+    // Chrome for Android usually doesn't fire proper key events, but
+    // occasionally does, usually surrounded by a bunch of complicated
+    // composition changes. When an enter or backspace key event is
+    // seen, hold off on handling DOM events for a bit, and then
+    // dispatch it.
+    if (browser.android && browser.chrome && !(event as any).synthetic &&
+        (event.keyCode == 13 || event.keyCode == 8)) {
+      view.observer.delayAndroidKey(event.key, event.keyCode)
+      return true
+    }
     // Prevent the default behavior of Enter on iOS makes the
     // virtual keyboard get stuck in the wrong (lowercase)
     // state. So we let it go through, and then, in
@@ -149,23 +143,6 @@ export class InputState {
     if (!key) return false
     this.pendingIOSKey = undefined
     return dispatchKey(view.contentDOM, key.key, key.keyCode)
-  }
-
-  // This causes the DOM observer to pause for a bit, and sets an
-  // animation frame (which seems the most reliable way to detect
-  // 'Chrome is done flailing about messing with the DOM') to fire a
-  // fake key event and re-sync the view again.
-  setPendingAndroidKey(view: EditorView, pending: {key: string, keyCode: number}) {
-    this.pendingAndroidKey = pending
-    requestAnimationFrame(() => {
-      let key = this.pendingAndroidKey
-      if (!key) return
-      this.pendingAndroidKey = undefined
-      view.observer.processRecords()
-      let startState = view.state
-      dispatchKey(view.contentDOM, key.key, key.keyCode)
-      if (view.state == startState) view.update([])
-    })
   }
 
   ignoreDuringComposition(event: Event): boolean {
@@ -676,12 +653,12 @@ handlers.compositionstart = handlers.compositionupdate = view => {
   if (view.inputState.compositionFirstChange == null)
     view.inputState.compositionFirstChange = true
   if (view.inputState.composing < 0) {
+    // FIXME possibly set a timeout to clear it again on Android
+    view.inputState.composing = 0
     if (view.docView.compositionDeco.size) {
       view.observer.flush()
       forceClearComposition(view, true)
     }
-    // FIXME possibly set a timeout to clear it again on Android
-    view.inputState.composing = 0
   }
 }
 
@@ -708,7 +685,7 @@ handlers.beforeinput = (view, event) => {
   // seems to do nothing at all on Chrome).
   let pending
   if (browser.chrome && browser.android && (pending = PendingKeys.find(key => key.inputType == event.inputType))) {
-    view.inputState.setPendingAndroidKey(view, pending)
+    view.observer.delayAndroidKey(pending.key, pending.keyCode)
     if (pending.key == "Backspace" || pending.key == "Delete") {
       let startViewHeight = window.visualViewport?.height || 0
       setTimeout(() => {
