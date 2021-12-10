@@ -12,6 +12,20 @@ function iterMatches(doc: Text, re: RegExp, from: number, to: number, f: (from: 
   }
 }
 
+function matchRanges(view: EditorView, maxLength: number) {
+  let visible = view.visibleRanges
+  if (visible.length == 1 && visible[0].from == view.viewport.from &&
+      visible[0].to == view.viewport.to) return visible
+  let result = []
+  for (let {from, to} of visible) {
+    from = Math.max(view.state.doc.lineAt(from).from, from - maxLength)
+    to = Math.min(view.state.doc.lineAt(to).to, to + maxLength)
+    if (result.length && result[result.length - 1].to >= from) result[result.length - 1].to = to
+    else result.push({from, to})
+  }
+  return result
+}
+
 /// Helper class used to make it easier to maintain decorations on
 /// visible code that matches a given regular expression. To be used
 /// in a [view plugin](#view.ViewPlugin). Instances of this object
@@ -20,6 +34,7 @@ export class MatchDecorator {
   private regexp: RegExp
   private getDeco: (match: RegExpExecArray, view: EditorView, pos: number) => Decoration
   private boundary: RegExp | undefined
+  private maxLength: number
 
   /// Create a decorator.
   constructor(config: {
@@ -34,13 +49,20 @@ export class MatchDecorator {
     /// provide a boundary expression, which should match single
     /// character strings that can never occur in `regexp`, to reduce
     /// the amount of re-matching.
-    boundary?: RegExp
+    boundary?: RegExp,
+    /// Matching happens by line, by default, but when lines are
+    /// folded or very long lines are only partially drawn, the
+    /// decorator may avoid matching part of them for speed. This
+    /// controls how much additional invisible content it should
+    /// include in its matches. Defaults to 1000.
+    maxLength?: number,
   }) {
-    let {regexp, decoration, boundary} = config
+    let {regexp, decoration, boundary, maxLength = 1000} = config
     if (!regexp.global) throw new RangeError("The regular expression given to MatchDecorator should have its 'g' flag set")
     this.regexp = regexp
     this.getDeco = typeof decoration == "function" ? decoration as any : () => decoration
     this.boundary = boundary
+    this.maxLength = maxLength
   }
 
   /// Compute the full set of decorations for matches in the given
@@ -48,7 +70,7 @@ export class MatchDecorator {
   /// plugin.
   createDeco(view: EditorView) {
     let build = new RangeSetBuilder<Decoration>()
-    for (let {from, to} of view.visibleRanges)
+    for (let {from, to} of matchRanges(view, this.maxLength))
       iterMatches(view.state.doc, this.regexp, from, to, (a, b, m) => build.add(a, b, this.getDeco(m, view, a)))
     return build.finish()
   }
