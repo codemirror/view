@@ -206,7 +206,7 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
     let between = []
     if ((visualStart || startBlock).to < (visualEnd || endBlock).from - 1)
       between.push(piece(leftSide, top.bottom, rightSide, bottom.top))
-    else if (top.bottom < bottom.top && blockAt(view, (top.bottom + bottom.top) / 2).type == BlockType.Text)
+    else if (top.bottom < bottom.top && view.elementAtHeight((top.bottom + bottom.top) / 2).type == BlockType.Text)
       top.bottom = bottom.top = (top.bottom + bottom.top) / 2
     return pieces(top).concat(between).concat(pieces(bottom))
   }
