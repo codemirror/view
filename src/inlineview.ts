@@ -46,6 +46,7 @@ export class TextView extends ContentView {
   split(from: number) {
     let result = new TextView(this.text.slice(from))
     this.text = this.text.slice(0, from)
+    this.markDirty()
     return result
   }
 
