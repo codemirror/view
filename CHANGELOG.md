@@ -1,3 +1,17 @@
+## 0.19.30 (2021-12-13)
+
+### Bug fixes
+
+Refine Android key event handling to work properly in a GBoard corner case where pressing Enter fires a bunch of spurious deleteContentBackward events.
+
+Fix a crash in `drawSelection` for some kinds of selections.
+
+Prevent a possibility where some content updates causes duplicate text to remain in DOM.
+
+### New features
+
+Support a `maxLength` option to `MatchDecorator` that allows user code to control how far it scans into hidden parts of viewport lines.
+
 ## 0.19.29 (2021-12-09)
 
 ### Bug fixes
