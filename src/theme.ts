@@ -119,11 +119,13 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "@keyframes cm-blink": {"0%": {}, "50%": {visibility: "hidden"}, "100%": {}},
   "@keyframes cm-blink2": {"0%": {}, "50%": {visibility: "hidden"}, "100%": {}},
 
-  ".cm-cursor": {
+  ".cm-cursor, .cm-dropCursor": {
     position: "absolute",
     borderLeft: "1.2px solid black",
     marginLeft: "-0.6px",
     pointerEvents: "none",
+  },
+  ".cm-cursor": {
     display: "none"
   },
   "&dark .cm-cursor": {
