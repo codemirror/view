@@ -1,3 +1,9 @@
+## 0.19.31 (2021-12-13)
+
+### New features
+
+The package now exports a `dropCursor` extension that draws a cursor at the current drop position when dragging content over the editor.
+
 ## 0.19.30 (2021-12-13)
 
 ### Bug fixes
