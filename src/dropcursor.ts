@@ -44,7 +44,11 @@ const drawDropCursor = ViewPlugin.fromClass(class {
     let rect = pos != null && this.view.coordsAtPos(pos)
     if (!rect) return null
     let outer = this.view.scrollDOM.getBoundingClientRect()
-    return {left: rect.left - outer.left, top: rect.top - outer.top, height: rect.bottom - rect.top}
+    return { 
+      left: rect.left - outer.left + this.view.scrollDOM.scrollLeft,
+      top: rect.top - outer.top + this.view.scrollDOM.scrollTop,
+      height: rect.bottom - rect.top
+    }
   }
 
   drawCursor(pos: {left: number, top: number, height: number} | null) {
