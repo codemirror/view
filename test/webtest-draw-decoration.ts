@@ -402,6 +402,16 @@ describe("EditorView decoration", () => {
                                                         r(4, 5, {widget: new WordWidget("c")})]))])
       ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "_a_2_b_4_c_")
     })
+
+    it("properly handles marks growing to include replaced ranges", () => {
+      let cm = tempView("1\n2\n3\n4", [
+        EditorView.decorations.of(Decoration.set(r(4, 5, {widget: new WordWidget("×")}))),
+        decos(Decoration.none),
+      ])
+      cm.dispatch({effects: addDeco.of([d(4, 6, {class: "a"})])})
+      cm.dispatch({effects: [filterDeco.of(() => false), addDeco.of([d(2, 6, {class: "a"})])]})
+      ist(cm.contentDOM.querySelectorAll("strong").length, 1)
+    })
   })
 
   describe("line attributes", () => {
