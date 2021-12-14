@@ -188,7 +188,7 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
   let ltr = view.textDirection == Direction.LTR
   let content = view.contentDOM, contentRect = content.getBoundingClientRect(), base = getBase(view)
   let lineStyle = window.getComputedStyle(content.firstChild as HTMLElement)
-  let leftSide = contentRect.left + parseInt(lineStyle.paddingLeft)
+  let leftSide = contentRect.left + parseInt(lineStyle.paddingLeft) + Math.min(0, parseInt(lineStyle.textIndent));
   let rightSide = contentRect.right - parseInt(lineStyle.paddingRight)
 
   let startBlock = blockAt(view, from), endBlock = blockAt(view, to)
