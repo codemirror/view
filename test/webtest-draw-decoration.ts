@@ -412,6 +412,14 @@ describe("EditorView decoration", () => {
       cm.dispatch({effects: [filterDeco.of(() => false), addDeco.of([d(2, 6, {class: "a"})])]})
       ist(cm.contentDOM.querySelectorAll("strong").length, 1)
     })
+
+    it("covers block ranges at the end of a replaced range", () => {
+      let cm = tempView("1\n2\n3\n4", [
+        EditorView.decorations.of(Decoration.set([r(4, 5, {widget: new WordWidget("B"), block: true})])),
+        EditorView.decorations.of(Decoration.set([r(1, 5, {widget: new WordWidget("F")})])),
+      ])
+      ist(cm.contentDOM.querySelectorAll("strong").length, 1)
+    })
   })
 
   describe("line attributes", () => {
