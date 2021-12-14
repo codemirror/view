@@ -89,7 +89,7 @@ export class InputState {
       let handler = set.handlers[type]
       if (handler) {
         try {
-          if (handler.call(set.plugin, event as any, view)) return true
+          if (handler.call(set.plugin, event as any, view) || event.defaultPrevented) return true
         } catch (e) {
           logException(view.state, e)
         }
