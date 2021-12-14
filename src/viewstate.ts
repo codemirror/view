@@ -201,8 +201,8 @@ export class ViewState {
     let updateLines = !update.changes.empty || (update.flags & UpdateFlag.Height) ||
       viewport.from != this.viewport.from || viewport.to != this.viewport.to
     this.viewport = viewport
-    if (updateLines) this.updateViewportLines()
     this.updateForViewport()
+    if (updateLines) this.updateViewportLines()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
     update.flags |= this.computeVisibleRanges()
@@ -274,9 +274,9 @@ export class ViewState {
     let viewportChange = !this.viewportIsAppropriate(this.viewport, bias) ||
       this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from || this.scrollTarget.range.head > this.viewport.to)
     if (viewportChange) this.viewport = this.getViewport(bias, this.scrollTarget)
+    this.updateForViewport()
     if ((result & UpdateFlag.Height) || viewportChange) this.updateViewportLines()
 
-    this.updateForViewport()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
       this.updateLineGaps(this.ensureLineGaps(refresh ? [] : this.lineGaps))
     result |= this.computeVisibleRanges()
