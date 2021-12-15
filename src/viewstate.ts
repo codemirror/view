@@ -239,7 +239,11 @@ export class ViewState {
     let pixelViewport = this.printing ? {top: -1e8, bottom: 1e8, left: -1e8, right: 1e8} : visiblePixelRange(dom, this.paddingTop)
     let dTop = pixelViewport.top - this.pixelViewport.top, dBottom = pixelViewport.bottom - this.pixelViewport.bottom
     this.pixelViewport = pixelViewport
-    this.inView = this.pixelViewport.bottom > this.pixelViewport.top && this.pixelViewport.right > this.pixelViewport.left
+    let inView = this.pixelViewport.bottom > this.pixelViewport.top && this.pixelViewport.right > this.pixelViewport.left
+    if (inView != this.inView) {
+      this.inView = inView
+      if (inView) measureContent = true
+    }
     if (!this.inView) return 0
 
     if (measureContent) {
