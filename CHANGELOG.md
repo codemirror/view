@@ -1,3 +1,17 @@
+## 0.19.32 (2021-12-15)
+
+### Bug fixes
+
+Fix a bug where CodeMirror's own event handers would run even after a user-supplied handler called `preventDefault` on an event.
+
+Properly draw selections when negative text-indent is used for soft wrapping.
+
+Fix an issue where `viewportLineBlocks` could hold inaccurate height information when the vertical scaling changed.
+
+Fixes drop cursor positioning when the document is scrolled. Force a content measure when the editor comes into view
+
+Fix a bug that could cause the editor to not measure its layout the first time it came into view.
+
 ## 0.19.31 (2021-12-13)
 
 ### New features
