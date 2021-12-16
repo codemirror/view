@@ -96,6 +96,7 @@ export class LineView extends ContentView implements BlockView {
       this.prevAttrs = this.attrs ? null : undefined
     } else if (this.dirty & Dirty.Attrs) {
       clearAttributes(this.dom)
+      this.dom!.className = "cm-line"
       this.prevAttrs = this.attrs ? null : undefined
     }
     if (this.prevAttrs !== undefined) {
