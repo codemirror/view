@@ -1,3 +1,19 @@
+## 0.19.33 (2021-12-16)
+
+### Breaking changes
+
+`EditorView.scrollTo` and `EditorView.centerOn` are deprecated in favor of `EditorView.scrollIntoView`, and will be removed in the next breaking release.
+
+### Bug fixes
+
+Fix an issue that could cause the editor to unnecessarily interfere with composition (especially visible on macOS Chrome).
+
+A composition started with multiple lines selected will no longer be interruptd by the editor.
+
+### New features
+
+The new `EditorView.scrollIntoView` function allows you to do more fine-grained scrolling.
+
 ## 0.19.32 (2021-12-15)
 
 ### Bug fixes
