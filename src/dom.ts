@@ -100,9 +100,11 @@ function windowRect(win: Window): Rect {
           top: 0, bottom: win.innerHeight}
 }
 
-const ScrollSpace = 5
+export type ScrollStrategy = "nearest" | "start" | "end" | "center"
 
-export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1, center: boolean) {
+export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
+                                   x: ScrollStrategy, y: ScrollStrategy,
+                                   xMargin: number, yMargin: number, ltr: boolean) {
   let doc = dom.ownerDocument!, win = doc.defaultView!
 
   for (let cur: any = dom; cur;) {
@@ -122,31 +124,40 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1, c
       }
 
       let moveX = 0, moveY = 0
-      if (center) {
+      if (y == "nearest") {
+        if (rect.top < bounding.top) {
+          moveY = -(bounding.top - rect.top + yMargin)
+          if (side > 0 && rect.bottom > bounding.bottom + moveY)
+            moveY = rect.bottom - bounding.bottom + moveY + yMargin
+        } else if (rect.bottom > bounding.bottom) {
+          moveY = rect.bottom - bounding.bottom + yMargin
+          if (side < 0 && (rect.top - moveY) < bounding.top)
+            moveY = -(bounding.top + moveY - rect.top + yMargin)
+        }
+      } else {
         let rectHeight = rect.bottom - rect.top, boundingHeight = bounding.bottom - bounding.top
-        let targetTop
-        if (rectHeight <= boundingHeight) targetTop = rect.top + rectHeight / 2 - boundingHeight / 2
-        else if (side < 0) targetTop = rect.top - ScrollSpace
-        else targetTop = rect.bottom + ScrollSpace - boundingHeight
+        let targetTop =
+          y == "center" && rectHeight <= boundingHeight ? rect.top + rectHeight / 2 - boundingHeight / 2 :
+          y == "start" || y == "center" && side < 0 ? rect.top - yMargin :
+          rect.bottom - boundingHeight + yMargin
         moveY = targetTop - bounding.top
-        if (Math.abs(moveY) <= 1) moveY = 0
-      } else if (rect.top < bounding.top) {
-        moveY = -(bounding.top - rect.top + ScrollSpace)
-        if (side > 0 && rect.bottom > bounding.bottom + moveY)
-          moveY = rect.bottom - bounding.bottom + moveY + ScrollSpace
-      } else if (rect.bottom > bounding.bottom) {
-        moveY = rect.bottom - bounding.bottom + ScrollSpace
-        if (side < 0 && (rect.top - moveY) < bounding.top)
-          moveY = -(bounding.top + moveY - rect.top + ScrollSpace)
       }
-      if (rect.left < bounding.left) {
-        moveX = -(bounding.left - rect.left + ScrollSpace)
-        if (side > 0 && rect.right > bounding.right + moveX)
-          moveX = rect.right - bounding.right + moveX + ScrollSpace
-      } else if (rect.right > bounding.right) {
-        moveX = rect.right - bounding.right + ScrollSpace
-        if (side < 0 && rect.left < bounding.left + moveX)
-          moveX = -(bounding.left + moveX - rect.left + ScrollSpace)
+      if (x == "nearest") {
+        if (rect.left < bounding.left) {
+          moveX = -(bounding.left - rect.left + xMargin)
+          if (side > 0 && rect.right > bounding.right + moveX)
+            moveX = rect.right - bounding.right + moveX + xMargin
+        } else if (rect.right > bounding.right) {
+          moveX = rect.right - bounding.right + xMargin
+          if (side < 0 && rect.left < bounding.left + moveX)
+            moveX = -(bounding.left + moveX - rect.left + xMargin)
+        }
+      } else {
+        let targetLeft =
+          x == "center" ? rect.left + (rect.right - rect.left) / 2 - (bounding.right - bounding.left) / 2 :
+          (x == "start") == ltr ? rect.left - xMargin :
+          rect.right - (bounding.right - bounding.left) + xMargin
+        moveX = targetLeft - bounding.left
       }
       if (moveX || moveY) {
         if (top) {
@@ -168,7 +179,7 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1, c
       }
       if (top) break
       cur = cur.assignedSlot || cur.parentNode
-      center = false
+      x = y = "nearest"
     } else if (cur.nodeType == 11) { // A shadow root
       cur = cur.host
     } else {

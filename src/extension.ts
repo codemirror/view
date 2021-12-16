@@ -1,10 +1,11 @@
-import {EditorState, Transaction, ChangeSet, Facet, StateEffect, Extension, SelectionRange} from "@codemirror/state"
+import {EditorState, Transaction, ChangeSet, ChangeDesc, Facet,
+        StateEffect, Extension, SelectionRange} from "@codemirror/state"
 import {RangeSet} from "@codemirror/rangeset"
 import {StyleModule} from "style-mod"
 import {DecorationSet} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {Attrs} from "./attributes"
-import {Rect} from "./dom"
+import {Rect, ScrollStrategy} from "./dom"
 import {MakeSelectionStyle} from "./input"
 
 /// Command functions are used in key bindings and other types of user
@@ -28,13 +29,31 @@ export const updateListener = Facet.define<(update: ViewUpdate) => void>()
 
 export const inputHandler = Facet.define<(view: EditorView, from: number, to: number, text: string) => boolean>()
 
+// FIXME remove
 export const scrollTo = StateEffect.define<SelectionRange>({
   map: (range, changes) => range.map(changes)
 })
 
+// FIXME remove
 export const centerOn = StateEffect.define<SelectionRange>({
   map: (range, changes) => range.map(changes)
 })
+
+export class ScrollTarget {
+  constructor(
+    readonly range: SelectionRange,
+    readonly y: ScrollStrategy = "nearest",
+    readonly x: ScrollStrategy = "nearest",
+    readonly yMargin: number = 5,
+    readonly xMargin: number = 5,
+  ) {}
+
+  map(changes: ChangeDesc) {
+    return changes.empty ? this : new ScrollTarget(this.range.map(changes), this.y, this.x, this.yMargin, this.xMargin)
+  }
+}
+
+export const scrollIntoView = StateEffect.define<ScrollTarget>({map: (t, ch) => t.map(ch)})
 
 /// Log or report an unhandled exception in client code. Should
 /// probably only be used by extension code that allows client code to

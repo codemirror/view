@@ -1,9 +1,9 @@
 import {Text} from "@codemirror/text"
-import {EditorState, ChangeSet, ChangeDesc, SelectionRange} from "@codemirror/state"
+import {EditorState, ChangeSet, ChangeDesc} from "@codemirror/state"
 import {RangeSet} from "@codemirror/rangeset"
 import {Rect} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
-import {decorations, ViewUpdate, UpdateFlag, ChangedRange} from "./extension"
+import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget} from "./extension"
 import {WidgetType, Decoration, DecorationSet} from "./decoration"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
@@ -94,14 +94,6 @@ const enum LG {
   HalfMargin = LG.Margin >> 1,
   DoubleMargin = LG.Margin << 1,
   SelectionMargin = 10,
-}
-
-export class ScrollTarget {
-  constructor(readonly range: SelectionRange, readonly center = false) {}
-
-  map(changes: ChangeDesc) {
-    return changes.empty ? this : new ScrollTarget(this.range.map(changes), this.center)
-  }
 }
 
 export class ViewState {
@@ -313,9 +305,9 @@ export class ViewState {
       let {head} = scrollTarget.range, viewHeight = this.editorHeight
       if (head < viewport.from || head > viewport.to) {
         let block = map.lineAt(head, QueryType.ByPos, doc, 0, 0), topPos
-        if (scrollTarget.center)
+        if (scrollTarget.y == "center")
           topPos = (block.top + block.bottom) / 2 - viewHeight / 2
-        else if (head < viewport.from)
+        else if (scrollTarget.y == "start" || head < viewport.from)
           topPos = block.top
         else
           topPos = block.bottom - viewHeight

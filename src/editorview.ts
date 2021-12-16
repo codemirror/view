@@ -6,16 +6,17 @@ import {StyleModule, StyleSpec} from "style-mod"
 import {DocView} from "./docview"
 import {ContentView} from "./contentview"
 import {InputState} from "./input"
-import {Rect, focusPreventScroll, flattenRect, getRoot} from "./dom"
+import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
-import {ViewState, ScrollTarget} from "./viewstate"
+import {ViewState} from "./viewstate"
 import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, AttrSource,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, MeasureRequest, editable, inputHandler, scrollTo, centerOn, UpdateFlag} from "./extension"
+        decorations, MeasureRequest, editable, inputHandler,
+        scrollTo, centerOn, scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -242,11 +243,13 @@ export class EditorView {
         if (scrollTarget) scrollTarget = scrollTarget.map(tr.changes)
         if (tr.scrollIntoView) {
           let {main} = tr.state.selection
-          scrollTarget = new ScrollTarget(main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1))
+          scrollTarget = new ScrollTarget(
+            main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1))
         }
         for (let e of tr.effects) {
           if (e.is(scrollTo)) scrollTarget = new ScrollTarget(e.value)
-          else if (e.is(centerOn)) scrollTarget = new ScrollTarget(e.value, true)
+          else if (e.is(centerOn)) scrollTarget = new ScrollTarget(e.value, "center")
+          else if (e.is(scrollIntoView)) scrollTarget = e.value
         }
       }
       this.viewState.update(update, scrollTarget)
@@ -745,11 +748,40 @@ export class EditorView {
 
   /// Effect that can be [added](#state.TransactionSpec.effects) to a
   /// transaction to make it scroll the given range into view.
+  ///
+  /// *Deprecated*. Use [`scrollIntoView`](#view.EditorView^scrollIntoView) instead.
   static scrollTo = scrollTo
 
   /// Effect that makes the editor scroll the given range to the
   /// center of the visible view.
+  ///
+  /// *Deprecated*. Use [`scrollIntoView`](#view.EditorView^scrollIntoView) instead.
   static centerOn = centerOn
+
+  /// Returns an effect that can be
+  /// [added](#state.TransactionSpec.effects) to a transaction to
+  /// cause it to scroll the given position or range into view.
+  static scrollIntoView(pos: number | SelectionRange, options: {
+    /// By default (`"nearest"`) the position will be vertically
+    /// scrolled only the minimal amount required to move the given
+    /// position into view. You can set this to `"start"` to move it
+    /// to the top of the view, `"end"` to move it to the bottom, or
+    /// `"center"` to move it to the center.
+    y?: ScrollStrategy,
+    /// Effect similar to
+    /// [`y`](#view.EditorView^scrollIntoView^options.y), but for the
+    /// horizontal scroll position.
+    x?: ScrollStrategy,
+    /// Extra vertical distance to add when moving something into
+    /// view. Not used with the `"center"` strategy. Defaults to 5.
+    yMargin?: number,
+    /// Extra horizontal distance to add. Not used with the `"center"`
+    /// strategy. Defaults to 5.
+    xMargin?: number,
+  } = {}): StateEffect<unknown> {
+    return scrollIntoView.of(new ScrollTarget(typeof pos == "number" ? EditorSelection.cursor(pos) : pos,
+                                              options.y, options.x, options.yMargin, options.xMargin))
+  }
 
   /// Facet to add a [style
   /// module](https://github.com/marijnh/style-mod#documentation) to

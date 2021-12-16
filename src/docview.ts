@@ -9,9 +9,8 @@ import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./deco
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection} from "./dom"
 import {ViewUpdate, PluginField, decorations as decorationsFacet,
-        editable, ChangedRange} from "./extension"
+        editable, ChangedRange, ScrollTarget} from "./extension"
 import {EditorView} from "./editorview"
-import {ScrollTarget} from "./viewstate"
 import {Direction} from "./bidi"
 import {DOMReader} from "./domreader"
 
@@ -361,7 +360,8 @@ export class DocView extends ContentView {
     ]
   }
 
-  scrollIntoView({range, center}: ScrollTarget) {
+  scrollIntoView(target: ScrollTarget) {
+    let {range} = target
     let rect = this.coordsAt(range.head, range.empty ? range.assoc : range.head > range.anchor ? -1 : 1), other
     if (!rect) return
     if (!range.empty && (other = this.coordsAt(range.anchor, range.anchor > range.head ? -1 : 1)))
@@ -376,10 +376,13 @@ export class DocView extends ContentView {
       if (top != null) mTop = Math.max(mTop, top)
       if (bottom != null) mBottom = Math.max(mBottom, bottom)
     }
-    scrollRectIntoView(this.view.scrollDOM, {
+    let targetRect = {
       left: rect.left - mLeft, top: rect.top - mTop,
       right: rect.right + mRight, bottom: rect.bottom + mBottom
-    }, range.head < range.anchor ? -1 : 1, center)
+    }
+    scrollRectIntoView(this.view.scrollDOM, targetRect, range.head < range.anchor ? -1 : 1,
+                       target.x, target.y, target.xMargin, target.yMargin,
+                       this.view.textDirection == Direction.LTR)
   }
 
   // Will never be called but needs to be present
