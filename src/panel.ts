@@ -35,6 +35,9 @@ export interface Panel {
   mount?(): void
   /// Update the DOM for a given view update.
   update?(update: ViewUpdate): void
+  /// Called when the panel is removed from the editor or the editor
+  /// is destroyed.
+  destroy?(): void
   /// Whether the panel should be at the top or bottom of the editor.
   /// Defaults to false.
   top?: boolean
@@ -134,6 +137,7 @@ class PanelGroup {
   }
 
   sync(panels: Panel[]) {
+    for (let p of this.panels) if (p.destroy && panels.indexOf(p) < 0) p.destroy()
     this.panels = panels
     this.syncDOM()
   }
