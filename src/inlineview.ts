@@ -1,7 +1,7 @@
 import {Text as DocText} from "@codemirror/text"
 import {ContentView, DOMPos, Dirty, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
-import {Rect, Rect0, flattenRect, textRange, clientRectsFor} from "./dom"
+import {Rect, Rect0, flattenRect, textRange, clientRectsFor, clearAttributes} from "./dom"
 import {CompositionWidget} from "./docview"
 import browser from "./browser"
 
@@ -30,9 +30,7 @@ export class TextView extends ContentView {
   }
 
   reuseDOM(dom: Node) {
-    if (dom.nodeType != 3) return false
-    this.createDOM(dom)
-    return true
+    if (dom.nodeType == 3) this.createDOM(dom)
   }
 
   merge(from: number, to: number, source: ContentView | null): boolean {
@@ -75,15 +73,23 @@ export class MarkView extends ContentView {
     for (let ch of children) ch.setParent(this)
   }
 
-  createDOM() {
-    let dom = document.createElement(this.mark.tagName)
+  setAttrs(dom: HTMLElement) {
+    clearAttributes(dom)
     if (this.mark.class) dom.className = this.mark.class
     if (this.mark.attrs) for (let name in this.mark.attrs) dom.setAttribute(name, this.mark.attrs[name])
-    this.setDOM(dom)
+    return dom
+  }
+
+  reuseDOM(node: Node) {
+    if (node.nodeName == this.mark.tagName.toUpperCase()) {
+      this.setDOM(node)
+      this.dirty |= Dirty.Attrs | Dirty.Node
+    }
   }
 
   sync(track?: {node: Node, written: boolean}) {
-    if (!this.dom || (this.dirty & Dirty.Attrs)) this.createDOM()
+    if (!this.dom) this.setDOM(this.setAttrs(document.createElement(this.mark.tagName)))
+    else if (this.dirty & Dirty.Attrs) this.setAttrs(this.dom)
     super.sync(track)
   }
 

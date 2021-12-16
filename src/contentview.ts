@@ -70,7 +70,11 @@ export abstract class ContentView {
       let pos: Node | null = parent.firstChild
       for (let child of this.children) {
         if (child.dirty) {
-          if (!child.dom && pos && !ContentView.get(pos)?.parent) child.reuseDOM(pos)
+          if (!child.dom && pos) {
+            let contentView = ContentView.get(pos)
+            if (!contentView || !contentView.parent && contentView.constructor == child.constructor)
+              child.reuseDOM(pos)
+          }
           child.sync(track)
           child.dirty = Dirty.Not
         }
@@ -92,7 +96,7 @@ export abstract class ContentView {
     }
   }
 
-  reuseDOM(_dom: Node) { return false }
+  reuseDOM(_dom: Node) {}
 
   abstract domAtPos(pos: number): DOMPos
 

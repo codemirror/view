@@ -1,7 +1,7 @@
 import {ContentView, DOMPos, Dirty, noChildren, mergeChildrenInto} from "./contentview"
 import {DocView} from "./docview"
 import {TextView, MarkView, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
-import {clientRectsFor, Rect} from "./dom"
+import {clientRectsFor, Rect, clearAttributes} from "./dom"
 import {LineDecoration, WidgetType, BlockType} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
 import browser from "./browser"
@@ -82,10 +82,20 @@ export class LineView extends ContentView implements BlockView {
     return inlineDOMAtPos(this.dom!, this.children, pos)
   }
 
+  reuseDOM(node: Node) {
+    if (node.nodeName == "DIV") {
+      this.setDOM(node)
+      this.dirty |= Dirty.Attrs | Dirty.Node
+    }
+  }
+
   sync(track?: {node: Node, written: boolean}) {
-    if (!this.dom || (this.dirty & Dirty.Attrs)) {
+    if (!this.dom) {
       this.setDOM(document.createElement("div"))
       this.dom!.className = "cm-line"
+      this.prevAttrs = this.attrs ? null : undefined
+    } else if (this.dirty & Dirty.Attrs) {
+      clearAttributes(this.dom)
       this.prevAttrs = this.attrs ? null : undefined
     }
     if (this.prevAttrs !== undefined) {
