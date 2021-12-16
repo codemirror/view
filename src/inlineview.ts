@@ -229,7 +229,7 @@ export class CompositionView extends WidgetView {
 
   domAtPos(pos: number) { return new DOMPos(this.widget.text, pos) }
 
-  sync() { if (!this.dom) this.setDOM(this.widget.toDOM()) }
+  sync() { this.setDOM(this.widget.toDOM()) }
 
   localPosFromDOM(node: Node, offset: number): number {
     return !offset ? 0 : node.nodeType == 3 ? Math.min(offset, this.length) : this.length
