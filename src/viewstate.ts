@@ -307,7 +307,7 @@ export class ViewState {
         let block = map.lineAt(head, QueryType.ByPos, doc, 0, 0), topPos
         if (scrollTarget.y == "center")
           topPos = (block.top + block.bottom) / 2 - viewHeight / 2
-        else if (scrollTarget.y == "start" || head < viewport.from)
+        else if (scrollTarget.y == "start" || scrollTarget.y == "nearest" && head < viewport.from)
           topPos = block.top
         else
           topPos = block.bottom - viewHeight
