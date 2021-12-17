@@ -1,3 +1,9 @@
+## 0.19.34 (2021-12-17)
+
+### Bug fixes
+
+Fix a bug where content line elements would in some cases lose their `cm-line` class. Move test to scrollIntoView
+
 ## 0.19.33 (2021-12-16)
 
 ### Breaking changes
