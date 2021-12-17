@@ -141,8 +141,10 @@ export class DOMObserver {
     // Deletions on IE11 fire their events in the wrong order, giving
     // us a selection change event before the DOM changes are
     // reported.
-    // (Selection.isCollapsed isn't reliable on IE)
-    if (browser.ie && browser.ie_version <= 11 && !view.state.selection.main.empty &&
+    // Chrome Android has a similar issue when backspacing out a
+    // selection (#645).
+    if ((browser.ie && browser.ie_version <= 11 || browser.android && browser.chrome) && !view.state.selection.main.empty &&
+        // (Selection.isCollapsed isn't reliable on IE)
         sel.focusNode && isEquivalentPosition(sel.focusNode, sel.focusOffset, sel.anchorNode, sel.anchorOffset))
       this.flushSoon()
     else
