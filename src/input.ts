@@ -505,6 +505,17 @@ handlers.dragstart = (view, event: DragEvent) => {
   }
 }
 
+handlers.dragover = (view, event: DragEvent) => {
+  let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY})
+  if (dropPos == null) return
+  view.focus()
+  view.dispatch({
+    selection: {
+      anchor: dropPos,
+    },
+  })
+}
+
 function dropText(view: EditorView, event: DragEvent, text: string, direct: boolean) {
   let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY})
   if (dropPos == null || !text) return
