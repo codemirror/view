@@ -1,3 +1,13 @@
+## 0.19.35 (2021-12-20)
+
+### Bug fixes
+
+The editor will now handle double-taps as if they are double-clicks, rather than letting the browser's native behavior happen (because the latter often does the wrong thing).
+
+Fix an issue where backspacing out a selection on Chrome Android would sometimes only delete the last character due to event order issues.
+
+`posAtCoords`, without second argument, will no longer return null for positions below or above the document.
+
 ## 0.19.34 (2021-12-17)
 
 ### Bug fixes
