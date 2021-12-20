@@ -124,11 +124,9 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
 
 export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, precise: boolean, bias: -1 | 1 = -1): number | null {
   let content = view.contentDOM.getBoundingClientRect(), docTop = content.top + view.viewState.paddingTop
-  let block, yOffset = y - docTop, {docHeight} = view.viewState
-  if (yOffset < 0 || yOffset > docHeight) {
-    if (precise) return null
-    yOffset = yOffset < 0 ? 0 : docHeight
-  }
+  let block, {docHeight} = view.viewState
+  let yOffset = Math.max(0, Math.min(y - docTop, docHeight))
+
   // Scan for a text block near the queried y position
   for (let halfLine = view.defaultLineHeight / 2, bounced = false;;) {
     block = view.elementAtHeight(yOffset)
@@ -148,9 +146,10 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
   let lineStart = block.from
   // If this is outside of the rendered viewport, we can't determine a position
   if (lineStart < view.viewport.from)
-    return view.viewport.from == 0 ? 0 : posAtCoordsImprecise(view, content, block, x, y)
+    return view.viewport.from == 0 ? 0 : precise ? posAtCoordsImprecise(view, content, block, x, y) : null
   if (lineStart > view.viewport.to)
-    return view.viewport.to == view.state.doc.length ? view.state.doc.length : posAtCoordsImprecise(view, content, block, x, y)
+    return view.viewport.to == view.state.doc.length ? view.state.doc.length :
+      precise ? posAtCoordsImprecise(view, content, block, x, y) : null
   // Prefer ShadowRootOrDocument.elementFromPoint if present, fall back to document if not
   let doc = view.dom.ownerDocument
   let root = (view.root as any).elementFromPoint ? view.root as Document : doc

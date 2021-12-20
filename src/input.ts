@@ -506,9 +506,8 @@ handlers.dragstart = (view, event: DragEvent) => {
 }
 
 function dropText(view: EditorView, event: DragEvent, text: string, direct: boolean) {
-  let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY})
-  if (dropPos == null || !text) return
-
+  if (!text) return
+  let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
   event.preventDefault()
 
   let {mouseSelection} = view.inputState

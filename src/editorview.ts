@@ -656,8 +656,11 @@ export class EditorView {
     return this.docView.posFromDOM(node, offset)
   }
 
-  /// Get the document position at the given screen coordinates.
-  /// Returns null if no valid position could be found.
+  /// Get the document position at the given screen coordinates. For
+  /// positions not covered by the visible viewport's DOM structure,
+  /// this will return null, unless `false` is passed as second
+  /// argument, in which case it'll return an estimated position that
+  /// would be near the coordinates if it were rendered.
   posAtCoords(coords: {x: number, y: number}, precise: false): number
   posAtCoords(coords: {x: number, y: number}): number | null
   posAtCoords(coords: {x: number, y: number}, precise = true): number | null {
