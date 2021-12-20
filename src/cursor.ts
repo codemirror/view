@@ -153,19 +153,21 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
     return view.viewport.to == view.state.doc.length ? view.state.doc.length : posAtCoordsImprecise(view, content, block, x, y)
   // Prefer ShadowRootOrDocument.elementFromPoint if present, fall back to document if not
   let doc = view.dom.ownerDocument
-  let parent = (view.root as any).elementFromPoint ? view.root as Document : doc
-  let element = parent.elementFromPoint(x, y)
+  let root = (view.root as any).elementFromPoint ? view.root as Document : doc
+  let element = root.elementFromPoint(x, y)
+  if (element && !view.contentDOM.contains(element)) element = null
 
   // If the element is unexpected, clip x at the sides of the content area and try again
-  if (!element || !view.contentDOM.contains(element)) {
+  if (!element) {
     x = Math.max(content.left + 1, Math.min(content.right - 1, x))
-    element = parent.elementFromPoint(x, y)
+    element = root.elementFromPoint(x, y)
+    if (element && !view.contentDOM.contains(element)) element = null
   }
 
   // There's visible editor content under the point, so we can try
   // using caret(Position|Range)FromPoint as a shortcut
   let node: Node | undefined, offset: number = -1
-  if (element && view.contentDOM.contains(element) && view.docView.nearest(element)?.isEditable != false) {
+  if (element && view.docView.nearest(element)?.isEditable != false) {
     if (doc.caretPositionFromPoint) {
       let pos = doc.caretPositionFromPoint(x, y)
       if (pos) ({offsetNode: node, offset} = pos)
