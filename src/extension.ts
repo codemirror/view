@@ -378,7 +378,6 @@ export class ViewUpdate {
       view.inputState.notifiedFocused = focus
       this.flags |= UpdateFlag.Focus
     }
-    if (this.docChanged) this.flags |= UpdateFlag.Height
   }
 
   /// Tells you whether the [viewport](#view.EditorView.viewport) or
@@ -388,13 +387,14 @@ export class ViewUpdate {
     return (this.flags & UpdateFlag.Viewport) > 0
   }
 
-  /// Indicates whether the line height in the editor changed in this update.
+  /// Indicates whether the height of an element in the editor changed
+  /// in this update.
   get heightChanged() {
     return (this.flags & UpdateFlag.Height) > 0
   }
 
-  /// Returns true when the document changed or the size of the editor
-  /// or the lines or characters within it has changed.
+  /// Returns true when the document was modified or the size of the
+  /// editor, or elements within the editor, changed.
   get geometryChanged() {
     return this.docChanged || (this.flags & (UpdateFlag.Geometry | UpdateFlag.Height)) > 0
   }
