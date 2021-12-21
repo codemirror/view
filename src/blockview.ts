@@ -139,14 +139,15 @@ export class LineView extends ContentView implements BlockView {
   get type() { return BlockType.Text }
 
   static find(docView: DocView, pos: number): LineView | null {
-    for (let i = 0, off = 0;; i++) {
+    for (let i = 0, off = 0; i < docView.children.length; i++) {
       let block = docView.children[i], end = off + block.length
       if (end >= pos) {
         if (block instanceof LineView) return block
-        if (block.length) return null
+        if (end > pos) break
       }
       off = end + block.breakAfter
     }
+    return null
   }
 }
 
