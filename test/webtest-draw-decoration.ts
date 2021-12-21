@@ -1,4 +1,4 @@
-import {EditorView, Decoration, DecorationSet, WidgetType, Range} from "@codemirror/view"
+import {EditorView, Decoration, DecorationSet, WidgetType, Range, ViewPlugin} from "@codemirror/view"
 import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
 import {EditorSelection, StateEffect, StateField} from "@codemirror/state"
 import ist from "ist"
@@ -420,6 +420,16 @@ describe("EditorView decoration", () => {
       ])
       ist(cm.contentDOM.querySelectorAll("strong").length, 1)
     })
+
+    it("ignores replacing decorations from plugins if they cross lines", () => {
+      let cm = tempView("one\ntwo", [ViewPlugin.fromClass(class {
+        update!: () => void
+        deco = Decoration.set(Decoration.replace({widget: new WordWidget("ay")}).range(2, 5))
+      }, {
+        decorations: o => o.deco
+      })])
+      ist(cm.contentDOM.querySelector("strong"), null)
+    })
   })
 
   describe("line attributes", () => {
@@ -609,6 +619,17 @@ describe("EditorView decoration", () => {
         l(2, {class: "line"})
       ])
       ist(!cm.contentDOM.querySelector(".line"))
+    })
+
+    it("raises an error when providing block widgets from plugins", () => {
+      ist.throws(() => {
+        tempView("abc", [ViewPlugin.fromClass(class {
+          update!: () => void
+          deco = Decoration.set(Decoration.replace({widget: new BlockWidget("oh"), block: true}).range(1, 2))
+        }, {
+          decorations: o => o.deco
+        })])
+      }, "Block decorations may not be specified via plugins")
     })
   })
 })

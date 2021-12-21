@@ -130,11 +130,13 @@ export class PluginField<T> {
   /// **Note**: For reasons of data flow (plugins are only updated
   /// after the viewport is computed), decorations produced by plugins
   /// are _not_ taken into account when predicting the vertical layout
-  /// structure of the editor. Thus, things like large widgets or big
-  /// replacements (i.e. code folding) should be provided through the
-  /// state-level [`decorations` facet](#view.EditorView^decorations),
-  /// not this plugin field. Specifically, replacing decorations that
-  /// cross line boundaries will break if provided through a plugin.
+  /// structure of the editor. They **must not** introduce block
+  /// widgets (that will raise an error) or replacing decorations that
+  /// cover line breaks (these will be ignored if they occur). Such
+  /// decorations, or others that cause a large amount of vertical
+  /// size shift compared to the undecorated content, should be
+  /// provided through the state-level [`decorations`
+  /// facet](#view.EditorView^decorations) instead.
   static decorations = PluginField.define<DecorationSet>()
 
   /// Used to provide ranges that should be treated as atoms as far as

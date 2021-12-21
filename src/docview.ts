@@ -19,6 +19,7 @@ export class DocView extends ContentView {
 
   compositionDeco = Decoration.none
   decorations: readonly DecorationSet[] = []
+  pluginDecorationLength = 0
 
   // Track a minimum width for the editor. When measuring sizes in
   // measureVisibleLineHeights, this is updated to point at the width
@@ -54,7 +55,8 @@ export class DocView extends ContentView {
     this.setDOM(view.contentDOM)
     this.children = [new LineView]
     this.children[0].setParent(this)
-    this.updateInner([new ChangedRange(0, 0, 0, view.state.doc.length)], this.updateDeco(), 0)
+    this.updateDeco()
+    this.updateInner([new ChangedRange(0, 0, 0, view.state.doc.length)], 0)
   }
 
   // Update the document view to a given state. scrollIntoView can be
@@ -93,7 +95,7 @@ export class DocView extends ContentView {
     if (this.dirty == Dirty.Not && changedRanges.length == 0) {
       return false
     } else {
-      this.updateInner(changedRanges, deco, update.startState.doc.length)
+      this.updateInner(changedRanges, update.startState.doc.length)
       if (update.transactions.length) this.lastUpdate = Date.now()
       return true
     }
@@ -101,9 +103,9 @@ export class DocView extends ContentView {
 
   // Used by update and the constructor do perform the actual DOM
   // update
-  private updateInner(changes: readonly ChangedRange[], deco: readonly DecorationSet[], oldLength: number) {
+  private updateInner(changes: readonly ChangedRange[], oldLength: number) {
     this.view.viewState.mustMeasureContent = true
-    this.updateChildren(changes, deco, oldLength)
+    this.updateChildren(changes, oldLength)
 
     let {observer} = this.view
     observer.ignore(() => {
@@ -129,13 +131,14 @@ export class DocView extends ContentView {
     observer.updateGaps(gaps)
   }
 
-  private updateChildren(changes: readonly ChangedRange[], deco: readonly DecorationSet[], oldLength: number) {
+  private updateChildren(changes: readonly ChangedRange[], oldLength: number) {
     let cursor = this.childCursor(oldLength)
     for (let i = changes.length - 1;; i--) {
       let next = i >= 0 ? changes[i] : null
       if (!next) break
       let {fromA, toA, fromB, toB} = next
-      let {content, breakAtStart, openStart, openEnd} = ContentBuilder.build(this.view.state.doc, fromB, toB, deco)
+      let {content, breakAtStart, openStart, openEnd} = ContentBuilder.build(this.view.state.doc, fromB, toB,
+                                                                             this.decorations, this.pluginDecorationLength)
       let {i: toI, off: toOff} = cursor.findPos(toA, 1)
       let {i: fromI, off: fromOff} = cursor.findPos(fromA, -1)
       replaceRange(this, fromI, fromOff, toI, toOff, content, breakAtStart, openStart, openEnd)
@@ -351,8 +354,10 @@ export class DocView extends ContentView {
   }
 
   updateDeco() {
+    let pluginDecorations = this.view.pluginField(PluginField.decorations)
+    this.pluginDecorationLength = pluginDecorations.length
     return this.decorations = [
-      ...this.view.pluginField(PluginField.decorations),
+      ...pluginDecorations,
       ...this.view.state.facet(decorationsFacet),
       this.compositionDeco,
       this.computeBlockGapDeco(),

@@ -1,5 +1,5 @@
 import {tempView} from "@codemirror/buildhelper/lib/tempview"
-import {ViewPlugin, Decoration, WidgetType} from "@codemirror/view"
+import {EditorView, Decoration, WidgetType} from "@codemirror/view"
 import {Range} from "@codemirror/rangeset"
 import ist from "ist"
 
@@ -21,8 +21,7 @@ const block = new class extends WidgetType {
 }
 
 function deco(...deco: Range<Decoration>[]) {
-  let set = Decoration.set(deco)
-  return ViewPlugin.define(() => ({} as any), {decorations: () => set})
+  return EditorView.decorations.of(Decoration.set(deco))
 }
 
 describe("EditorView coords", () => {
