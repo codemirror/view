@@ -181,7 +181,8 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
 
   // No luck, do our own (potentially expensive) search
   if (!node || !view.docView.dom.contains(node)) {
-    let line = LineView.find(view.docView, lineStart)!
+    let line = LineView.find(view.docView, lineStart)
+    if (!line) return yOffset > block.top + block.height / 2 ? block.to : block.from
     ;({node, offset} = domPosAtCoords(line.dom!, x, y))
   }
   return view.docView.posFromDOM(node, offset)
