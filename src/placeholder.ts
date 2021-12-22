@@ -24,15 +24,5 @@ class Placeholder extends WidgetType {
 /// Extension that enables a placeholder—a piece of example content
 /// to show when the editor is empty.
 export function placeholder(content: string | HTMLElement): Extension {
-  return ViewPlugin.fromClass(class {
-    placeholder: DecorationSet
-
-    constructor(readonly view: EditorView) {
-      this.placeholder = Decoration.set([Decoration.widget({widget: new Placeholder(content), side: 1}).range(0)])
-    }
-
-    update!: () => void // Kludge to convince TypeScript that this is a plugin value
-
-    get decorations() { return this.view.state.doc.length ? Decoration.none : this.placeholder }
-  }, {decorations: v => v.decorations})
+  return EditorView.decorations.of(Decoration.set([Decoration.widget({ widget: new Placeholder(content), side: 1 }).range(0)]))
 }
