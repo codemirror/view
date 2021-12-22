@@ -146,10 +146,10 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
   let lineStart = block.from
   // If this is outside of the rendered viewport, we can't determine a position
   if (lineStart < view.viewport.from)
-    return view.viewport.from == 0 ? 0 : precise ? posAtCoordsImprecise(view, content, block, x, y) : null
+    return view.viewport.from == 0 ? 0 : precise ? null : posAtCoordsImprecise(view, content, block, x, y)
   if (lineStart > view.viewport.to)
     return view.viewport.to == view.state.doc.length ? view.state.doc.length :
-      precise ? posAtCoordsImprecise(view, content, block, x, y) : null
+      precise ? null : posAtCoordsImprecise(view, content, block, x, y)
   // Prefer ShadowRootOrDocument.elementFromPoint if present, fall back to document if not
   let doc = view.dom.ownerDocument
   let root = (view.root as any).elementFromPoint ? view.root as Document : doc
