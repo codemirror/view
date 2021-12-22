@@ -1,3 +1,9 @@
+## 0.19.37 (2021-12-22)
+
+### Bug fixes
+
+Fix regression where plugin replacing decorations that span to the end of the line are ignored.
+
 ## 0.19.36 (2021-12-22)
 
 ### Bug fixes
