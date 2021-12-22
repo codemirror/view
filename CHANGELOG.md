@@ -1,3 +1,13 @@
+## 0.19.36 (2021-12-22)
+
+### Bug fixes
+
+Fix a crash in `posAtCoords` when the position lies in a block widget that is rendered but scrolled out of view.
+
+Adding block decorations from a plugin now raises an error. Replacing decorations that cross lines are ignored, when provided by a plugin.
+
+Fix inverted interpretation of the `precise` argument to `posAtCoords`.
+
 ## 0.19.35 (2021-12-20)
 
 ### Bug fixes
