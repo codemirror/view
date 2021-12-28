@@ -123,7 +123,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   classes: string
   intersectionObserver: IntersectionObserver | null
   lastTransaction = 0
-  intersectionTimeout = -1
+  measureTimeout = -1
 
   constructor(readonly view: EditorView) {
     let config = view.state.facet(tooltipConfig)
@@ -134,14 +134,12 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
     this.intersectionObserver = typeof IntersectionObserver == "function" ? new IntersectionObserver(entries => {
-      if (this.intersectionTimeout < 0 && Date.now() > this.lastTransaction - 50 &&
+      if (Date.now() > this.lastTransaction - 50 &&
           entries.length > 0 && entries[entries.length - 1].intersectionRatio < 1)
-        this.intersectionTimeout = setTimeout(() => {
-          this.intersectionTimeout = -1
-          this.maybeMeasure()
-        }, 50)
+        this.measureSoon()
     }, {threshold: [1]}) : null
     this.observeIntersection()
+    view.dom.ownerDocument.defaultView?.addEventListener("resize", this.measureSoon = this.measureSoon.bind(this))
     this.maybeMeasure()
   }
 
@@ -162,6 +160,13 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       for (let tooltip of this.manager.tooltipViews)
         this.intersectionObserver.observe(tooltip.dom)
     }
+  }
+
+  measureSoon() {
+    if (this.measureTimeout < 0) this.measureTimeout = setTimeout(() => {
+      this.measureTimeout = -1
+      this.maybeMeasure()
+    }, 50)
   }
 
   update(update: ViewUpdate) {
@@ -203,9 +208,10 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   destroy() {
+    this.view.dom.ownerDocument.defaultView?.removeEventListener("resize", this.measureSoon)
     for (let {dom} of this.manager.tooltipViews) dom.remove()
     this.intersectionObserver?.disconnect()
-    clearTimeout(this.intersectionTimeout)
+    clearTimeout(this.measureTimeout)
   }
 
   readMeasure() {
