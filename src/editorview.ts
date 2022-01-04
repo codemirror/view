@@ -236,7 +236,7 @@ export class EditorView {
       return this.setState(state)
 
     update = new ViewUpdate(this, state, transactions)
-    let scrollTarget: ScrollTarget | null = null
+    let scrollTarget = this.viewState.scrollTarget
     try {
       this.updateState = UpdateState.Updating
       for (let tr of transactions) {
