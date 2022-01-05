@@ -125,7 +125,9 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
 export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, precise: boolean, bias: -1 | 1 = -1): number | null {
   let content = view.contentDOM.getBoundingClientRect(), docTop = content.top + view.viewState.paddingTop
   let block, {docHeight} = view.viewState
-  let yOffset = Math.max(0, Math.min(y - docTop, docHeight))
+  let yOffset = y - docTop
+  if (yOffset < 0) return 0
+  if (yOffset > docHeight) return view.state.doc.length
 
   // Scan for a text block near the queried y position
   for (let halfLine = view.defaultLineHeight / 2, bounced = false;;) {
