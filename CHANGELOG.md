@@ -1,3 +1,13 @@
+## 0.19.38 (2022-01-05)
+
+### Bug fixes
+
+Fix a bug that caused line decorations with a `class` property to suppress all other line decorations for that line.
+
+Fix a bug that caused scroll effects to be corrupted when further updates came in before they were applied.
+
+Fix an issue where, depending on which way a floating point rounding error fell, `posAtCoords` (and thus vertical cursor motion) for positions outside of the vertical range of the document might or might not return the start/end of the document.
+
 ## 0.19.37 (2021-12-22)
 
 ### Bug fixes
