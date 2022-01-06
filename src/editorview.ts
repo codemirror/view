@@ -878,6 +878,12 @@ export class EditorView {
     return result
   }
 
+  /// This facet records whether a dark theme is active. The extension
+  /// returned by [`theme`](#view.EditorView^theme) automatically
+  /// includes an instance of this when the `dark` option is set to
+  /// true.
+  static darkTheme = darkTheme
+
   /// Create an extension that adds styles to the base theme. Like
   /// with [`theme`](#view.EditorView^theme), use `&` to indicate the
   /// place of the editor wrapper element when directly targeting
