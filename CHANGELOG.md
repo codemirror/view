@@ -1,3 +1,13 @@
+## 0.19.39 (2022-01-06)
+
+### Bug fixes
+
+Make sure the editor signals a `geometryChanged` update when its width changes.
+
+### New features
+
+`EditorView.darkTheme` can now be queried to figure out whether the editor is using a dark theme.
+
 ## 0.19.38 (2022-01-05)
 
 ### Bug fixes
