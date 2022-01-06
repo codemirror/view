@@ -106,6 +106,7 @@ export class ViewState {
   contentDOMWidth = 0
   contentDOMHeight = 0
   editorHeight = 0
+  editorWidth = 0
 
   heightOracle: HeightOracle = new HeightOracle
   heightMap: HeightMap
@@ -238,10 +239,18 @@ export class ViewState {
     }
     if (!this.inView) return 0
 
+    let contentWidth = dom.clientWidth
+    if (this.contentDOMWidth != contentWidth || this.editorHeight != view.scrollDOM.clientHeight ||
+        this.editorWidth != view.scrollDOM.clientWidth) {
+      this.contentDOMWidth = contentWidth
+      this.editorHeight = view.scrollDOM.clientHeight
+      this.editorWidth = view.scrollDOM.clientWidth
+      result |= UpdateFlag.Geometry
+    }
+
     if (measureContent) {
       let lineHeights = view.docView.measureVisibleLineHeights()
       if (oracle.mustRefreshForHeights(lineHeights)) refresh = true
-      let contentWidth = dom.clientWidth
       if (refresh || oracle.lineWrapping && Math.abs(contentWidth - this.contentDOMWidth) > oracle.charWidth) {
         let {lineHeight, charWidth} = view.docView.measureTextSize()
         refresh = oracle.refresh(whiteSpace, direction, lineHeight, charWidth, contentWidth / charWidth, lineHeights)
@@ -249,14 +258,6 @@ export class ViewState {
           view.docView.minWidth = 0
           result |= UpdateFlag.Geometry
         }
-      }
-      if (this.contentDOMWidth != contentWidth) {
-        this.contentDOMWidth = contentWidth
-        result |= UpdateFlag.Geometry
-      }
-      if (this.editorHeight != view.scrollDOM.clientHeight) {
-        this.editorHeight = view.scrollDOM.clientHeight
-        result |= UpdateFlag.Geometry
       }
 
       if (dTop > 0 && dBottom > 0) bias = Math.max(dTop, dBottom)
