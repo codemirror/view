@@ -1,6 +1,6 @@
 import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
 import {EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType} from "@codemirror/view"
-import {EditorState} from "@codemirror/state"
+import {EditorState, EditorSelection} from "@codemirror/state"
 import ist from "ist"
 
 function event(cm: EditorView, type: string) {
@@ -274,5 +274,34 @@ describe("Composition", () => {
     event(cm, "compositionend")
     cm.observer.flush()
     ist(cm.state.doc.toString(), "one!!\ntwo.")
+  })
+
+  it("applies compositions at secondary cursors", () => {
+    let cm = requireFocus(tempView("one\ntwo"))
+    cm.dispatch({selection: EditorSelection.create([EditorSelection.cursor(3), EditorSelection.cursor(7)], 0)})
+    compose(cm, () => up(cm.domAtPos(2).node as Text, "·"), [
+      n => up(n, "-", 3, 4),
+      n => up(n, "→", 3, 4)
+    ])
+    ist(cm.state.doc.toString(), "one→\ntwo→")
+  })
+
+  it("applies compositions at secondary cursors even when the change is before the cursor", () => {
+    let cm = requireFocus(tempView("one\ntwo"))
+    cm.dispatch({selection: EditorSelection.create([EditorSelection.cursor(3), EditorSelection.cursor(7)], 0)})
+    compose(cm, () => up(cm.domAtPos(2).node as Text, "X"), [
+      n => up(n, "Y"),
+      n => up(n, "Z", 3, 4)
+    ])
+    ist(cm.state.doc.toString(), "oneZY\ntwoZY")
+  })
+
+  it("doesn't try to apply multi-cursor composition in a single node", () => {
+    let cm = requireFocus(tempView("onetwo"))
+    cm.dispatch({selection: EditorSelection.create([EditorSelection.cursor(3), EditorSelection.cursor(6)], 0)})
+    compose(cm, () => up(cm.domAtPos(2).node as Text, "X", 3), [
+      n => up(n, "Y", 4),
+    ])
+    ist(cm.state.doc.toString(), "oneXYtwo")
   })
 })

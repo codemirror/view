@@ -419,33 +419,39 @@ class BlockGapWidget extends WidgetType {
   get estimatedHeight() { return this.height }
 }
 
-function computeCompositionDeco(view: EditorView, changes: ChangeSet): DecorationSet {
+export function compositionSurroundingNode(view: EditorView) {
   let sel = view.observer.selectionRange
   let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
-  if (!textNode) return Decoration.none
+  if (!textNode) return null
   let cView = view.docView.nearest(textNode)
-  if (!cView) return Decoration.none
-  let from: number, to: number, topNode: Node = textNode
+  if (!cView) return null
   if (cView instanceof LineView) {
+    let topNode: Node = textNode
     while (topNode.parentNode != cView.dom) topNode = topNode.parentNode!
     let prev = topNode.previousSibling
     while (prev && !ContentView.get(prev)) prev = prev.previousSibling
-    from = to = prev ? ContentView.get(prev)!.posAtEnd : cView.posAtStart
+    let pos = prev ? ContentView.get(prev)!.posAtEnd : cView.posAtStart
+    return {from: pos, to: pos, node: topNode, text: textNode}
   } else {
     for (;;) {
       let {parent} = cView
-      if (!parent) return Decoration.none
+      if (!parent) return null
       if (parent instanceof LineView) break
       cView = parent as ContentView
     }
-    from = cView.posAtStart
-    to = from + cView.length
-    topNode = cView.dom!
+    let from = cView.posAtStart
+    return {from, to: from + cView.length, node: cView.dom!, text: textNode}
   }
+}
+
+function computeCompositionDeco(view: EditorView, changes: ChangeSet): DecorationSet {
+  let surrounding = compositionSurroundingNode(view)
+  if (!surrounding) return Decoration.none
+  let {from, to, node, text: textNode} = surrounding
 
   let newFrom = changes.mapPos(from, 1), newTo = Math.max(newFrom, changes.mapPos(to, -1))
-  let {state} = view, text = topNode.nodeType == 3 ? topNode.nodeValue! :
-    new DOMReader([], view).readRange(topNode.firstChild, null).text
+  let {state} = view, text = node.nodeType == 3 ? node.nodeValue! :
+    new DOMReader([], view).readRange(node.firstChild, null).text
 
   if (newTo - newFrom < text.length) {
     if (state.sliceDoc(newFrom, Math.min(state.doc.length, newFrom + text.length)) == text) newTo = newFrom + text.length
@@ -455,7 +461,7 @@ function computeCompositionDeco(view: EditorView, changes: ChangeSet): Decoratio
     return Decoration.none
   }
 
-  return Decoration.set(Decoration.replace({widget: new CompositionWidget(topNode, textNode)}).range(newFrom, newTo))
+  return Decoration.set(Decoration.replace({widget: new CompositionWidget(node, textNode)}).range(newFrom, newTo))
 }
 
 export class CompositionWidget extends WidgetType {
