@@ -497,7 +497,7 @@ export class EditorView {
   /// (`view.contentDOM.getBoundingClientRect().top`) to limit layout
   /// queries.
   ///
-  /// *Deprecated: use `blockAtHeight` instead.*
+  /// *Deprecated: use `elementAtHeight` instead.*
   blockAtHeight(height: number, docTop?: number) {
     let top = ensureTop(docTop, this)
     return this.elementAtHeight(height - top).moveY(top)
