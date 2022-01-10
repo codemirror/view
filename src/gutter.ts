@@ -96,7 +96,7 @@ const baseTheme = EditorView.baseTheme({
 
   "&light .cm-gutters": {
     backgroundColor: "#f5f5f5",
-    color: "#999",
+    color: "#6c6c6c",
     borderRight: "1px solid #ddd"
   },
 
