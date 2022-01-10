@@ -349,7 +349,7 @@ export class EditorView {
           try { return m.read(this) }
           catch(e) { logException(this.state, e); return BadMeasure }
         })
-        let update = new ViewUpdate(this, this.state), redrawn = false
+        let update = new ViewUpdate(this, this.state), redrawn = false, scrolled = false
         update.flags |= changed
         if (!updated) updated = update
         else updated.flags |= changed
@@ -369,10 +369,11 @@ export class EditorView {
         if (this.viewState.scrollTarget) {
           this.docView.scrollIntoView(this.viewState.scrollTarget)
           this.viewState.scrollTarget = null
+          scrolled = true
         }
         if (redrawn) this.docView.updateSelection(true)
         if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to &&
-            this.measureRequests.length == 0) break
+            !scrolled && this.measureRequests.length == 0) break
       }
     } finally {
       this.updateState = UpdateState.Idle
