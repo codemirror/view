@@ -339,6 +339,6 @@ function widgetsEq(a: WidgetType | null, b: WidgetType | null): boolean {
 
 export function addRange(from: number, to: number, ranges: number[], margin = 0) {
   let last = ranges.length - 1
-  if (last >= 0 && ranges[last] + margin > from) ranges[last] = Math.max(ranges[last], to)
+  if (last >= 0 && ranges[last] + margin >= from) ranges[last] = Math.max(ranges[last], to)
   else ranges.push(from, to)
 }
