@@ -620,6 +620,14 @@ export function hoverTooltip(
   ]
 }
 
+/// Get the active tooltip view for a given tooltip, if available.
+export function getTooltip(view: EditorView, tooltip: Tooltip): TooltipView | null {
+  let plugin = view.plugin(tooltipPlugin)
+  if (!plugin) return null
+  let found = plugin.manager.tooltips.indexOf(tooltip)
+  return found < 0 ? null : plugin.manager.tooltipViews[found]
+}
+
 /// Returns true if any hover tooltips are currently active.
 export function hasHoverTooltips(state: EditorState) {
   return state.facet(showHoverTooltip).some(x => x)
