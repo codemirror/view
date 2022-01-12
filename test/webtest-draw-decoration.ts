@@ -318,6 +318,11 @@ describe("EditorView decoration", () => {
       ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "1_xx23xx_4")
     })
 
+    it("doesn't wrap buffers at the start of a mark in the mark", () => {
+      let cm = tempView("abc", [decos(Decoration.set([w(1, new WordWidget("x")), d(1, 2, "m")]))])
+      ist(cm.contentDOM.querySelectorAll("[m]").length, 1)
+    })
+
     it("calls the destroy method on destroyed widgets", () => {
       let destroyed: string[] = []
       class W extends WordWidget {
