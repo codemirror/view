@@ -8,6 +8,10 @@ import browser from "./browser"
 
 const CanHidePrimary = !browser.ios // FIXME test IE
 
+// Added to selection rectangles vertical extent to prevent rounding
+// errors from introducing gaps in the rendered content.
+const enum C { Epsilon = 0.01 }
+
 type SelectionConfig = {
   /// The length of a full cursor blink cycle, in milliseconds.
   /// Defaults to 1200. Can be set to 0 to disable blinking.
@@ -212,7 +216,8 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
   }
 
   function piece(left: number, top: number, right: number, bottom: number) {
-    return new Piece(left - base.left, top - base.top, right - left, bottom - top, "cm-selectionBackground")
+    return new Piece(left - base.left, top - base.top - C.Epsilon, right - left, bottom - top + C.Epsilon,
+                     "cm-selectionBackground")
   }
   function pieces({top, bottom, horizontal}: {top: number, bottom: number, horizontal: number[]}) {
     let pieces = []
