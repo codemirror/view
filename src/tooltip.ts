@@ -254,8 +254,9 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         above = !above
       let top = above ? pos.top - height  - arrowHeight - offset.y : pos.bottom + arrowHeight + offset.y
       let right = left + width
-      for (let r of others) if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
-        top = above ? r.top - height - 2 - arrowHeight : r.bottom + arrowHeight + 2
+      if (tView.overlap !== true) for (let r of others)
+        if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
+          top = above ? r.top - height - 2 - arrowHeight : r.bottom + arrowHeight + 2
       if (this.position == "absolute") {
         dom.style.top = (top - measured.parent.top) + "px"
         dom.style.left = (left - measured.parent.left) + "px"
@@ -264,7 +265,9 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         dom.style.left = left + "px"
       }
       if (arrow) arrow.style.left = `${pos.left + (ltr ? offset.x : -offset.x) - (left + Arrow.Offset - Arrow.Size)}px`
-      others.push({left, top, right, bottom: top + height})
+
+      if (tView.overlap !== true)
+        others.push({left, top, right, bottom: top + height})
       dom.classList.toggle("cm-tooltip-above", above)
       dom.classList.toggle("cm-tooltip-below", !above)
       if (tView.positioned) tView.positioned()
@@ -385,6 +388,10 @@ export interface TooltipView {
   /// will move the tooltip up when it is above its anchor, and down
   /// otherwise.
   offset?: {x: number, y: number}
+  /// By default, tooltips are moved when they overlap with other
+  /// tooltips. Set this to `true` to disable that behavior for this
+  /// tooltip.
+  overlap?: boolean
   /// Called after the tooltip is added to the DOM for the first time.
   mount?(view: EditorView): void
   /// Update the DOM element for a change in the view's state.
