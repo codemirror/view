@@ -29,13 +29,22 @@ export class DOMReader {
     return this
   }
 
+  readTextNode(node: Text) {
+    let text = node.nodeValue!
+    if (/^\u200b/.test(text) && (node.previousSibling as HTMLElement | null)?.contentEditable == "false")
+      text = text.slice(1)
+    if (/\u200b$/.test(text) && (node.nextSibling as HTMLElement | null)?.contentEditable == "false")
+      text = text.slice(0, text.length - 1)
+    return text
+  }
+
   readNode(node: Node) {
     if ((node as any).cmIgnore) return
     let view = ContentView.get(node)
     let fromView = view && view.overrideDOMText
     let text: string | undefined
     if (fromView != null) text = fromView.sliceString(0, undefined, this.lineBreak)
-    else if (node.nodeType == 3) text = node.nodeValue!
+    else if (node.nodeType == 3) text = this.readTextNode(node as Text)
     else if (node.nodeName == "BR") text = node.nextSibling ? this.lineBreak : ""
     else if (node.nodeType == 1) this.readRange(node.firstChild, null)
 
