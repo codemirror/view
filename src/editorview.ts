@@ -281,6 +281,7 @@ export class EditorView {
       return
     }
     this.updateState = UpdateState.Updating
+    let hadFocus = this.hasFocus
     try {
       for (let plugin of this.plugins) plugin.destroy(this)
       this.viewState = new ViewState(newState)
@@ -293,6 +294,7 @@ export class EditorView {
       this.updateAttrs()
       this.bidiCache = []
     } finally { this.updateState = UpdateState.Idle }
+    if (hadFocus) this.focus()
     this.requestMeasure()
   }
 
