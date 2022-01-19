@@ -1,3 +1,21 @@
+## 0.19.40 (2022-01-19)
+
+### Bug fixes
+
+Make composition input properly appear at secondary cursors (except when those are in the DOM node with the composition, in which case the browser won't allow us to intervene without aborting the composition).
+
+Fix a bug that cause the editor to get confused about which content was visible after scrolling something into view.
+
+Fix a bug where the dummy elements rendered around widgets could end up in a separate set of wrapping marks, and thus become visible.
+
+`EditorView.moveVertically` now preserves the `assoc` property of the input range.
+
+Get rid of gaps between selection elements drawn by `drawSelection`.
+
+Fix an issue where replacing text next to a widget might leak bogus zero-width spaces into the document.
+
+Avoid browser selection mishandling when a focused view has `setState` called by eagerly refocusing it.
+
 ## 0.19.39 (2022-01-06)
 
 ### Bug fixes
