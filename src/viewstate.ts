@@ -215,6 +215,11 @@ export class ViewState {
     let refresh = this.heightOracle.mustRefreshForStyle(whiteSpace, direction)
     let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != dom.clientHeight
     let result = 0, bias = 0
+    if (this.editorWidth != view.scrollDOM.clientWidth) {
+      if (oracle.lineWrapping) measureContent = true
+      this.editorWidth = view.scrollDOM.clientWidth
+      result |= UpdateFlag.Geometry
+    }
 
     if (measureContent) {
       this.mustMeasureContent = false
@@ -241,11 +246,9 @@ export class ViewState {
     if (!this.inView) return 0
 
     let contentWidth = dom.clientWidth
-    if (this.contentDOMWidth != contentWidth || this.editorHeight != view.scrollDOM.clientHeight ||
-        this.editorWidth != view.scrollDOM.clientWidth) {
+    if (this.contentDOMWidth != contentWidth || this.editorHeight != view.scrollDOM.clientHeight) {
       this.contentDOMWidth = contentWidth
       this.editorHeight = view.scrollDOM.clientHeight
-      this.editorWidth = view.scrollDOM.clientWidth
       result |= UpdateFlag.Geometry
     }
 
