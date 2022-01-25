@@ -307,8 +307,9 @@ export class ViewState {
                                 map.lineAt(visibleBottom + (1 - marginTop) * VP.Margin, QueryType.ByHeight, doc, 0, 0).to)
     // If scrollTarget is given, make sure the viewport includes that position
     if (scrollTarget) {
-      let {head} = scrollTarget.range, viewHeight = this.editorHeight
+      let {head} = scrollTarget.range
       if (head < viewport.from || head > viewport.to) {
+        let viewHeight = Math.min(this.editorHeight, this.pixelViewport.bottom - this.pixelViewport.top)
         let block = map.lineAt(head, QueryType.ByPos, doc, 0, 0), topPos
         if (scrollTarget.y == "center")
           topPos = (block.top + block.bottom) / 2 - viewHeight / 2
