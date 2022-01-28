@@ -426,14 +426,15 @@ describe("EditorView decoration", () => {
       ist(cm.contentDOM.querySelectorAll("strong").length, 1)
     })
 
-    it("ignores replacing decorations from plugins if they cross lines", () => {
-      let cm = tempView("one\ntwo", [ViewPlugin.fromClass(class {
-        update!: () => void
-        deco = Decoration.set(Decoration.replace({widget: new WordWidget("ay")}).range(2, 5))
-      }, {
-        decorations: o => o.deco
-      })])
-      ist(cm.contentDOM.querySelector("strong"), null)
+    it("raises errors for replacing decorations from plugins if they cross lines", () => {
+      ist.throws(() => {
+        tempView("one\ntwo", [ViewPlugin.fromClass(class {
+          update!: () => void
+          deco = Decoration.set(Decoration.replace({widget: new WordWidget("ay")}).range(2, 5))
+        }, {
+          decorations: o => o.deco
+        })])
+      }, "Decorations that replace line breaks may not be specified via plugins")
     })
   })
 
