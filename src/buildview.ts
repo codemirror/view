@@ -137,10 +137,14 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     if (this.openStart < 0) this.openStart = openStart
   }
 
-  filterPoint(from: number, to: number, value: PointDecoration, index: number) {
-    if (index >= this.disallowBlockEffectsBelow || !(value instanceof PointDecoration)) return true
-    if (value.block) throw new RangeError("Block decorations may not be specified via plugins")
-    return to <= this.doc.lineAt(this.pos).to
+  filterPoint(from: number, to: number, value: Decoration, index: number) {
+    if (index < this.disallowBlockEffectsBelow && value instanceof PointDecoration) {
+      if (value.block)
+        throw new RangeError("Block decorations may not be specified via plugins")
+      if (to > this.doc.lineAt(this.pos).to)
+        throw new RangeError("Decorations that replace line breaks may not be specified via plugins")
+    }
+    return true
   }
 
   static build(text: Text, from: number, to: number, decorations: readonly DecorationSet[], pluginDecorationLength: number):
