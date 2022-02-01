@@ -65,9 +65,9 @@ export class DOMObserver {
       // reinsert the finished text. CodeMirror's handling of the
       // deletion will prevent the reinsertion from happening,
       // breaking composition.
-      if ((browser.ie && browser.ie_version <= 11 || browser.ios && view.composing) &&
+      if ((browser.ie && browser.ie_version <= 11 || browser.ios && view.compositionStarted) &&
           mutations.some(m => m.type == "childList" && m.removedNodes.length ||
-                         m.type == "characterData" && m.oldValue!.length > m.target.nodeValue!.length))
+                         m.type == "characterData"))
         this.flushSoon()
       else
         this.flush()
