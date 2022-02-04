@@ -12,7 +12,7 @@ import {ViewUpdate, PluginField, decorations as decorationsFacet,
         editable, ChangedRange, ScrollTarget} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
-import {DOMReader} from "./domreader"
+import {DOMReader, LineBreakPlaceholder} from "./domreader"
 
 export class DocView extends ContentView {
   children!: BlockView[]
@@ -451,13 +451,16 @@ function computeCompositionDeco(view: EditorView, changes: ChangeSet): Decoratio
 
   let newFrom = changes.mapPos(from, 1), newTo = Math.max(newFrom, changes.mapPos(to, -1))
   let {state} = view, text = node.nodeType == 3 ? node.nodeValue! :
-    new DOMReader([], view).readRange(node.firstChild, null).text
+    new DOMReader([], state).readRange(node.firstChild, null).text
 
   if (newTo - newFrom < text.length) {
-    if (state.sliceDoc(newFrom, Math.min(state.doc.length, newFrom + text.length)) == text) newTo = newFrom + text.length
-    else if (state.sliceDoc(Math.max(0, newTo - text.length), newTo) == text) newFrom = newTo - text.length
-    else return Decoration.none
-  } else if (state.sliceDoc(newFrom, newTo) != text) {
+    if (state.doc.sliceString(newFrom, Math.min(state.doc.length, newFrom + text.length), LineBreakPlaceholder) == text)
+      newTo = newFrom + text.length
+    else if (state.doc.sliceString(Math.max(0, newTo - text.length), newTo, LineBreakPlaceholder) == text)
+      newFrom = newTo - text.length
+    else
+      return Decoration.none
+  } else if (state.doc.sliceString(newFrom, newTo, LineBreakPlaceholder) != text) {
     return Decoration.none
   }
 

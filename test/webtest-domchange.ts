@@ -201,4 +201,24 @@ describe("DOM changes", () => {
     ist(cm.state.doc.toString(), "abc")
     ist(cm.contentDOM.textContent, "abc")
   })
+
+  it("can handle crlf insertion", () => {
+    let cm = tempView("abc")
+    let text = cm.domAtPos(1).node
+    text.nodeValue = "ab\r\nc"
+    getSelection()!.collapse(text, 4)
+    flush(cm)
+    ist(cm.state.doc.toString(), "ab\nc")
+    ist(cm.state.selection.main.head, 3)
+  })
+
+  it("works when line breaks are multiple characters", () => {
+    let cm = tempView("abc", [EditorState.lineSeparator.of("\r\n")])
+    let text = cm.domAtPos(1).node
+    text.nodeValue = "ab\r\nc"
+    getSelection()!.collapse(text, 4)
+    flush(cm)
+    ist(cm.state.sliceDoc(), "ab\r\nc")
+    ist(cm.state.selection.main.head, 3)
+  })
 })

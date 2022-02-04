@@ -2,7 +2,7 @@ import {EditorView} from "./editorview"
 import {inputHandler, editable} from "./extension"
 import {contains, dispatchKey} from "./dom"
 import browser from "./browser"
-import {DOMReader, DOMPoint} from "./domreader"
+import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
 import {compositionSurroundingNode} from "./docview"
 import {EditorSelection, Text} from "@codemirror/state"
 
@@ -14,7 +14,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     if (!bounds || view.state.readOnly) return
     let {from, to} = bounds
     let selPoints = view.docView.impreciseHead || view.docView.impreciseAnchor ? [] : selectionPoints(view)
-    let reader = new DOMReader(selPoints, view)
+    let reader = new DOMReader(selPoints, view.state)
     reader.readRange(bounds.startDOM, bounds.endDOM)
     newSel = selectionFromPoints(selPoints, from)
 
@@ -26,10 +26,16 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
       preferredPos = sel.to
       preferredSide = "end"
     }
-    let diff = findDiff(view.state.sliceDoc(from, to), reader.text,
+    let diff = findDiff(view.state.doc.sliceString(from, to, LineBreakPlaceholder), reader.text,
                         preferredPos - from, preferredSide)
+    // Chrome inserts two newlines when pressing shift-enter at the
+    // end of a line. This drops one of those.
+    if (browser.chrome && view.inputState.lastKeyCode == 13 && diff &&
+        diff.toB == diff.from + 2 && reader.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
+      diff.toB--
+
     if (diff) change = {from: from + diff.from, to: from + diff.toA,
-                        insert: view.state.toText(reader.text.slice(diff.from, diff.toB))}
+                        insert: Text.of(reader.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
   } else if (view.hasFocus || !view.state.facet(editable)) {
     let domSel = view.observer.selectionRange
     let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView

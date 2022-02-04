@@ -1,13 +1,22 @@
-import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
-import browser from "./browser"
+import {EditorState} from "@codemirror/state"
+
+export const LineBreakPlaceholder = "\uffff"
 
 export class DOMReader {
   text: string = ""
-  private lineBreak: string
+  lineSeparator: string | undefined
 
-  constructor(private points: DOMPoint[], private view: EditorView) {
-    this.lineBreak = view.state.lineBreak
+  constructor(private points: DOMPoint[], state: EditorState) {
+    this.lineSeparator = state.facet(EditorState.lineSeparator)
+  }
+
+  append(text: string) {
+    this.text += text
+  }
+
+  lineBreak() {
+    this.text += LineBreakPlaceholder
   }
 
   readRange(start: Node | null, end: Node | null) {
@@ -22,39 +31,65 @@ export class DOMReader {
       if (view && nextView ? view.breakAfter :
           (view ? view.breakAfter : isBlockElement(cur)) ||
           (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore)))
-        this.text += this.lineBreak
+        this.lineBreak()
       cur = next!
     }
     this.findPointBefore(parent, end)
     return this
   }
 
+  adjustPos(node: Node, from: number, offset: number) {
+    for (let point of this.points)
+      if (point.node == node && point.pos > from) point.pos += offset
+  }
+
   readTextNode(node: Text) {
     let text = node.nodeValue!
-    if (/^\u200b/.test(text) && (node.previousSibling as HTMLElement | null)?.contentEditable == "false")
+    for (let point of this.points)
+      if (point.node == node)
+        point.pos = this.text.length + Math.min(point.offset, text.length)
+
+    if (/^\u200b/.test(text) && (node.previousSibling as HTMLElement | null)?.contentEditable == "false") {
       text = text.slice(1)
-    if (/\u200b$/.test(text) && (node.nextSibling as HTMLElement | null)?.contentEditable == "false")
+      this.adjustPos(node, this.text.length, -1)
+    }
+    if (/\u200b$/.test(text) && (node.nextSibling as HTMLElement | null)?.contentEditable == "false") {
       text = text.slice(0, text.length - 1)
-    return text
+      this.adjustPos(node, this.text.length + text.length - 1, -1)
+    }
+    for (let off = 0, re = this.lineSeparator ? null : /\r\n?|\n/g;;) {
+      let nextBreak = -1, breakSize = 1, m
+      if (this.lineSeparator) {
+        nextBreak = text.indexOf(this.lineSeparator, off)
+        breakSize = this.lineSeparator.length
+      } else if (m = re!.exec(text)) {
+        nextBreak = m.index
+        breakSize = m[0].length
+      }
+      this.append(text.slice(off, nextBreak < 0 ? text.length : nextBreak))
+      if (nextBreak < 0) break
+      if (breakSize != 0) this.adjustPos(node, this.text.length + 1, -(breakSize - 1))
+      this.lineBreak()
+      off = nextBreak + breakSize
+    }
   }
 
   readNode(node: Node) {
     if ((node as any).cmIgnore) return
     let view = ContentView.get(node)
     let fromView = view && view.overrideDOMText
-    let text: string | undefined
-    if (fromView != null) text = fromView.sliceString(0, undefined, this.lineBreak)
-    else if (node.nodeType == 3) text = this.readTextNode(node as Text)
-    else if (node.nodeName == "BR") text = node.nextSibling ? this.lineBreak : ""
-    else if (node.nodeType == 1) this.readRange(node.firstChild, null)
-
-    if (text != null) {
-      this.findPointIn(node, text.length)
-      this.text += text
-      // Chrome inserts two newlines when pressing shift-enter at the
-      // end of a line. This drops one of those.
-      if (browser.chrome && this.view.inputState.lastKeyCode == 13 && !node.nextSibling && /\n\n$/.test(this.text))
-        this.text = this.text.slice(0, -1)
+    if (fromView != null) {
+      this.findPointInside(node)
+      for (let i = fromView.iter(); !i.next().done;) {
+        if (i.lineBreak) this.lineBreak()
+        else this.append(i.value)
+      }
+    } else if (node.nodeType == 3) {
+      this.readTextNode(node as Text)
+    } else if (node.nodeName == "BR") {
+      if (node.nextSibling) this.lineBreak()
+    } else if (node.nodeType == 1) {
+      this.readRange(node.firstChild, null)
     }
   }
 
@@ -64,10 +99,10 @@ export class DOMReader {
         point.pos = this.text.length
   }
 
-  findPointIn(node: Node, maxLen: number) {
+  findPointInside(node: Node) {
     for (let point of this.points)
-      if (point.node == node)
-        point.pos = this.text.length + Math.min(point.offset, maxLen)
+      if (node.nodeType == 3 ? point.node == node : node.contains(point.node))
+        point.pos = this.text.length
   }
 }
 
