@@ -1,3 +1,19 @@
+## 0.19.41 (2022-02-04)
+
+### Bug fixes
+
+Fix an issue where the editor's view of its content height could go out of sync with the DOM when a line-wrapping editor had its width changed, causing wrapping to change.
+
+Fix a bug that caused the editor to draw way too much content when scrolling to a position in an editor (much) taller than the window.
+
+Report an error when a replace decoration from a plugin crosses a line break, rather than silently ignoring it.
+
+Fix an issue where reading DOM changes was broken when `lineSeparator` contained more than one character.
+
+Make ordering of replace and mark decorations with the same extent and inclusivness more predictable by giving replace decorations precedence.
+
+Fix a bug where, on Chrome, replacement across line boundaries and next to widgets could cause bogus zero-width characters to appear in the content.
+
 ## 0.19.40 (2022-01-19)
 
 ### Bug fixes
