@@ -212,8 +212,8 @@ export abstract class Decoration extends RangeValue {
   static replace(spec: ReplaceDecorationSpec): Decoration {
     let block = !!spec.block
     let {start, end} = getInclusive(spec, block)
-    let startSide = block ? (start ? Side.BlockIncStart : Side.InlineIncStart) : Side.NonIncStart
-    let endSide = block ? (end ? Side.BlockIncEnd : Side.InlineIncEnd) : Side.NonIncEnd
+    let startSide = (start ? (block ? Side.BlockIncStart : Side.InlineIncStart) : Side.NonIncStart) - 1
+    let endSide = (end ? (block ? Side.BlockIncEnd : Side.InlineIncEnd) : Side.NonIncEnd) + 1
     return new PointDecoration(spec, startSide, endSide, block, spec.widget || null, true)
   }
 
