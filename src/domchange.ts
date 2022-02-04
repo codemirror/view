@@ -16,7 +16,6 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     let selPoints = view.docView.impreciseHead || view.docView.impreciseAnchor ? [] : selectionPoints(view)
     let reader = new DOMReader(selPoints, view.state)
     reader.readRange(bounds.startDOM, bounds.endDOM)
-    newSel = selectionFromPoints(selPoints, from)
 
     let preferredPos = sel.from, preferredSide = null
     // Prefer anchoring to end when Backspace is pressed (or, on
@@ -28,14 +27,30 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
     }
     let diff = findDiff(view.state.doc.sliceString(from, to, LineBreakPlaceholder), reader.text,
                         preferredPos - from, preferredSide)
-    // Chrome inserts two newlines when pressing shift-enter at the
-    // end of a line. This drops one of those.
-    if (browser.chrome && view.inputState.lastKeyCode == 13 && diff &&
-        diff.toB == diff.from + 2 && reader.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
-      diff.toB--
+    if (diff) {
+      let orig = diff
+      // Chrome inserts two newlines when pressing shift-enter at the
+      // end of a line. This drops one of those.
+      if (browser.chrome && view.inputState.lastKeyCode == 13 &&
+          diff.toB == diff.from + 2 && reader.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
+        diff.toB--
 
-    if (diff) change = {from: from + diff.from, to: from + diff.toA,
-                        insert: Text.of(reader.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
+      // Strip leading and trailing zero-width spaces from the inserted
+      // content, to work around widget buffers being moved into text
+      // nodes by the browser.
+      while (diff.from < diff.toB && reader.text[diff.from] == "\u200b") {
+        diff = {from: diff.from + 1, toA: diff.toA, toB: diff.toB}
+        selPoints.forEach(p => p.pos -= p.pos > orig.from ? 1 : 0)
+      }
+      while (diff.toB > diff.from && reader.text[diff.toB - 1] == "\u200b") {
+        diff = {from: diff.from, toA: diff.toA, toB: diff.toB - 1}
+        selPoints.forEach(p => p.pos -= p.pos > orig.toB ? 1 : 0)
+      }
+
+      change = {from: from + diff.from, to: from + diff.toA,
+                insert: Text.of(reader.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
+    }
+    newSel = selectionFromPoints(selPoints, from)
   } else if (view.hasFocus || !view.state.facet(editable)) {
     let domSel = view.observer.selectionRange
     let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView

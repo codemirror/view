@@ -38,25 +38,12 @@ export class DOMReader {
     return this
   }
 
-  adjustPos(node: Node, from: number, offset: number) {
-    for (let point of this.points)
-      if (point.node == node && point.pos > from) point.pos += offset
-  }
-
   readTextNode(node: Text) {
     let text = node.nodeValue!
     for (let point of this.points)
       if (point.node == node)
         point.pos = this.text.length + Math.min(point.offset, text.length)
 
-    if (/^\u200b/.test(text) && (node.previousSibling as HTMLElement | null)?.contentEditable == "false") {
-      text = text.slice(1)
-      this.adjustPos(node, this.text.length, -1)
-    }
-    if (/\u200b$/.test(text) && (node.nextSibling as HTMLElement | null)?.contentEditable == "false") {
-      text = text.slice(0, text.length - 1)
-      this.adjustPos(node, this.text.length + text.length - 1, -1)
-    }
     for (let off = 0, re = this.lineSeparator ? null : /\r\n?|\n/g;;) {
       let nextBreak = -1, breakSize = 1, m
       if (this.lineSeparator) {
@@ -68,8 +55,9 @@ export class DOMReader {
       }
       this.append(text.slice(off, nextBreak < 0 ? text.length : nextBreak))
       if (nextBreak < 0) break
-      if (breakSize != 0) this.adjustPos(node, this.text.length + 1, -(breakSize - 1))
       this.lineBreak()
+      if (breakSize > 1) for (let point of this.points)
+        if (point.node == node && point.pos > this.text.length) point.pos -= breakSize - 1
       off = nextBreak + breakSize
     }
   }
