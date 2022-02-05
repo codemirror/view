@@ -67,7 +67,7 @@ export class DOMReader {
     let view = ContentView.get(node)
     let fromView = view && view.overrideDOMText
     if (fromView != null) {
-      this.findPointInside(node)
+      this.findPointInside(node, fromView.length)
       for (let i = fromView.iter(); !i.next().done;) {
         if (i.lineBreak) this.lineBreak()
         else this.append(i.value)
@@ -87,10 +87,10 @@ export class DOMReader {
         point.pos = this.text.length
   }
 
-  findPointInside(node: Node) {
+  findPointInside(node: Node, maxLen: number) {
     for (let point of this.points)
       if (node.nodeType == 3 ? point.node == node : node.contains(point.node))
-        point.pos = this.text.length
+        point.pos = this.text.length + Math.min(maxLen, point.offset)
   }
 }
 
