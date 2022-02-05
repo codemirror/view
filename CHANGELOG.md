@@ -1,3 +1,9 @@
+## 0.19.42 (2022-02-05)
+
+### Bug fixes
+
+Fix a regression in cursor position determination after making an edit next to a widget.
+
 ## 0.19.41 (2022-02-04)
 
 ### Bug fixes
