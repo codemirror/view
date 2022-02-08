@@ -88,7 +88,7 @@ Fix an issue where backspacing out a selection on Chrome Android would sometimes
 
 ### Bug fixes
 
-Fix a bug where content line elements would in some cases lose their `cm-line` class. Move test to scrollIntoView
+Fix a bug where content line elements would in some cases lose their `cm-line` class.
 
 ## 0.19.33 (2021-12-16)
 
