@@ -264,7 +264,10 @@ export class EditorView {
       this.showAnnouncements(transactions)
       this.docView.updateSelection(redrawn, transactions.some(tr => tr.isUserEvent("select.pointer")))
     } finally { this.updateState = UpdateState.Idle }
-    if (redrawn || scrollTarget || this.viewState.mustEnforceCursorAssoc) this.requestMeasure()
+    if (update.startState.facet(theme) != update.state.facet(theme))
+      this.viewState.mustMeasureContent = true
+    if (redrawn || scrollTarget || this.viewState.mustEnforceCursorAssoc || this.viewState.mustMeasureContent)
+      this.requestMeasure()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
   }
 
