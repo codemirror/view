@@ -148,6 +148,11 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     verticalAlign: "bottom"
   },
 
+  ".cm-widgetBuffer": {
+    verticalAlign: "text-bottom",
+    height: "1em",
+  },
+
   ".cm-placeholder": {
     color: "#888",
     display: "inline-block",

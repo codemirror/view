@@ -309,13 +309,13 @@ describe("EditorView decoration", () => {
 
     it("draws buffers around widgets", () => {
       let cm = tempView("1234", [decos(Decoration.set([w(1, new WordWidget("x"), 1), w(3, new WordWidget("y"), -1)]))])
-      ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "1_x23y_4")
+      ist(cm.contentDOM.innerHTML.replace(/<img.*?>/g, "#").replace(/<\/?\w+[^>]*>/g, ""), "1#x23y#4")
     })
 
     it("doesn't draw unnecessary buffers between adjacent widgets", () => {
       let cm = tempView("1234", [decos(Decoration.set([w(1, new WordWidget("x"), 1), w(1, new WordWidget("x"), 1),
                                                        w(3, new WordWidget("x"), -1), w(3, new WordWidget("x"), -1)]))])
-      ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "1_xx23xx_4")
+      ist(cm.contentDOM.innerHTML.replace(/<img.*?>/g, "#").replace(/<\/?\w+[^>]*>/g, ""), "1#xx23xx#4")
     })
 
     it("doesn't wrap buffers at the start of a mark in the mark", () => {
@@ -405,7 +405,7 @@ describe("EditorView decoration", () => {
       let cm = tempView("12345", [decos(Decoration.set([r(0, 1, {widget: new WordWidget("a")}),
                                                         r(2, 3, {widget: new WordWidget("b")}),
                                                         r(4, 5, {widget: new WordWidget("c")})]))])
-      ist(cm.contentDOM.textContent!.replace(/\u200b/g, "_"), "_a_2_b_4_c_")
+      ist(cm.contentDOM.innerHTML.replace(/<img.*?>/g, "#").replace(/<\/?\w+[^>]*>/g, ""), "#a#2#b#4#c#")
     })
 
     it("properly handles marks growing to include replaced ranges", () => {
