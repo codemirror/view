@@ -195,7 +195,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   createTooltip(tooltip: Tooltip) {
     let tooltipView = tooltip.create(this.view)
     tooltipView.dom.classList.add("cm-tooltip")
-    if (tooltip.arrow && !tooltipView.dom.querySelector("cm-tooltip > cm-tooltip-arrow")) {
+    if (tooltip.arrow && !tooltipView.dom.querySelector(".cm-tooltip > .cm-tooltip-arrow")) {
       let arrow = document.createElement("div")
       arrow.className = "cm-tooltip-arrow"
       tooltipView.dom.appendChild(arrow)
