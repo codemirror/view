@@ -1,3 +1,13 @@
+## 0.19.43 (2022-02-16)
+
+### Bug fixes
+
+Fix several issues where editing or composition went wrong due to our zero-width space kludge characters ending up in unexpected places.
+
+Make sure the editor re-measures its dimensions whenever its theme changes.
+
+Fix an issue where some keys on Android phones could leave the editor DOM unsynced with the actual document.
+
 ## 0.19.42 (2022-02-05)
 
 ### Bug fixes
