@@ -335,7 +335,7 @@ export function coordsInChildren(view: ContentView, pos: number, side: number): 
         if (child.getSide() <= 0) continue
         flatten = side = -child.getSide()
       }
-      let rect = child.coordsAt(pos - off, side)
+      let rect = child.coordsAt(Math.max(0, pos - off), side)
       return flatten && rect ? flattenRect(rect, side < 0) : rect
     }
     off = end
