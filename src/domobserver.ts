@@ -218,7 +218,7 @@ export class DOMObserver {
 
   // Throw away any pending changes
   clear() {
-    this.observer.takeRecords()
+    this.processRecords()
     this.queue.length = 0
     this.selectionChanged = false
   }
