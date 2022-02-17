@@ -94,8 +94,15 @@ export class EditorView {
   get inView() { return this.viewState.inView }
 
   /// Indicates whether the user is currently composing text via
-  /// [IME](https://en.wikipedia.org/wiki/Input_method).
+  /// [IME](https://en.wikipedia.org/wiki/Input_method), and at least
+  /// one change has been made in the current composition.
   get composing() { return this.inputState.composing > 0 }
+
+  /// Indicates whether the user is currently in composing state. Note
+  /// that on some platforms, like Android, this will be the case a
+  /// lot, since just putting the cursor on a word starts a
+  /// composition there.
+  get compositionStarted() { return this.inputState.composing >= 0 }
   
   private _dispatch: (tr: Transaction) => void
 
