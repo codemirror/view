@@ -1,3 +1,13 @@
+## 0.19.44 (2022-02-17)
+
+### Bug fixes
+
+Fix a crash that occasionally occurred when drag-selecting in a way that scrolled the editor.
+
+### New features
+
+The new `EditorView.compositionStarted` property indicates whether a composition is starting.
+
 ## 0.19.43 (2022-02-16)
 
 ### Bug fixes
