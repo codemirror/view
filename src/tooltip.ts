@@ -465,7 +465,7 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
   }
 })
 
-const enum Hover { Time = 600, MaxDist = 6 }
+const enum Hover { Time = 300, MaxDist = 6 }
 
 class HoverPlugin {
   lastMove: {x: number, y: number, target: HTMLElement, time: number}
@@ -593,7 +593,14 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
 /// range to be "merged" together without overlapping.
 export function hoverTooltip(
   source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
-  options: {hideOnChange?: boolean} = {}
+  options: {
+    /// When enabled (this defaults to false), close the tooltip
+    /// whenever the document changes.
+    hideOnChange?: boolean,
+    /// Hover time after which the tooltip should appear, in
+    /// milliseconds. Defaults to 300ms.
+    hoverTime?: number
+  } = {}
 ): Extension {
   let setHover = StateEffect.define<Tooltip | null>()
   let hoverState = StateField.define<Tooltip | null>({
@@ -619,10 +626,9 @@ export function hoverTooltip(
     provide: f => showHoverTooltip.from(f)
   })
 
-  let hoverTime: number = (options as any).hoverTime || Hover.Time
   return [
     hoverState,
-    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, hoverTime)),
+    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, options.hoverTime || Hover.Time)),
     showHoverTooltipHost
   ]
 }
