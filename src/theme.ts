@@ -151,6 +151,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   ".cm-widgetBuffer": {
     verticalAlign: "text-bottom",
     height: "1em",
+    display: "inline"
   },
 
   ".cm-placeholder": {
