@@ -169,6 +169,7 @@ export class WidgetView extends ContentView {
 
   sync() {
     if (!this.dom || !this.widget.updateDOM(this.dom)) {
+      if (this.dom) this.widget.destroy(this.dom)
       this.setDOM(this.widget.toDOM(this.editorView))
       this.dom!.contentEditable = "false"
     }
