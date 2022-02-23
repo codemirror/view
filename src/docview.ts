@@ -464,11 +464,14 @@ function computeCompositionDeco(view: EditorView, changes: ChangeSet): Decoratio
     return Decoration.none
   }
 
-  return Decoration.set(Decoration.replace({widget: new CompositionWidget(node, textNode)}).range(newFrom, newTo))
+  let topView = ContentView.get(node)
+  if (topView instanceof CompositionView) topView = topView.widget.topView
+  else if (topView) topView.parent = null
+  return Decoration.set(Decoration.replace({widget: new CompositionWidget(node, textNode, topView)}).range(newFrom, newTo))
 }
 
 export class CompositionWidget extends WidgetType {
-  constructor(readonly top: Node, readonly text: Text) { super() }
+  constructor(readonly top: Node, readonly text: Text, readonly topView: ContentView | null) { super() }
 
   eq(other: CompositionWidget) { return this.top == other.top && this.text == other.text }
 

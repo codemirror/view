@@ -237,7 +237,11 @@ export class WidgetView extends ContentView {
 export class CompositionView extends WidgetView {
   widget!: CompositionWidget
 
-  domAtPos(pos: number) { return new DOMPos(this.widget.text, pos) }
+  domAtPos(pos: number) {
+    let {topView} = this.widget
+    if (!topView) return new DOMPos(this.widget.text, Math.min(pos, this.widget.text.nodeValue!.length))
+    return posInCompositionTree(pos, topView, this.widget.text)
+  }
 
   sync() { this.setDOM(this.widget.toDOM()) }
 
@@ -251,7 +255,32 @@ export class CompositionView extends WidgetView {
 
   coordsAt(pos: number, side: number) { return textCoords(this.widget.text, pos, side) }
 
+  destroy() {
+    super.destroy()
+    this.widget.topView?.destroy()
+  }
+
   get isEditable() { return true }
+}
+
+// Uses the old structure of a chunk of content view frozen for
+// composition to try and find a reasonable DOM location for the given
+// offset.
+function posInCompositionTree(pos: number, view: ContentView, text: Text): DOMPos {
+  if (view instanceof MarkView) {
+    for (let child of view.children) {
+      let hasComp = child.dom == text || child.dom!.contains(text.parentNode)
+      let len = hasComp ? text.nodeValue!.length : child.length
+      if (pos < len || pos == len && child.getSide() <= 0)
+        return hasComp ? posInCompositionTree(pos, child, text) : child.domAtPos(pos)
+      pos -= len
+    }
+    return view.domAtPos(view.length)
+  } else if (view.dom == text) {
+    return new DOMPos(text, Math.min(pos, text.nodeValue!.length))
+  } else {
+    return view.domAtPos(pos)
+  }
 }
 
 // These are drawn around uneditable widgets to avoid a number of
