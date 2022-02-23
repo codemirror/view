@@ -1,3 +1,13 @@
+## 0.19.45 (2022-02-23)
+
+### Bug fixes
+
+Fix an issue where the library failed to call `WidgetType.destroy` on the old widget when replacing a widget with a different widget of the same type.
+
+Fix an issue where the editor would compute DOM positions inside composition contexts incorrectly in some cases, causing the selection to be put in the wrong place and needlessly interrupting compositions.
+
+Fix leaking of resize event handlers.
+
 ## 0.19.44 (2022-02-17)
 
 ### Bug fixes
