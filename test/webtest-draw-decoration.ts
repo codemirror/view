@@ -335,6 +335,19 @@ describe("EditorView decoration", () => {
       cm.dispatch({changes: {from: 0, to: 2}})
       ist(destroyed.sort().join(), "A,B,B")
     })
+
+    it("calls destroy on updated widgets", () => {
+      let destroyed: string[] = []
+      class W extends WordWidget {
+        destroy() { destroyed.push(this.word) }
+      }
+      let cm = tempView("abcde", [decos(Decoration.set([w(1, new W("A"))]))])
+      cm.dispatch({effects: [
+        filterDeco.of(() => false),
+        addDeco.of([w(1, new W("B"))])
+      ]})
+      ist(destroyed.sort().join(), "A")
+    })
   })
 
   function r(from: number, to: number, spec: any = {}) { return Decoration.replace(spec).range(from, to) }

@@ -155,6 +155,7 @@ export class BlockWidgetView extends ContentView implements BlockView {
   dom!: HTMLElement | null
   parent!: DocView | null
   breakAfter = 0
+  prevWidget: WidgetType | null = null
 
   constructor(public widget: WidgetType, public length: number, public type: BlockType) {
     super()
@@ -184,7 +185,8 @@ export class BlockWidgetView extends ContentView implements BlockView {
 
   sync() {
     if (!this.dom || !this.widget.updateDOM(this.dom)) {
-      if (this.dom) this.widget.destroy(this.dom)
+      if (this.dom && this.prevWidget) this.prevWidget.destroy(this.dom)
+      this.prevWidget = null
       this.setDOM(this.widget.toDOM(this.editorView))
       this.dom!.contentEditable = "false"
     }
@@ -200,6 +202,7 @@ export class BlockWidgetView extends ContentView implements BlockView {
     if (other instanceof BlockWidgetView && other.type == this.type &&
         other.widget.constructor == this.widget.constructor) {
       if (!other.widget.eq(this.widget)) this.markDirty(true)
+      if (this.dom && !this.prevWidget) this.prevWidget = this.widget
       this.widget = other.widget
       this.length = other.length
       this.breakAfter = other.breakAfter

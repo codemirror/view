@@ -152,6 +152,7 @@ function textCoords(text: Text, pos: number, side: number): Rect {
 export class WidgetView extends ContentView {
   children!: ContentView[]
   dom!: HTMLElement | null
+  prevWidget: WidgetType | null = null
 
   static create(widget: WidgetType, length: number, side: number) {
     return new (widget.customView || WidgetView)(widget, length, side)
@@ -169,7 +170,8 @@ export class WidgetView extends ContentView {
 
   sync() {
     if (!this.dom || !this.widget.updateDOM(this.dom)) {
-      if (this.dom) this.widget.destroy(this.dom)
+      if (this.dom && this.prevWidget) this.prevWidget.destroy(this.dom)
+      this.prevWidget = null
       this.setDOM(this.widget.toDOM(this.editorView))
       this.dom!.contentEditable = "false"
     }
@@ -189,6 +191,7 @@ export class WidgetView extends ContentView {
     if (other.length == this.length && other instanceof WidgetView && other.side == this.side) {
       if (this.widget.constructor == other.widget.constructor) {
         if (!this.widget.eq(other.widget)) this.markDirty(true)
+        if (this.dom && !this.prevWidget) this.prevWidget = this.widget
         this.widget = other.widget
         return true
       }
