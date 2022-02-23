@@ -82,20 +82,18 @@ export class DOMObserver {
       }
 
     this.onSelectionChange = this.onSelectionChange.bind(this)
+
+    window.addEventListener("resize", this.onResize = this.onResize.bind(this))
     if (typeof ResizeObserver == "function") {
       this.resize = new ResizeObserver(() => {
-        if (this.view.docView.lastUpdate < Date.now() - 75 && this.resizeTimeout < 0)
-          this.resizeTimeout = setTimeout(() => {
-            this.resizeTimeout = -1
-            this.view.requestMeasure()
-          }, 50)
+        if (this.view.docView.lastUpdate < Date.now() - 75) this.onResize()
       })
       this.resize.observe(view.scrollDOM)
     }
+
     this.start()
 
-    this.onScroll = this.onScroll.bind(this)
-    window.addEventListener("scroll", this.onScroll)
+    window.addEventListener("scroll", this.onScroll = this.onScroll.bind(this))
     if (typeof IntersectionObserver == "function") {
       this.intersection = new IntersectionObserver(entries => {
         if (this.parentCheck < 0) this.parentCheck = setTimeout(this.listenForScroll.bind(this), 1000)
@@ -119,6 +117,13 @@ export class DOMObserver {
   onScroll(e: Event) {
     if (this.intersecting) this.flush(false)
     this.onScrollChanged(e)
+  }
+
+  onResize() {
+    if (this.resizeTimeout < 0) this.resizeTimeout = setTimeout(() => {
+      this.resizeTimeout = -1
+      this.view.requestMeasure()
+    }, 50)
   }
 
   updateGaps(gaps: readonly HTMLElement[]) {
@@ -295,7 +300,7 @@ export class DOMObserver {
     this.selectionChanged = false
     let startState = this.view.state
     this.onChange(from, to, typeOver)
-    
+
     // The view wasn't updated
     if (this.view.state == startState) this.view.update([])
   }
@@ -325,6 +330,7 @@ export class DOMObserver {
     this.resize?.disconnect()
     for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
     window.removeEventListener("scroll", this.onScroll)
+    window.removeEventListener("resize", this.onResize)
     this.dom.ownerDocument.removeEventListener("selectionchange", this.onSelectionChange)
     clearTimeout(this.parentCheck)
     clearTimeout(this.resizeTimeout)

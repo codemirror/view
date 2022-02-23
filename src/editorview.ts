@@ -4,7 +4,6 @@ import {Line} from "@codemirror/text"
 import {StyleModule, StyleSpec} from "style-mod"
 
 import {DocView} from "./docview"
-import {ContentView} from "./contentview"
 import {InputState} from "./input"
 import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
@@ -196,7 +195,6 @@ export class EditorView {
     this.updateAttrs()
     this.updateState = UpdateState.Idle
 
-    ensureGlobalHandler()
     this.requestMeasure()
 
     if (config.parent) config.parent.appendChild(this.dom)
@@ -948,24 +946,6 @@ const MaxBidiLine = 4096
 // FIXME remove this and its callers on next breaking release
 function ensureTop(given: number | undefined, view: EditorView) {
   return (given == null ? view.contentDOM.getBoundingClientRect().top : given) + view.viewState.paddingTop
-}
-
-let registeredGlobalHandler = false, resizeDebounce = -1
-
-function ensureGlobalHandler() {
-  if (registeredGlobalHandler) return
-  window.addEventListener("resize", () => {
-    if (resizeDebounce == -1) resizeDebounce = setTimeout(handleResize, 50)
-  })
-}
-
-function handleResize() {
-  resizeDebounce = -1
-  let found = document.querySelectorAll(".cm-content")
-  for (let i = 0; i < found.length; i++) {
-    let docView = ContentView.get(found[i])
-    if (docView) docView.editorView.requestMeasure()
-  }
 }
 
 const BadMeasure = {}
