@@ -345,7 +345,12 @@ export class DocView extends ContentView {
       let end = next ? next.from - 1 : this.length
       if (end > pos) {
         let height = vs.lineBlockAt(end).bottom - vs.lineBlockAt(pos).top
-        deco.push(Decoration.replace({widget: new BlockGapWidget(height), block: true, inclusive: true}).range(pos, end))
+        deco.push(Decoration.replace({
+          widget: new BlockGapWidget(height),
+          block: true,
+          inclusive: true,
+          isBlockGap: true,
+        }).range(pos, end))
       }
       if (!next) break
       pos = next.to + 1

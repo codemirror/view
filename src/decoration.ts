@@ -137,8 +137,9 @@ export abstract class WidgetType {
 export type DecorationSet = RangeSet<Decoration>
 
 const enum Side {
-  NonIncEnd = -5e8, // (end of non-inclusive range)
-  BlockBefore = -4e8, // + widget side option (block widget before)
+  NonIncEnd = -6e8, // (end of non-inclusive range)
+  BlockBefore = -5e8, // + widget side option (block widget before)
+  GapStart = -4e8,
   BlockIncStart = -3e8, // (start of inclusive block range)
   Line = -2e8, // (line widget)
   InlineBefore = -1e8, // + widget side (inline widget before)
@@ -146,8 +147,9 @@ const enum Side {
   InlineIncEnd = 1, // (end of inclusive inline range)
   InlineAfter = 1e8, // + widget side (inline widget after)
   BlockIncEnd = 2e8, // (end of inclusive block range)
-  BlockAfter = 3e8, // + widget side (block widget after)
-  NonIncStart = 4e8 // (start of non-inclusive range)
+  GapEnd = 3e8,
+  BlockAfter = 4e8, // + widget side (block widget after)
+  NonIncStart = 5e8 // (start of non-inclusive range)
 }
 
 /// The different types of blocks that can occur in an editor view.
@@ -210,10 +212,15 @@ export abstract class Decoration extends RangeValue {
   /// Create a replace decoration which replaces the given range with
   /// a widget, or simply hides it.
   static replace(spec: ReplaceDecorationSpec): Decoration {
-    let block = !!spec.block
-    let {start, end} = getInclusive(spec, block)
-    let startSide = (start ? (block ? Side.BlockIncStart : Side.InlineIncStart) : Side.NonIncStart) - 1
-    let endSide = (end ? (block ? Side.BlockIncEnd : Side.InlineIncEnd) : Side.NonIncEnd) + 1
+    let block = !!spec.block, startSide, endSide
+    if (spec.isBlockGap) {
+      startSide = Side.GapStart
+      endSide = Side.GapEnd
+    } else {
+      let {start, end} = getInclusive(spec, block)
+      startSide = (start ? (block ? Side.BlockIncStart : Side.InlineIncStart) : Side.NonIncStart) - 1
+      endSide = (end ? (block ? Side.BlockIncEnd : Side.InlineIncEnd) : Side.NonIncEnd) + 1
+    }
     return new PointDecoration(spec, startSide, endSide, block, spec.widget || null, true)
   }
 
