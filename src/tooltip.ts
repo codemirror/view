@@ -219,7 +219,10 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     return {
       editor,
       parent: this.parent ? this.container.getBoundingClientRect() : editor,
-      pos: this.manager.tooltips.map(t => this.view.coordsAtPos(t.pos)),
+      pos: this.manager.tooltips.map((t, i) => {
+        let tv = this.manager.tooltipViews[i]
+        return tv.getCoords ? tv.getCoords(t.pos) : this.view.coordsAtPos(t.pos)
+      }),
       size: this.manager.tooltipViews.map(({dom}) => dom.getBoundingClientRect()),
       space: this.view.state.facet(tooltipConfig).tooltipSpace(this.view),
     }
@@ -388,6 +391,11 @@ export interface TooltipView {
   /// will move the tooltip up when it is above its anchor, and down
   /// otherwise.
   offset?: {x: number, y: number}
+  /// By default, a tooltip's screen position will be based on the
+  /// text position of its `pos` property. This method can be provided
+  /// to make the tooltip view itself responsible for finding its
+  /// screen position.
+  getCoords?: (pos: number) => Rect
   /// By default, tooltips are moved when they overlap with other
   /// tooltips. Set this to `true` to disable that behavior for this
   /// tooltip.
