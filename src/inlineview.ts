@@ -319,7 +319,12 @@ export class WidgetBufferView extends ContentView {
   domBoundsAround() { return null }
 
   coordsAt(pos: number): Rect | null {
-    return this.dom!.getBoundingClientRect()
+    let imgRect = this.dom!.getBoundingClientRect()
+    // Since the <img> height doesn't correspond to text height, try
+    // to borrow the height from some sibling node.
+    let siblingRect = inlineSiblingRect(this, this.side > 0 ? -1 : 1)
+    return siblingRect && siblingRect.top < imgRect.bottom && siblingRect.bottom > imgRect.top
+      ? {left: imgRect.left, right: imgRect.right, top: siblingRect.top, bottom: siblingRect.bottom} : imgRect
   }
 
   get overrideDOMText() {
@@ -328,6 +333,28 @@ export class WidgetBufferView extends ContentView {
 }
 
 TextView.prototype.children = WidgetView.prototype.children = WidgetBufferView.prototype.children = noChildren
+
+function inlineSiblingRect(view: ContentView, side: -1 | 1) {
+  let parent = view.parent, index = parent ? parent.children.indexOf(view) : -1
+  while (parent && index >= 0) {
+    if (side < 0 ? index > 0 : index < parent.children.length) {
+      let next = parent.children[index + side]
+      if (next instanceof TextView) {
+        let nextRect = next.coordsAt(side < 0 ? next.length : 0, side)
+        if (nextRect) return nextRect
+      }
+      index += side
+    } else if (parent instanceof MarkView && parent.parent) {
+      index = parent.parent.children.indexOf(parent) + (side < 0 ? 0 : 1)
+      parent = parent.parent
+    } else {
+      let last = parent.dom!.lastChild as HTMLElement
+      if (last && last.nodeName == "BR") return last.getClientRects()[0]
+      break
+    }
+  }
+  return undefined
+}
 
 export function inlineDOMAtPos(dom: HTMLElement, children: readonly ContentView[], pos: number) {
   let i = 0
