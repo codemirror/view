@@ -230,7 +230,10 @@ export class WidgetView extends ContentView {
 
   destroy() {
     super.destroy()
-    if (this.dom) this.widget.destroy(this.dom)
+    if (this.dom) {
+      this.dom.remove()
+      this.widget.destroy(this.dom)
+    }
   }
 }
 
