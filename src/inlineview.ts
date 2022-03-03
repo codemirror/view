@@ -1,7 +1,7 @@
 import {Text as DocText} from "@codemirror/text"
 import {ContentView, DOMPos, Dirty, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
-import {Rect, Rect0, flattenRect, textRange, clientRectsFor, clearAttributes} from "./dom"
+import {Rect, Rect0, flattenRect, textRange, clientRectsFor, clearAttributes, contains} from "./dom"
 import {CompositionWidget} from "./docview"
 import browser from "./browser"
 
@@ -238,22 +238,30 @@ export class CompositionView extends WidgetView {
   widget!: CompositionWidget
 
   domAtPos(pos: number) {
-    let {topView} = this.widget
-    if (!topView) return new DOMPos(this.widget.text, Math.min(pos, this.widget.text.nodeValue!.length))
-    return posInCompositionTree(pos, topView, this.widget.text)
+    let {topView, text} = this.widget
+    if (!topView) return new DOMPos(text, Math.min(pos, text.nodeValue!.length))
+    return scanCompositionTree(pos, 0, topView, text, (v, p) => v.domAtPos(p),
+                               p => new DOMPos(text, Math.min(p, text.nodeValue!.length)))
   }
 
   sync() { this.setDOM(this.widget.toDOM()) }
 
   localPosFromDOM(node: Node, offset: number): number {
-    return !offset ? 0 : node.nodeType == 3 ? Math.min(offset, this.length) : this.length
+    let {topView, text} = this.widget
+    if (!topView) return Math.min(offset, this.length)
+    return posFromDOMInCompositionTree(node, offset, topView, text)
   }
 
   ignoreMutation(): boolean { return false }
 
   get overrideDOMText() { return null }
 
-  coordsAt(pos: number, side: number) { return textCoords(this.widget.text, pos, side) }
+  coordsAt(pos: number, side: number) {
+    let {topView, text} = this.widget
+    if (!topView) return textCoords(text, pos, side)
+    return scanCompositionTree(pos, side, topView, text, (v, pos, side) => v.coordsAt(pos, side),
+                               (pos, side) => textCoords(text, pos, side))
+  }
 
   destroy() {
     super.destroy()
@@ -266,21 +274,37 @@ export class CompositionView extends WidgetView {
 // Uses the old structure of a chunk of content view frozen for
 // composition to try and find a reasonable DOM location for the given
 // offset.
-function posInCompositionTree(pos: number, view: ContentView, text: Text): DOMPos {
+function scanCompositionTree<T>(pos: number, side: number, view: ContentView, text: Text,
+                                enterView: (view: ContentView, pos: number, side: number) => T,
+                                fromText: (pos: number, side: number) => T): T {
   if (view instanceof MarkView) {
     for (let child of view.children) {
-      let hasComp = child.dom == text || child.dom!.contains(text.parentNode)
+      let hasComp = contains(child.dom!, text)
       let len = hasComp ? text.nodeValue!.length : child.length
       if (pos < len || pos == len && child.getSide() <= 0)
-        return hasComp ? posInCompositionTree(pos, child, text) : child.domAtPos(pos)
+        return hasComp ? scanCompositionTree(pos, side, child, text, enterView, fromText) : enterView(child, pos, side)
       pos -= len
     }
-    return view.domAtPos(view.length)
+    return enterView(view, view.length, -1)
   } else if (view.dom == text) {
-    return new DOMPos(text, Math.min(pos, text.nodeValue!.length))
+    return fromText(pos, side)
   } else {
-    return view.domAtPos(pos)
+    return enterView(view, pos, side)
   }
+}
+
+function posFromDOMInCompositionTree(node: Node, offset: number, view: ContentView, text: Text): number {
+  if (view instanceof MarkView) {
+    for (let child of view.children) {
+      let pos = 0, hasComp = contains(child.dom!, text)
+      if (contains(child.dom!, node))
+        return pos + (hasComp ? posFromDOMInCompositionTree(node, offset, child, text) : child.localPosFromDOM(node, offset))
+      pos += hasComp ? text.nodeValue!.length : child.length
+    }
+  } else if (view.dom == text) {
+    return Math.min(offset, text.nodeValue!.length)
+  }
+  return view.localPosFromDOM(node, offset)
 }
 
 // These are drawn around uneditable widgets to avoid a number of

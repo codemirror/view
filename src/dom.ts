@@ -11,8 +11,8 @@ export function getSelection(root: DocumentOrShadowRoot): Selection {
   return target.getSelection()!
 }
 
-export function contains(dom: HTMLElement, node: Node | null) {
-  return node ? dom.contains(node.nodeType != 1 ? node.parentNode : node) : false
+export function contains(dom: Node, node: Node | null) {
+  return node ? dom == node || dom.contains(node.nodeType != 1 ? node.parentNode : node) : false
 }
 
 export function deepActiveElement() {
