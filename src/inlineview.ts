@@ -330,6 +330,7 @@ export class WidgetBufferView extends ContentView {
     if (!this.dom) {
       let dom = document.createElement("img")
       dom.className = "cm-widgetBuffer"
+      dom.setAttribute("aria-hidden", "true")
       this.setDOM(dom)
     }
   }
