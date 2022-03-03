@@ -1,3 +1,13 @@
+## 0.19.46 (2022-03-03)
+
+### Bug fixes
+
+Fix a bug where block widgets on the edges of viewports could cause the positioning of content to misalign with the gutter and height computations.
+
+Improve cursor height next to widgets.
+
+Fix a bug where mapping positions to screen coordinates could return incorred coordinates during composition.
+
 ## 0.19.45 (2022-02-23)
 
 ### Bug fixes
