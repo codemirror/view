@@ -108,7 +108,7 @@ export class LineView extends ContentView implements BlockView {
     let last = this.dom!.lastChild
     while (last && ContentView.get(last) instanceof MarkView)
       last = last.lastChild
-    if (!last ||
+    if (!last || !this.length ||
         last.nodeName != "BR" && ContentView.get(last)?.isEditable == false &&
         (!browser.ios || !this.children.some(ch => ch instanceof TextView))) {
       let hack = document.createElement("BR")
