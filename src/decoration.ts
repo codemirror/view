@@ -138,8 +138,8 @@ export type DecorationSet = RangeSet<Decoration>
 
 const enum Side {
   NonIncEnd = -6e8, // (end of non-inclusive range)
-  BlockBefore = -5e8, // + widget side option (block widget before)
-  GapStart = -4e8,
+  GapStart = -5e8,
+  BlockBefore = -4e8, // + widget side option (block widget before)
   BlockIncStart = -3e8, // (start of inclusive block range)
   Line = -2e8, // (line widget)
   InlineBefore = -1e8, // + widget side (inline widget before)
@@ -147,8 +147,8 @@ const enum Side {
   InlineIncEnd = 1, // (end of inclusive inline range)
   InlineAfter = 1e8, // + widget side (inline widget after)
   BlockIncEnd = 2e8, // (end of inclusive block range)
-  GapEnd = 3e8,
-  BlockAfter = 4e8, // + widget side (block widget after)
+  BlockAfter = 3e8, // + widget side (block widget after)
+  GapEnd = 4e8,
   NonIncStart = 5e8 // (start of non-inclusive range)
 }
 
