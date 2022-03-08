@@ -1,3 +1,9 @@
+## 0.19.47 (2022-03-08)
+
+### Bug fixes
+
+Fix an issue where block widgets at the start of the viewport could break height computations.
+
 ## 0.19.46 (2022-03-03)
 
 ### Bug fixes
