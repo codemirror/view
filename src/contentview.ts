@@ -67,27 +67,29 @@ export abstract class ContentView {
   sync(track?: {node: Node, written: boolean}) {
     if (this.dirty & Dirty.Node) {
       let parent = this.dom as HTMLElement
-      let pos: Node | null = parent.firstChild
+      let prev: Node | null = null, next
       for (let child of this.children) {
         if (child.dirty) {
-          if (!child.dom && pos) {
-            let contentView = ContentView.get(pos)
+          if (!child.dom && (next = prev ? prev.nextSibling : parent.firstChild)) {
+            let contentView = ContentView.get(next)
             if (!contentView || !contentView.parent && contentView.constructor == child.constructor)
-              child.reuseDOM(pos)
+              child.reuseDOM(next)
           }
           child.sync(track)
           child.dirty = Dirty.Not
         }
-        if (track && !track.written && track.node == parent && pos != child.dom) track.written = true
+        next = prev ? prev.nextSibling : parent.firstChild
+        if (track && !track.written && track.node == parent && next != child.dom) track.written = true
         if (child.dom!.parentNode == parent) {
-          while (pos && pos != child.dom) pos = rm(pos)
-          pos = child.dom!.nextSibling
+          while (next && next != child.dom) next = rm(next)
         } else {
-          parent.insertBefore(child.dom!, pos)
+          parent.insertBefore(child.dom!, next)
         }
+        prev = child.dom!
       }
-      if (pos && track && track.node == parent) track.written = true
-      while (pos) pos = rm(pos)
+      next = prev ? prev.nextSibling : parent.firstChild
+      if (next && track && track.node == parent) track.written = true
+      while (next) next = rm(next)
     } else if (this.dirty & Dirty.Child) {
       for (let child of this.children) if (child.dirty) {
         child.sync(track)
