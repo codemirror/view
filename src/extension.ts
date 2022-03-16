@@ -416,7 +416,7 @@ export class ViewUpdate {
     return this.transactions.some(tr => tr.selection)
   }
 
-  /// Whether this transaction reconfigures the state
+  /// Whether this update has any configuration changes
   /// (through a [configuration compartment](#state.Compartment) or
   /// with a top-level configuration
   /// [effect](#state.StateEffect^reconfigure)).
