@@ -416,6 +416,14 @@ export class ViewUpdate {
     return this.transactions.some(tr => tr.selection)
   }
 
+  /// Whether this transaction reconfigures the state
+  /// (through a [configuration compartment](#state.Compartment) or
+  /// with a top-level configuration
+  /// [effect](#state.StateEffect^reconfigure)).
+  get configurationChanged() {
+    return this.transactions.some(tr => tr.reconfigured)
+  }
+
   /// @internal
   get empty() { return this.flags == 0 && this.transactions.length == 0 }
 }
