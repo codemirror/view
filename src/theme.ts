@@ -37,7 +37,10 @@ export const baseTheme = buildTheme("." + baseThemeID, {
       outline: "1px dotted #212121"
     },
     display: "flex !important",
-    flexDirection: "column"
+    flexDirection: "column",
+    fontFamily: "monospace",
+    fontWeight: "normal",
+    fontStyle: "normal"
   },
 
   ".cm-scroller": {
