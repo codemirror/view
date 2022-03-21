@@ -56,8 +56,8 @@ export class InputState {
     for (let type in handlers) {
       let handler = handlers[type]
       view.contentDOM.addEventListener(type, (event: Event) => {
-        if (type == "keydown" && this.keydown(view, event as KeyboardEvent)) return
         if (!eventBelongsToEditor(view, event) || this.ignoreDuringComposition(event)) return
+        if (type == "keydown" && this.keydown(view, event as KeyboardEvent)) return
         if (this.mustFlushObserver(event)) view.observer.forceFlush()
         if (this.runCustomHandlers(type, view, event)) event.preventDefault()
         else handler(view, event)
@@ -112,7 +112,9 @@ export class InputState {
     // Must always run, even if a custom handler handled the event
     this.lastKeyCode = event.keyCode
     this.lastKeyTime = Date.now()
-    if (this.screenKeyEvent(view, event as KeyboardEvent)) return true
+
+    if (event.keyCode == 9 && Date.now() < this.lastEscPress + 2000) return true
+
     // Chrome for Android usually doesn't fire proper key events, but
     // occasionally does, usually surrounded by a bunch of complicated
     // composition changes. When an enter or backspace key event is
@@ -159,13 +161,6 @@ export class InputState {
       return true
     }
     return false
-  }
-
-  screenKeyEvent(view: EditorView, event: KeyboardEvent) {
-    let protectedTab = event.keyCode == 9 && Date.now() < this.lastEscPress + 2000
-    if (event.keyCode == 27) this.lastEscPress = Date.now()
-    else if (modifierCodes.indexOf(event.keyCode) < 0) this.lastEscPress = 0
-    return protectedTab
   }
 
   mustFlushObserver(event: Event) {
@@ -378,6 +373,8 @@ function doPaste(view: EditorView, input: string) {
 
 handlers.keydown = (view, event: KeyboardEvent) => {
   view.inputState.setSelectionOrigin("select")
+  if (event.keyCode == 27) view.inputState.lastEscPress = Date.now()
+  else if (modifierCodes.indexOf(event.keyCode) < 0) view.inputState.lastEscPress = 0
 }
 
 let lastTouch = 0
