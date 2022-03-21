@@ -630,7 +630,7 @@ handlers.focus = handlers.blur = view => {
 
 handlers.beforeprint = view => {
   view.viewState.printing = true
-  view.requestMeasure()
+  view.measure()
   setTimeout(() => {
     view.viewState.printing = false
     view.requestMeasure()
