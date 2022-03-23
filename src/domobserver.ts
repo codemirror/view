@@ -65,9 +65,17 @@ export class DOMObserver {
       // reinsert the finished text. CodeMirror's handling of the
       // deletion will prevent the reinsertion from happening,
       // breaking composition.
-      if ((browser.ie && browser.ie_version <= 11 || browser.ios && view.compositionStarted) &&
-          mutations.some(m => m.type == "childList" && m.removedNodes.length ||
-                         m.type == "characterData"))
+      //
+      // Unrelatedly, Chrome on Windows has a bug where touching the
+      // selection while composing with IME sometimes causes the
+      // browser to misinterpret selection positions, causing the
+      // selection we set to be applied to the wrong offset (1 node before)
+      // while the browser engine still "thinks" it was applied correctly.
+      if ((
+            browser.ie && browser.ie_version <= 11 ||
+            browser.ios && view.compositionStarted ||
+            browser.windows && browser.chrome && view.compositionStarted
+          ) && mutations.some(m => m.type == "childList" && m.removedNodes.length || m.type == "characterData"))
         this.flushSoon()
       else
         this.flush()
