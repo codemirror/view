@@ -29,16 +29,6 @@ export const updateListener = Facet.define<(update: ViewUpdate) => void>()
 
 export const inputHandler = Facet.define<(view: EditorView, from: number, to: number, text: string) => boolean>()
 
-// FIXME remove
-export const scrollTo = StateEffect.define<SelectionRange>({
-  map: (range, changes) => range.map(changes)
-})
-
-// FIXME remove
-export const centerOn = StateEffect.define<SelectionRange>({
-  map: (range, changes) => range.map(changes)
-})
-
 export class ScrollTarget {
   constructor(
     readonly range: SelectionRange,

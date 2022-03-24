@@ -114,12 +114,6 @@ export class BlockInfo {
     return new BlockInfo(this.from, this.length + other.length,
                          this.top, this.height + other.height, detail)
   }
-
-  /// FIXME remove on next breaking release @internal
-  moveY(offset: number) {
-    return !offset ? this : new BlockInfo(this.from, this.length, this.top + offset, this.height,
-                                          Array.isArray(this.type) ? this.type.map(b => b.moveY(offset)) : this.type)
-  }
 }
 
 export enum QueryType { ByPos, ByHeight, ByPosNoHeight }

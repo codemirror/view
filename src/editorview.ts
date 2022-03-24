@@ -15,7 +15,7 @@ import {ViewUpdate, styleModule,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginInstance, PluginField,
         decorations, MeasureRequest, editable, inputHandler,
-        scrollTo, centerOn, scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
+        scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -251,11 +251,8 @@ export class EditorView {
           scrollTarget = new ScrollTarget(
             main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1))
         }
-        for (let e of tr.effects) {
-          if (e.is(scrollTo)) scrollTarget = new ScrollTarget(e.value)
-          else if (e.is(centerOn)) scrollTarget = new ScrollTarget(e.value, "center")
-          else if (e.is(scrollIntoView)) scrollTarget = e.value
-        }
+        for (let e of tr.effects)
+          if (e.is(scrollIntoView)) scrollTarget = e.value
       }
       this.viewState.update(update, scrollTarget)
       this.bidiCache = CachedOrder.update(this.bidiCache, update.changes)
@@ -498,44 +495,12 @@ export class EditorView {
     return {top: this.viewState.paddingTop, bottom: this.viewState.paddingBottom}
   }
 
-  /// Find the line or block widget at the given vertical position.
-  ///
-  /// By default, this position is interpreted as a screen position,
-  /// meaning `docTop` is set to the DOM top position of the editor
-  /// content (forcing a layout). You can pass a different `docTop`
-  /// value—for example 0 to interpret `height` as a document-relative
-  /// position, or a precomputed document top
-  /// (`view.contentDOM.getBoundingClientRect().top`) to limit layout
-  /// queries.
-  ///
-  /// *Deprecated: use `elementAtHeight` instead.*
-  blockAtHeight(height: number, docTop?: number) {
-    let top = ensureTop(docTop, this)
-    return this.elementAtHeight(height - top).moveY(top)
-  }
-
   /// Find the text line or block widget at the given vertical
   /// position (which is interpreted as relative to the [top of the
   /// document](#view.EditorView.documentTop)
   elementAtHeight(height: number) {
     this.readMeasured()
     return this.viewState.elementAtHeight(height)
-  }
-
-  /// Find information for the visual line (see
-  /// [`visualLineAt`](#view.EditorView.visualLineAt)) at the given
-  /// vertical position. The resulting block info might hold another
-  /// array of block info structs in its `type` field if this line
-  /// consists of more than one block.
-  ///
-  /// Defaults to treating `height` as a screen position. See
-  /// [`blockAtHeight`](#view.EditorView.blockAtHeight) for the
-  /// interpretation of the `docTop` parameter.
-  ///
-  /// *Deprecated: use `lineBlockAtHeight` instead.*
-  visualLineAtHeight(height: number, docTop?: number): BlockInfo {
-    let top = ensureTop(docTop, this)
-    return this.lineBlockAtHeight(height - top).moveY(top)
   }
 
   /// Find the line block (see
@@ -546,37 +511,12 @@ export class EditorView {
     return this.viewState.lineBlockAtHeight(height)
   }
 
-  /// Iterate over the height information of the visual lines in the
-  /// viewport. The heights of lines are reported relative to the
-  /// given document top, which defaults to the screen position of the
-  /// document (forcing a layout).
-  ///
-  /// *Deprecated: use `viewportLineBlocks` instead.*
-  viewportLines(f: (line: BlockInfo) => void, docTop?: number) {
-    let top = ensureTop(docTop, this)
-    for (let line of this.viewportLineBlocks) f(line.moveY(top))
-  }
-
   /// Get the extent and vertical position of all [line
   /// blocks](#view.EditorView.lineBlockAt) in the viewport. Positions
   /// are relative to the [top of the
   /// document](#view.EditorView.documentTop);
   get viewportLineBlocks() {
     return this.viewState.viewportLines
-  }
-
-  /// Find the extent and height of the visual line (a range delimited
-  /// on both sides by either non-[hidden](#view.Decoration^range)
-  /// line breaks, or the start/end of the document) at the given position.
-  ///
-  /// Vertical positions are computed relative to the `docTop`
-  /// argument, which defaults to 0 for this method. You can pass
-  /// `view.contentDOM.getBoundingClientRect().top` here to get screen
-  /// coordinates.
-  ///
-  /// *Deprecated: use `lineBlockAt` instead.*
-  visualLineAt(pos: number, docTop: number = 0): BlockInfo {
-    return this.lineBlockAt(pos).moveY(docTop + this.viewState.paddingTop)
   }
 
   /// Find the line block around the given document position. A line
@@ -641,11 +581,6 @@ export class EditorView {
   /// used.
   moveVertically(start: SelectionRange, forward: boolean, distance?: number) {
     return skipAtoms(this, start, moveVertically(this, start, forward, distance))
-  }
-
-  // FIXME remove on next major version
-  scrollPosIntoView(pos: number) {
-    this.dispatch({effects: scrollTo.of(EditorSelection.cursor(pos))})
   }
 
   /// Find the DOM parent node and offset (child offset if `node` is
@@ -759,18 +694,6 @@ export class EditorView {
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
     this.destroyed = true
   }
-
-  /// Effect that can be [added](#state.TransactionSpec.effects) to a
-  /// transaction to make it scroll the given range into view.
-  ///
-  /// *Deprecated*. Use [`scrollIntoView`](#view.EditorView^scrollIntoView) instead.
-  static scrollTo = scrollTo
-
-  /// Effect that makes the editor scroll the given range to the
-  /// center of the visible view.
-  ///
-  /// *Deprecated*. Use [`scrollIntoView`](#view.EditorView^scrollIntoView) instead.
-  static centerOn = centerOn
 
   /// Returns an effect that can be
   /// [added](#state.TransactionSpec.effects) to a transaction to
@@ -942,11 +865,6 @@ export type DOMEventHandlers<This> = {
 
 // Maximum line length for which we compute accurate bidi info
 const MaxBidiLine = 4096
-
-// FIXME remove this and its callers on next breaking release
-function ensureTop(given: number | undefined, view: EditorView) {
-  return (given == null ? view.contentDOM.getBoundingClientRect().top : given) + view.viewState.paddingTop
-}
 
 const BadMeasure = {}
 
