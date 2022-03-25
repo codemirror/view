@@ -8,8 +8,8 @@ import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./decoration"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection} from "./dom"
-import {ViewUpdate, PluginField, decorations as decorationsFacet,
-        editable, ChangedRange, ScrollTarget} from "./extension"
+import {ViewUpdate, decorations as decorationsFacet,
+        editable, ChangedRange, ScrollTarget, scrollMargins} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 import {DOMReader, LineBreakPlaceholder} from "./domreader"
@@ -381,7 +381,7 @@ export class DocView extends ContentView {
               right: Math.max(rect.right, other.right), bottom: Math.max(rect.bottom, other.bottom)}
 
     let mLeft = 0, mRight = 0, mTop = 0, mBottom = 0
-    for (let margins of this.view.pluginField(PluginField.scrollMargins)) if (margins) {
+    for (let margins of this.view.state.facet(scrollMargins).map(f => f(this.view))) if (margins) {
       let {left, right, top, bottom} = margins
       if (left != null) mLeft = Math.max(mLeft, left)
       if (right != null) mRight = Math.max(mRight, right)

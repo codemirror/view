@@ -14,7 +14,7 @@ import {ViewUpdate, styleModule,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, atomicRanges, MeasureRequest, editable, inputHandler,
+        decorations, atomicRanges, scrollMargins, MeasureRequest, editable, inputHandler,
         scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
@@ -804,6 +804,13 @@ export class EditorView {
   /// updates](#state.TransactionSpec.selection) from moving into such
   /// regions.
   static atomicRanges = atomicRanges
+
+  /// Facet that allows extensions to provide additional scroll
+  /// margins (space around the sides of the scrolling element that
+  /// should be considered invisible). This can be useful when the
+  /// plugin introduces elements that cover part of that element (for
+  /// example a horizontally fixed gutter).
+  static scrollMargins = scrollMargins
 
   /// Create a theme extension. The first argument can be a
   /// [`style-mod`](https://github.com/marijnh/style-mod#documentation)

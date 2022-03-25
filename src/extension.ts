@@ -113,13 +113,6 @@ export class PluginField<T> {
 
   /// Define a new plugin field.
   static define<T>() { return new PluginField<T>() }
-
-  /// Plugins can provide additional scroll margins (space around the
-  /// sides of the scrolling element that should be considered
-  /// invisible) through this field. This can be useful when the
-  /// plugin introduces elements that cover part of that element (for
-  /// example a horizontally fixed gutter).
-  static scrollMargins = PluginField.define<Partial<Rect> | null>()
 }
 
 let nextPluginID = 0
@@ -275,6 +268,8 @@ export const contentAttributes = Facet.define<AttrSource>()
 export const decorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
 
 export const atomicRanges = Facet.define<(view: EditorView) => RangeSet<any>>()
+
+export const scrollMargins = Facet.define<(view: EditorView) => Partial<Rect> | null>()
 
 export const styleModule = Facet.define<StyleModule>()
 
