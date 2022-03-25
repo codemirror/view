@@ -2,7 +2,7 @@ import {EditorState, Transaction, ChangeSet, ChangeDesc, Facet,
         StateEffect, Extension, SelectionRange} from "@codemirror/state"
 import {RangeSet} from "@codemirror/rangeset"
 import {StyleModule} from "style-mod"
-import {DecorationSet} from "./decoration"
+import {DecorationSet, Decoration} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {Attrs} from "./attributes"
 import {Rect, ScrollStrategy} from "./dom"
@@ -114,21 +114,6 @@ export class PluginField<T> {
   /// Define a new plugin field.
   static define<T>() { return new PluginField<T>() }
 
-  /// This field can be used by plugins to provide
-  /// [decorations](#view.Decoration).
-  ///
-  /// **Note**: For reasons of data flow (plugins are only updated
-  /// after the viewport is computed), decorations produced by plugins
-  /// are _not_ taken into account when predicting the vertical layout
-  /// structure of the editor. They **must not** introduce block
-  /// widgets (that will raise an error) or replacing decorations that
-  /// cover line breaks (these will be ignored if they occur). Such
-  /// decorations, or others that cause a large amount of vertical
-  /// size shift compared to the undecorated content, should be
-  /// provided through the state-level [`decorations`
-  /// facet](#view.EditorView^decorations) instead.
-  static decorations = PluginField.define<DecorationSet>()
-
   /// Used to provide ranges that should be treated as atoms as far as
   /// cursor motion is concerned. This causes methods like
   /// [`moveByChar`](#view.EditorView.moveByChar) and
@@ -164,8 +149,8 @@ export interface PluginSpec<V extends PluginValue> {
   /// Allow the plugin to provide decorations. When given, this should
   /// a function that take the plugin value and return a [decoration
   /// set](#view.DecorationSet). See also the caveat about
-  /// [layout-changing decorations](#view.PluginField^decorations)
-  /// from plugins.
+  /// [layout-changing decorations](#view.EditorView^decorations)
+  /// that depend on the view.
   decorations?: (value: V) => DecorationSet
 
   /// Specify that the plugin provides [plugin
@@ -188,22 +173,29 @@ export class ViewPlugin<V extends PluginValue> {
     /// @internal
     readonly create: (view: EditorView) => V,
     /// @internal
-    readonly fields: readonly PluginFieldProvider<V>[]
+    readonly fields: readonly PluginFieldProvider<V>[],
+    buildExtensions: (plugin: ViewPlugin<V>) => Extension
   ) {
-    this.extension = viewPlugin.of(this)
+    this.extension = buildExtensions(this)
   }
 
   /// Define a plugin from a constructor function that creates the
   /// plugin's value, given an editor view.
   static define<V extends PluginValue & object>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
-    let {eventHandlers, provide, decorations} = spec || {}
+    const {eventHandlers, provide, decorations: deco} = spec || {}
     let fields = []
     if (provide) for (let provider of Array.isArray(provide) ? provide : [provide])
       fields.push(provider)
     if (eventHandlers)
       fields.push(domEventHandlers.from((value: V) => ({plugin: value, handlers: eventHandlers} as any)))
-    if (decorations) fields.push(PluginField.decorations.from(decorations))
-    return new ViewPlugin<V>(nextPluginID++, create, fields)
+    return new ViewPlugin<V>(nextPluginID++, create, fields, plugin => {
+      let ext = viewPlugin.of(plugin)
+      if (deco) ext = [ext, decorations.of(view => {
+        let pluginInst = view.plugin(plugin)
+        return pluginInst ? deco(pluginInst) : Decoration.none
+      })]
+      return ext
+    })
   }
 
   /// Create a plugin for a class whose constructor takes a single
@@ -291,7 +283,7 @@ export const editorAttributes = Facet.define<AttrSource>()
 export const contentAttributes = Facet.define<AttrSource>()
 
 // Provide decorations
-export const decorations = Facet.define<DecorationSet>()
+export const decorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
 
 export const styleModule = Facet.define<StyleModule>()
 

@@ -126,6 +126,7 @@ export class ViewState {
   // measure stage knows it must read DOM layout
   mustMeasureContent = true
 
+  stateDeco: readonly DecorationSet[]
   viewportLines!: BlockInfo[]
 
   // The main viewport for the visible part of the document
@@ -149,7 +150,8 @@ export class ViewState {
   mustEnforceCursorAssoc = false
 
   constructor(public state: EditorState) {
-    this.heightMap = HeightMap.empty().applyChanges(state.facet(decorations), Text.empty, this.heightOracle.setDoc(state.doc),
+    this.stateDeco = state.facet(decorations).filter(d => typeof d != "function") as readonly DecorationSet[]
+    this.heightMap = HeightMap.empty().applyChanges(this.stateDeco, Text.empty, this.heightOracle.setDoc(state.doc),
                                                     [new ChangedRange(0, 0, 0, state.doc.length)])
     this.viewport = this.getViewport(0, null)
     this.updateViewportLines()
@@ -182,15 +184,16 @@ export class ViewState {
   }
 
   update(update: ViewUpdate, scrollTarget: ScrollTarget | null = null) {
-    let prev = this.state
     this.state = update.state
-    let newDeco = this.state.facet(decorations)
+    let prevDeco = this.stateDeco
+    this.stateDeco = this.state.facet(decorations).filter(d => typeof d != "function") as readonly DecorationSet[]
     let contentChanges = update.changedRanges
     
     let heightChanges = ChangedRange.extendWithRanges(contentChanges, heightRelevantDecoChanges(
-      update.startState.facet(decorations), newDeco, update ? update.changes : ChangeSet.empty(this.state.doc.length)))
+      prevDeco, this.stateDeco, update ? update.changes : ChangeSet.empty(this.state.doc.length)))
     let prevHeight = this.heightMap.height
-    this.heightMap = this.heightMap.applyChanges(newDeco, prev.doc, this.heightOracle.setDoc(this.state.doc), heightChanges)
+    this.heightMap = this.heightMap.applyChanges(this.stateDeco, update.startState.doc,
+                                                 this.heightOracle.setDoc(this.state.doc), heightChanges)
     if (this.heightMap.height != prevHeight) update.flags |= UpdateFlag.Height
 
     let viewport = heightChanges.length ? this.mapViewport(this.viewport, update.changes) : this.viewport
@@ -369,7 +372,7 @@ export class ViewState {
     if (this.heightOracle.direction != Direction.LTR) return gaps
     for (let line of this.viewportLines) {
       if (line.length < LG.DoubleMargin) continue
-      let structure = lineStructure(line.from, line.to, this.state)
+      let structure = lineStructure(line.from, line.to, this.stateDeco)
       if (structure.total < LG.DoubleMargin) continue
       let viewFrom, viewTo
       if (this.heightOracle.lineWrapping) {
@@ -421,7 +424,7 @@ export class ViewState {
   }
 
   computeVisibleRanges() {
-    let deco = this.state.facet(decorations)
+    let deco = this.stateDeco
     if (this.lineGaps.length) deco = deco.concat(this.lineGapDeco)
     let ranges: {from: number, to: number}[] = []
     RangeSet.spans(deco, this.viewport.from, this.viewport.to, {
@@ -460,9 +463,9 @@ export class Viewport {
   constructor(readonly from: number, readonly to: number) {}
 }
 
-function lineStructure(from: number, to: number, state: EditorState) {
+function lineStructure(from: number, to: number, stateDeco: readonly DecorationSet[]) {
   let ranges = [], pos = from, total = 0
-  RangeSet.spans(state.facet(decorations), from, to, {
+  RangeSet.spans(stateDeco, from, to, {
     span() {},
     point(from, to) {
       if (from > pos) { ranges.push({from: pos, to: from}); total += from - pos }

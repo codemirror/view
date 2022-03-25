@@ -23,7 +23,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   skip: number
   textOff: number = 0
 
-  constructor(private doc: Text, public pos: number, public end: number, readonly disallowBlockEffectsBelow: number) {
+  constructor(private doc: Text, public pos: number, public end: number, readonly disallowBlockEffectsFor: boolean[]) {
     this.cursor = doc.iter()
     this.skip = pos
   }
@@ -138,7 +138,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   }
 
   filterPoint(from: number, to: number, value: Decoration, index: number) {
-    if (index < this.disallowBlockEffectsBelow && value instanceof PointDecoration) {
+    if (this.disallowBlockEffectsFor[index] && value instanceof PointDecoration) {
       if (value.block)
         throw new RangeError("Block decorations may not be specified via plugins")
       if (to > this.doc.lineAt(this.pos).to)
@@ -147,9 +147,9 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     return true
   }
 
-  static build(text: Text, from: number, to: number, decorations: readonly DecorationSet[], pluginDecorationLength: number):
+  static build(text: Text, from: number, to: number, decorations: readonly DecorationSet[], dynamicDecorationMap: boolean[]):
     {content: BlockView[], breakAtStart: number, openStart: number, openEnd: number} {
-    let builder = new ContentBuilder(text, from, to, pluginDecorationLength)
+    let builder = new ContentBuilder(text, from, to, dynamicDecorationMap)
     builder.openEnd = RangeSet.spans(decorations, from, to, builder)
     if (builder.openStart < 0) builder.openStart = builder.openEnd
     builder.finish(builder.openEnd)

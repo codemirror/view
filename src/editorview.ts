@@ -784,9 +784,14 @@ export class EditorView {
   static clickAddsSelectionRange = clickAddsSelectionRange
 
   /// A facet that determines which [decorations](#view.Decoration)
-  /// are shown in the view. See also [view
-  /// plugins](#view.EditorView^decorations), which have a separate
-  /// mechanism for providing decorations.
+  /// are shown in the view. Decorations can be provided in two
+  /// ways—directly, or via a function that takes an editor view.
+  ///
+  /// Only decoration sets provided directly are allowed to influence
+  /// the editor's vertical layout structure. The ones provided as
+  /// functions are called _after_ the new viewport has been computed,
+  /// and thus **must not** introduce block widgets or replacing
+  /// decorations that cover line breaks.
   static decorations = decorations
 
   /// Create a theme extension. The first argument can be a

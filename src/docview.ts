@@ -19,7 +19,7 @@ export class DocView extends ContentView {
 
   compositionDeco = Decoration.none
   decorations: readonly DecorationSet[] = []
-  pluginDecorationLength = 0
+  dynamicDecorationMap: boolean[] = []
 
   // Track a minimum width for the editor. When measuring sizes in
   // measureVisibleLineHeights, this is updated to point at the width
@@ -138,7 +138,7 @@ export class DocView extends ContentView {
       if (!next) break
       let {fromA, toA, fromB, toB} = next
       let {content, breakAtStart, openStart, openEnd} = ContentBuilder.build(this.view.state.doc, fromB, toB,
-                                                                             this.decorations, this.pluginDecorationLength)
+                                                                             this.decorations, this.dynamicDecorationMap)
       let {i: toI, off: toOff} = cursor.findPos(toA, 1)
       let {i: fromI, off: fromOff} = cursor.findPos(fromA, -1)
       replaceRange(this, fromI, fromOff, toI, toOff, content, breakAtStart, openStart, openEnd)
@@ -359,11 +359,13 @@ export class DocView extends ContentView {
   }
 
   updateDeco() {
-    let pluginDecorations = this.view.pluginField(PluginField.decorations)
-    this.pluginDecorationLength = pluginDecorations.length
+    let allDeco = this.view.state.facet(decorationsFacet).map((d, i) => {
+      let dynamic = this.dynamicDecorationMap[i] = typeof d == "function"
+      return dynamic ? (d as (view: EditorView) => DecorationSet)(this.view) : d as DecorationSet
+    })
+    for (let i = allDeco.length; i < allDeco.length + 3; i++) this.dynamicDecorationMap[i] = false
     return this.decorations = [
-      ...pluginDecorations,
-      ...this.view.state.facet(decorationsFacet),
+      ...allDeco,
       this.compositionDeco,
       this.computeBlockGapDeco(),
       this.view.viewState.lineGapDeco
