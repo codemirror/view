@@ -3,7 +3,7 @@ import {findColumn, findClusterBreak} from "@codemirror/text"
 import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
 import {LineView} from "./blockview"
-import {PluginField} from "./extension"
+import {atomicRanges} from "./extension"
 import {clientRectsFor, textRange, Rect} from "./dom"
 import {moveVisually, movedOver, Direction} from "./bidi"
 import {BlockInfo} from "./heightmap"
@@ -284,7 +284,7 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
 }
 
 export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: SelectionRange) {
-  let atoms = view.pluginField(PluginField.atomicRanges)
+  let atoms = view.state.facet(atomicRanges).map(f => f(view))
   for (;;) {
     let moved = false
     for (let set of atoms) {

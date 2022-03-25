@@ -114,17 +114,6 @@ export class PluginField<T> {
   /// Define a new plugin field.
   static define<T>() { return new PluginField<T>() }
 
-  /// Used to provide ranges that should be treated as atoms as far as
-  /// cursor motion is concerned. This causes methods like
-  /// [`moveByChar`](#view.EditorView.moveByChar) and
-  /// [`moveVertically`](#view.EditorView.moveVertically) (and the
-  /// commands built on top of them) to skip across such regions when
-  /// a selection endpoint would enter them. This does _not_ prevent
-  /// direct programmatic [selection
-  /// updates](#state.TransactionSpec.selection) from moving into such
-  /// regions.
-  static atomicRanges = PluginField.define<RangeSet<any>>()
-
   /// Plugins can provide additional scroll margins (space around the
   /// sides of the scrolling element that should be considered
   /// invisible) through this field. This can be useful when the
@@ -284,6 +273,8 @@ export const contentAttributes = Facet.define<AttrSource>()
 
 // Provide decorations
 export const decorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
+
+export const atomicRanges = Facet.define<(view: EditorView) => RangeSet<any>>()
 
 export const styleModule = Facet.define<StyleModule>()
 

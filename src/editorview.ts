@@ -14,7 +14,7 @@ import {ViewUpdate, styleModule,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, MeasureRequest, editable, inputHandler,
+        decorations, atomicRanges, MeasureRequest, editable, inputHandler,
         scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
@@ -793,6 +793,17 @@ export class EditorView {
   /// and thus **must not** introduce block widgets or replacing
   /// decorations that cover line breaks.
   static decorations = decorations
+
+  /// Used to provide ranges that should be treated as atoms as far as
+  /// cursor motion is concerned. This causes methods like
+  /// [`moveByChar`](#view.EditorView.moveByChar) and
+  /// [`moveVertically`](#view.EditorView.moveVertically) (and the
+  /// commands built on top of them) to skip across such regions when
+  /// a selection endpoint would enter them. This does _not_ prevent
+  /// direct programmatic [selection
+  /// updates](#state.TransactionSpec.selection) from moving into such
+  /// regions.
+  static atomicRanges = atomicRanges
 
   /// Create a theme extension. The first argument can be a
   /// [`style-mod`](https://github.com/marijnh/style-mod#documentation)
