@@ -82,39 +82,6 @@ export interface PluginValue {
   destroy?(): void
 }
 
-declare const isFieldProvider: unique symbol
-
-/// Used to [declare](#view.PluginSpec.provide) which
-/// [fields](#view.PluginValue) a [view plugin](#view.ViewPlugin)
-/// provides.
-export class PluginFieldProvider<V> {
-  // @ts-ignore
-  private [isFieldProvider]!: true
-
-  /// @internal
-  constructor(
-    /// @internal
-    readonly field: PluginField<any>,
-    /// @internal
-    readonly get: (value: V) => any
-  ) {}
-}
-
-/// Plugin fields are a mechanism for allowing plugins to provide
-/// values that can be retrieved through the
-/// [`pluginField`](#view.EditorView.pluginField) view method.
-export class PluginField<T> {
-  /// Create a [provider](#view.PluginFieldProvider) for this field,
-  /// to use with a plugin's [provide](#view.PluginSpec.provide)
-  /// option.
-  from<V extends PluginValue>(get: (value: V) => T): PluginFieldProvider<V> {
-    return new PluginFieldProvider(this, get)
-  }
-
-  /// Define a new plugin field.
-  static define<T>() { return new PluginField<T>() }
-}
-
 let nextPluginID = 0
 
 export const viewPlugin = Facet.define<ViewPlugin<any>>()
@@ -128,18 +95,16 @@ export interface PluginSpec<V extends PluginValue> {
   /// value.
   eventHandlers?: DOMEventHandlers<V>,
 
+  /// Specify that the plugin provides additional extensions when
+  /// added to an editor configuration.
+  provide?: (plugin: ViewPlugin<V>) => Extension
+
   /// Allow the plugin to provide decorations. When given, this should
   /// a function that take the plugin value and return a [decoration
   /// set](#view.DecorationSet). See also the caveat about
   /// [layout-changing decorations](#view.EditorView^decorations)
   /// that depend on the view.
   decorations?: (value: V) => DecorationSet
-
-  /// Specify that the plugin provides [plugin
-  /// field](#view.PluginField) values. Use a field's
-  /// [`from`](#view.PluginField.from) method to create these
-  /// providers.
-  provide?: PluginFieldProvider<V> | readonly PluginFieldProvider<V>[],
 }
 
 /// View plugins associate stateful values with a view. They can
@@ -155,7 +120,7 @@ export class ViewPlugin<V extends PluginValue> {
     /// @internal
     readonly create: (view: EditorView) => V,
     /// @internal
-    readonly fields: readonly PluginFieldProvider<V>[],
+    readonly domEventHandlers: DOMEventHandlers<V> | undefined,
     buildExtensions: (plugin: ViewPlugin<V>) => Extension
   ) {
     this.extension = buildExtensions(this)
@@ -165,17 +130,13 @@ export class ViewPlugin<V extends PluginValue> {
   /// plugin's value, given an editor view.
   static define<V extends PluginValue & object>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
     const {eventHandlers, provide, decorations: deco} = spec || {}
-    let fields = []
-    if (provide) for (let provider of Array.isArray(provide) ? provide : [provide])
-      fields.push(provider)
-    if (eventHandlers)
-      fields.push(domEventHandlers.from((value: V) => ({plugin: value, handlers: eventHandlers} as any)))
-    return new ViewPlugin<V>(nextPluginID++, create, fields, plugin => {
-      let ext = viewPlugin.of(plugin)
-      if (deco) ext = [ext, decorations.of(view => {
+    return new ViewPlugin<V>(nextPluginID++, create, eventHandlers, plugin => {
+      let ext = [viewPlugin.of(plugin)]
+      if (deco) ext.push(decorations.of(view => {
         let pluginInst = view.plugin(plugin)
         return pluginInst ? deco(pluginInst) : Decoration.none
-      })]
+      }))
+      if (provide) ext.push(provide(plugin))
       return ext
     })
   }
@@ -186,11 +147,6 @@ export class ViewPlugin<V extends PluginValue> {
     return ViewPlugin.define(view => new cls(view), spec)
   }
 }
-
-export const domEventHandlers = PluginField.define<{
-  plugin: PluginValue,
-  handlers: DOMEventHandlers<any>
-}>()
 
 export class PluginInstance {
   // When starting an update, all plugins have this field set to the
@@ -203,11 +159,6 @@ export class PluginInstance {
   value: PluginValue | null = null
 
   constructor(public spec: ViewPlugin<any> | null) {}
-
-  takeField<T>(type: PluginField<T>, target: T[]) {
-    if (this.spec) for (let {field, get} of this.spec.fields)
-      if (field == type) target.push(get(this.value))
-  }
 
   update(view: EditorView) {
     if (!this.value) {

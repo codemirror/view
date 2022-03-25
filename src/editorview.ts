@@ -13,8 +13,8 @@ import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, AttrSource,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
-        viewPlugin, ViewPlugin, PluginInstance, PluginField,
-        decorations, atomicRanges, scrollMargins, MeasureRequest, editable, inputHandler,
+        viewPlugin, ViewPlugin, PluginInstance, decorations, atomicRanges,
+        scrollMargins, MeasureRequest, editable, inputHandler,
         scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
@@ -189,6 +189,7 @@ export class EditorView {
       if (this.observer.intersecting) this.measure()
     })
     this.inputState = new InputState(this)
+    this.inputState.ensureHandlers(this, this.plugins)
     this.docView = new DocView(this)
 
     this.mountStyles()
@@ -294,7 +295,7 @@ export class EditorView {
       this.pluginMap.clear()
       for (let plugin of this.plugins) plugin.update(this)
       this.docView = new DocView(this)
-      this.inputState.ensureHandlers(this)
+      this.inputState.ensureHandlers(this, this.plugins)
       this.mountStyles()
       this.updateAttrs()
       this.bidiCache = []
@@ -320,7 +321,7 @@ export class EditorView {
       for (let plugin of this.plugins) if (plugin.mustUpdate != update) plugin.destroy(this)
       this.plugins = newPlugins
       this.pluginMap.clear()
-      this.inputState.ensureHandlers(this)
+      this.inputState.ensureHandlers(this, this.plugins)
     } else {
       for (let p of this.plugins) p.mustUpdate = update
     }
@@ -462,14 +463,6 @@ export class EditorView {
       }
       this.measureRequests.push(request)
     }
-  }
-
-  /// Collect all values provided by the active plugins for a given
-  /// field.
-  pluginField<T>(field: PluginField<T>): readonly T[] {
-    let result: T[] = []
-    for (let plugin of this.plugins) plugin.update(this).takeField(field, result)
-    return result
   }
 
   /// Get the value of a specific plugin, if present. Note that

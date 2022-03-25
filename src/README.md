@@ -27,10 +27,6 @@ component that displays the editor state and allows text input.
 
 @PluginValue
 
-@PluginField
-
-@PluginFieldProvider
-
 @ViewUpdate
 
 @logException

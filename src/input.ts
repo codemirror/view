@@ -2,8 +2,8 @@ import {EditorSelection, EditorState, SelectionRange} from "@codemirror/state"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
-import {domEventHandlers, ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior,
-        logException, mouseSelectionStyle} from "./extension"
+import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior,
+        logException, mouseSelectionStyle, PluginInstance} from "./extension"
 import browser from "./browser"
 import {groupAt} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
@@ -25,7 +25,7 @@ export class InputState {
   scrollHandlers: ((event: Event) => boolean | void)[] = []
 
   registeredEvents: string[] = []
-  customHandlers: readonly {
+  customHandlers: {
     plugin: PluginValue,
     handlers: DOMEventHandlers<any>
   }[] = []
@@ -65,16 +65,16 @@ export class InputState {
       this.registeredEvents.push(type)
     }
     this.notifiedFocused = view.hasFocus
-    this.ensureHandlers(view)
     // On Safari adding an input event handler somehow prevents an
     // issue where the composition vanishes when you press enter.
     if (browser.safari) view.contentDOM.addEventListener("input", () => null)
   }
 
-  ensureHandlers(view: EditorView) {
-    let handlers = this.customHandlers = view.pluginField(domEventHandlers)
-    for (let set of handlers) {
-      for (let type in set.handlers) if (this.registeredEvents.indexOf(type) < 0 && type != "scroll") {
+  ensureHandlers(view: EditorView, plugins: readonly PluginInstance[]) {
+    let handlers
+    for (let plugin of plugins) if (handlers = plugin.update(view).spec?.domEventHandlers) {
+      this.customHandlers.push({plugin: plugin.value!, handlers})
+      for (let type in handlers) if (this.registeredEvents.indexOf(type) < 0 && type != "scroll") {
         this.registeredEvents.push(type)
         view.contentDOM.addEventListener(type, (event: Event) => {
           if (!eventBelongsToEditor(view, event)) return
