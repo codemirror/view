@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, PluginField, ViewUpdate, BlockType, BlockInfo, Direction} from "@codemirror/view"
+import {EditorView, ViewPlugin, ViewUpdate, BlockType, BlockInfo, Direction} from "@codemirror/view"
 import {RangeValue, RangeSet, RangeCursor} from "@codemirror/rangeset"
 import {combineConfig, MapMode, Facet, Extension, EditorState} from "@codemirror/state"
 
@@ -254,9 +254,10 @@ const gutterView = ViewPlugin.fromClass(class {
     this.dom.remove()
   }
 }, {
-  provide: PluginField.scrollMargins.from(value => {
-    if (value.gutters.length == 0 || !value.fixed) return null
-    return value.view.textDirection == Direction.LTR ? {left: value.dom.offsetWidth} : {right: value.dom.offsetWidth}
+  provide: plugin => EditorView.scrollMargins.of(view => {
+    let value = view.plugin(plugin)
+    if (!value || value.gutters.length == 0 || !value.fixed) return null
+    return view.textDirection == Direction.LTR ? {left: value.dom.offsetWidth} : {right: value.dom.offsetWidth}
   })
 })
 
