@@ -1,4 +1,4 @@
-import {EditorView, ViewPlugin, PluginField, ViewUpdate} from "@codemirror/view"
+import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
 import {Facet, Extension} from "@codemirror/state"
 
 type PanelConfig = {
@@ -123,8 +123,11 @@ const panelPlugin = ViewPlugin.fromClass(class {
     this.top.sync([])
     this.bottom.sync([])
   }
-}, { 
-  provide: PluginField.scrollMargins.from(value => ({top: value.top.scrollMargin(), bottom: value.bottom.scrollMargin()}))
+}, {
+  provide: plugin => EditorView.scrollMargins.of(view => {
+    let value = view.plugin(plugin)
+    return value && {top: value.top.scrollMargin(), bottom: value.bottom.scrollMargin()}
+  })
 })
 
 class PanelGroup {
