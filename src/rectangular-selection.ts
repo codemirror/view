@@ -1,5 +1,5 @@
 import {Extension, EditorSelection, EditorState} from "@codemirror/state"
-import {EditorView, MouseSelectionStyle} from "@codemirror/view"
+import {EditorView, MouseSelectionStyle, ViewPlugin} from "@codemirror/view"
 import {countColumn, findColumn} from "@codemirror/text"
 
 type Pos = {line: number, col: number, off: number}
@@ -81,4 +81,47 @@ export function rectangularSelection(options?: {
 }): Extension {
   let filter = options?.eventFilter || (e => e.altKey && e.button == 0)
   return EditorView.mouseSelectionStyle.of((view, event) => filter(event) ? rectangleSelectionStyle(view, event) : null)
+}
+
+const keys: {[key: string]: [number, (event: KeyboardEvent) => boolean]} = {
+  Alt: [18, e => e.altKey],
+  Control: [17, e => e.ctrlKey],
+  Shift: [16, e => e.shiftKey],
+  Meta: [91, e => e.metaKey]
+}
+
+const showCrosshair = {style: "cursor: crosshair"}
+
+/// Returns an extension that turns the pointer cursor into a
+/// crosshair when a given modifier key, defaulting to Alt, is held
+/// down. Can serve as a visual hint that rectangular selection is
+/// going to happen when paired with
+/// [`rectangularSelection`](#rectangular-selection.rectangularSelection).
+export function crosshairCursor(options: {
+  key?: "Alt" | "Control" | "Shift" | "Meta"
+} = {}): Extension {
+  let [code, getter] = keys[options.key || "Alt"]
+  let plugin = ViewPlugin.fromClass(class {
+    isDown = false
+    constructor(readonly view: EditorView) {}
+    set(isDown: boolean) {
+      if (this.isDown != isDown) {
+        this.isDown = isDown
+        this.view.update([])
+      }
+    }
+  }, {
+    eventHandlers: {
+      keydown(e) {
+        this.set(e.keyCode == code || getter(e))
+      },
+      keyup(e) {
+        if (e.keyCode == code || !getter(e)) this.set(false)
+      }
+    }
+  })
+  return [
+    plugin,
+    EditorView.contentAttributes.of(view => view.plugin(plugin)?.isDown ? showCrosshair : null)
+  ]
 }
