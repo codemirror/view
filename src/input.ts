@@ -628,15 +628,6 @@ handlers.focus = handlers.blur = view => {
   }, 10)
 }
 
-handlers.beforeprint = view => {
-  view.viewState.printing = true
-  view.measure()
-  setTimeout(() => {
-    view.viewState.printing = false
-    view.requestMeasure()
-  }, 2000)
-}
-
 function forceClearComposition(view: EditorView, rapid: boolean) {
   if (view.docView.compositionDeco.size) {
     view.inputState.rapidCompositionStart = rapid

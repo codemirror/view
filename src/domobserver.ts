@@ -90,6 +90,7 @@ export class DOMObserver {
       })
       this.resize.observe(view.scrollDOM)
     }
+    window.addEventListener("beforeprint", this.onPrint = this.onPrint.bind(this))
 
     this.start()
 
@@ -124,6 +125,15 @@ export class DOMObserver {
       this.resizeTimeout = -1
       this.view.requestMeasure()
     }, 50)
+  }
+
+  onPrint() {
+    this.view.viewState.printing = true
+    this.view.measure()
+    setTimeout(() => {
+      this.view.viewState.printing = false
+      this.view.requestMeasure()
+    }, 500)
   }
 
   updateGaps(gaps: readonly HTMLElement[]) {
@@ -331,6 +341,7 @@ export class DOMObserver {
     for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
     window.removeEventListener("scroll", this.onScroll)
     window.removeEventListener("resize", this.onResize)
+    window.removeEventListener("beforeprint", this.onPrint)
     this.dom.ownerDocument.removeEventListener("selectionchange", this.onSelectionChange)
     clearTimeout(this.parentCheck)
     clearTimeout(this.resizeTimeout)
