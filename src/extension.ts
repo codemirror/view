@@ -205,7 +205,7 @@ export class ViewPlugin<V extends PluginValue> {
 
   /// Define a plugin from a constructor function that creates the
   /// plugin's value, given an editor view.
-  static define<V extends PluginValue>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
+  static define<V extends PluginValue & object>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
     let {eventHandlers, provide, decorations} = spec || {}
     let fields = []
     if (provide) for (let provider of Array.isArray(provide) ? provide : [provide])
@@ -218,7 +218,7 @@ export class ViewPlugin<V extends PluginValue> {
 
   /// Create a plugin for a class whose constructor takes a single
   /// editor view as argument.
-  static fromClass<V extends PluginValue>(cls: {new (view: EditorView): V}, spec?: PluginSpec<V>) {
+  static fromClass<V extends PluginValue & object>(cls: {new (view: EditorView): V}, spec?: PluginSpec<V>) {
     return ViewPlugin.define(view => new cls(view), spec)
   }
 }
