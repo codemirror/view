@@ -1,3 +1,15 @@
+## 0.19.48 (2022-03-30)
+
+### Bug fixes
+
+Fix an issue where DOM syncing could crash when a DOM node was moved from a parent to a child node (via widgets reusing existing nodes).
+
+To avoid interfering with things like a vim mode too much, the editor will now only activate the tab-to-move-focus escape hatch after an escape press that wasn't handled by an event handler.
+
+Make sure the view measures itself before the page is printed.
+
+Tweak types of view plugin defining functions to avoid TypeScript errors when the plugin value doesn't have any of the interface's properties.
+
 ## 0.19.47 (2022-03-08)
 
 ### Bug fixes
