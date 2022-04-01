@@ -514,7 +514,7 @@ export class EditorView {
 
   /// Find the line block around the given document position. A line
   /// block is a range delimited on both sides by either a
-  /// non-[hidden](#view.Decoration^range) line breaks, or the
+  /// non-[hidden](#view.Decoration^replace) line breaks, or the
   /// start/end of the document. It will usually just hold a line of
   /// text, but may be broken into multiple textblocks by block
   /// widgets.

@@ -167,6 +167,7 @@ export enum BlockType {
 /// A decoration provides information on how to draw or style a piece
 /// of content. You'll usually use it wrapped in a
 /// [`Range`](#rangeset.Range), which adds a start and end position.
+/// @nonabstract
 export abstract class Decoration extends RangeValue {
   /// @internal
   constructor(
