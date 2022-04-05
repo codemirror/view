@@ -72,6 +72,9 @@ const BidiRE = /[\u0590-\u05f4\u0600-\u06ff\u0700-\u08ac]/
 /// Represents a contiguous range of text that has a single direction
 /// (as in left-to-right or right-to-left).
 export class BidiSpan {
+  /// The direction of this span.
+  get dir(): Direction { return this.level % 2 ? RTL : LTR }
+
   /// @internal
   constructor(
     /// The start of the span (relative to the start of the line).
@@ -85,9 +88,6 @@ export class BidiSpan {
     /// number inside right-to-left text).
     readonly level: number
   ) {}
-
-  /// The direction of this span.
-  get dir(): Direction { return this.level % 2 ? RTL : LTR }
 
   /// @internal
   side(end: boolean, dir: Direction) { return (this.dir == dir) == end ? this.to : this.from }

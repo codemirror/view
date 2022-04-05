@@ -23,7 +23,7 @@ import browser from "./browser"
 ///
 /// When a key binding contains multiple key names separated by
 /// spaces, it represents a multi-stroke binding, which will fire when
-/// the user presses the given keys after each other order.
+/// the user presses the given keys after each other.
 ///
 /// You can use `Mod-` as a shorthand for `Cmd-` on Mac and `Ctrl-` on
 /// other platforms. So `Mod-b` is `Ctrl-b` on Linux but `Cmd-b` on
@@ -53,8 +53,8 @@ export interface KeyBinding {
   /// content (the `"editor"` scope). Some extensions, mostly those
   /// that define their own panels, might want to allow you to
   /// register bindings local to that panel. Such bindings should use
-  /// a custom scope name. You may also set multiple scope names,
-  /// separated by spaces.
+  /// a custom scope name. You may also assign multiple scope names to
+  /// a binding, separating them by spaces.
   scope?: string
   /// When set to true (the default is false), this will always
   /// prevent the further handling for the bound key, even if the
@@ -129,7 +129,7 @@ function getKeymap(state: EditorState) {
 }
 
 /// Run the key handlers registered for a given scope. The event
-/// object should be `"keydown"` event. Returns true if any of the
+/// object should be a `"keydown"` event. Returns true if any of the
 /// handlers handled it.
 export function runScopeHandlers(view: EditorView, event: KeyboardEvent, scope: string) {
   return runHandlers(getKeymap(view.state), event, view, scope)

@@ -27,6 +27,10 @@ interface EditorConfig {
   /// The view's initial state. Defaults to an extension-less state
   /// with an empty document.
   state?: EditorState,
+  /// When given, the editor is immediately appended to the given
+  /// element on creation. (Otherwise, you'll have to place the view's
+  /// [`dom`](#view.EditorView.dom) element in the document yourself.)
+  parent?: Element | DocumentFragment
   /// If the view is going to be mounted in a shadow root or document
   /// other than the one held by the global variable `document` (the
   /// default), you should pass it here. If you provide `parent`, but
@@ -39,10 +43,6 @@ interface EditorConfig {
   /// if provided, should probably call the view's [`update`
   /// method](#view.EditorView.update).
   dispatch?: (tr: Transaction) => void
-  /// When given, the editor is immediately appended to the given
-  /// element on creation. (Otherwise, you'll have to place the view's
-  /// [`dom`](#view.EditorView.dom) element in the document yourself.)
-  parent?: Element | DocumentFragment
 }
 
 export const enum UpdateState {
@@ -153,9 +153,9 @@ export class EditorView {
   /// @internal
   measureRequests: MeasureRequest<any>[] = []
 
-  /// Construct a new view. You'll usually want to put `view.dom` into
-  /// your document after creating a view, so that the user can see
-  /// it.
+  /// Construct a new view. You'll want to either provide a `parent`
+  /// option, or put `view.dom` into your document after creating a
+  /// view, so that the user can see the editor.
   constructor(
     /// Initialization options.
     config: EditorConfig = {}
@@ -529,12 +529,12 @@ export class EditorView {
 
   /// Move a cursor position by [grapheme
   /// cluster](#text.findClusterBreak). `forward` determines whether
-  /// the motion is away from the line start, or towards it. Motion in
-  /// bidirectional text is in visual order, in the editor's [text
-  /// direction](#view.EditorView.textDirection). When the start
-  /// position was the last one on the line, the returned position
-  /// will be across the line break. If there is no further line, the
-  /// original position is returned.
+  /// the motion is away from the line start, or towards it. In
+  /// bidirectional text, the line is traversed in visual order, using
+  /// the editor's [text direction](#view.EditorView.textDirection).
+  /// When the start position was the last one on the line, the
+  /// returned position will be across the line break. If there is no
+  /// further line, the original position is returned.
   ///
   /// By default, this method moves over a single cluster. The
   /// optional `by` argument can be used to move across more. It will
@@ -720,16 +720,16 @@ export class EditorView {
   /// root](#view.EditorView.constructor^config.root).
   static styleModule = styleModule
 
-  /// Facet that can be used to add DOM event handlers. The value
-  /// should be an object mapping event names to handler functions. The
-  /// first such function to return true will be assumed to have handled
-  /// that event, and no other handlers or built-in behavior will be
-  /// activated for it.
-  /// These are registered on the [content
-  /// element](#view.EditorView.contentDOM), except for `scroll`
-  /// handlers, which will be called any time the editor's [scroll
-  /// element](#view.EditorView.scrollDOM) or one of its parent nodes
-  /// is scrolled.
+  /// Returns an extension that can be used to add DOM event handlers.
+  /// The value should be an object mapping event names to handler
+  /// functions. For any given event, such functions are ordered by
+  /// extension precedence, and the first handler to return true will
+  /// be assumed to have handled that event, and no other handlers or
+  /// built-in behavior will be activated for it. These are registered
+  /// on the [content element](#view.EditorView.contentDOM), except
+  /// for `scroll` handlers, which will be called any time the
+  /// editor's [scroll element](#view.EditorView.scrollDOM) or one of
+  /// its parent nodes is scrolled.
   static domEventHandlers(handlers: DOMEventHandlers<any>): Extension {
     return ViewPlugin.define(() => ({}), {eventHandlers: handlers})
   }
@@ -754,9 +754,9 @@ export class EditorView {
 
   /// Facet that controls whether the editor content DOM is editable.
   /// When its highest-precedence value is `false`, the element will
-  /// not longer have its `contenteditable` attribute set. (Note that
-  /// this doesn't affect API calls that change the editor content,
-  /// even when those are bound to keys or buttons. See the
+  /// not have its `contenteditable` attribute set. (Note that this
+  /// doesn't affect API calls that change the editor content, even
+  /// when those are bound to keys or buttons. See the
   /// [`readOnly`](#state.EditorState.readOnly) facet for that.)
   static editable = editable
 
@@ -772,8 +772,10 @@ export class EditorView {
   /// the drag should move the content.
   static dragMovesSelection = dragMovesSelection
 
-  /// Facet used to configure whether a given selecting click adds
-  /// a new range to the existing selection or replaces it entirely.
+  /// Facet used to configure whether a given selecting click adds a
+  /// new range to the existing selection or replaces it entirely. The
+  /// default behavior is to check `event.metaKey` on macOS, and
+  /// `event.ctrlKey` elsewhere.
   static clickAddsSelectionRange = clickAddsSelectionRange
 
   /// A facet that determines which [decorations](#view.Decoration)

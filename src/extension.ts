@@ -66,7 +66,7 @@ export function logException(state: EditorState, exception: any, context?: strin
 export const editable = Facet.define<boolean, boolean>({combine: values => values.length ? values[0] : true })
 
 /// This is the interface plugin objects conform to.
-export interface PluginValue {
+export interface PluginValue extends Object {
   /// Notifies the plugin of an update that happened in the view. This
   /// is called _before_ the view updates its own DOM. It is
   /// responsible for updating the plugin's internal state (including
@@ -75,7 +75,7 @@ export interface PluginValue {
   /// layout recomputations, it should _not_ read the DOM layout—use
   /// [`requestMeasure`](#view.EditorView.requestMeasure) to schedule
   /// your code in a DOM reading phase if you need to.
-  update?(_update: ViewUpdate): void
+  update?(update: ViewUpdate): void
 
   /// Called when the plugin is no longer going to be used. Should
   /// revert any changes the plugin made to the DOM.
@@ -128,7 +128,7 @@ export class ViewPlugin<V extends PluginValue> {
 
   /// Define a plugin from a constructor function that creates the
   /// plugin's value, given an editor view.
-  static define<V extends PluginValue & object>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
+  static define<V extends PluginValue>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
     const {eventHandlers, provide, decorations: deco} = spec || {}
     return new ViewPlugin<V>(nextPluginID++, create, eventHandlers, plugin => {
       let ext = [viewPlugin.of(plugin)]
@@ -143,7 +143,7 @@ export class ViewPlugin<V extends PluginValue> {
 
   /// Create a plugin for a class whose constructor takes a single
   /// editor view as argument.
-  static fromClass<V extends PluginValue & object>(cls: {new (view: EditorView): V}, spec?: PluginSpec<V>) {
+  static fromClass<V extends PluginValue>(cls: {new (view: EditorView): V}, spec?: PluginSpec<V>) {
     return ViewPlugin.define(view => new cls(view), spec)
   }
 }
@@ -308,8 +308,8 @@ export class ViewUpdate {
     return (this.flags & UpdateFlag.Viewport) > 0
   }
 
-  /// Indicates whether the height of an element in the editor changed
-  /// in this update.
+  /// Indicates whether the height of a block element in the editor
+  /// changed in this update.
   get heightChanged() {
     return (this.flags & UpdateFlag.Height) > 0
   }

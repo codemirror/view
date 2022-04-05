@@ -3,17 +3,17 @@ component that displays the editor state and allows text input.
 
 @EditorView
 
-@BlockType
+@Direction
 
 @BlockInfo
 
-@Direction
+@BlockType
 
 @BidiSpan
 
-@DOMEventMap
-
 @DOMEventHandlers
+
+@DOMEventMap
 
 @Rect
 
@@ -23,9 +23,9 @@ component that displays the editor state and allows text input.
 
 @ViewPlugin
 
-@PluginSpec
-
 @PluginValue
+
+@PluginSpec
 
 @ViewUpdate
 
@@ -55,10 +55,11 @@ component that displays the editor state and allows text input.
 
 ### Decorations
 
-Your code should never, _never_ directly change the DOM structure
-CodeMirror creates for its content. Instead, the way to influence how
-things are drawn is by providing decorations, which can add styling or
-replace content with an alternative representation.
+Your code should not try to directly change the DOM structure
+CodeMirror creates for its content—that will not work. Instead, the
+way to influence how things are drawn is by providing decorations,
+which can add styling or replace content with an alternative
+representation.
 
 @Decoration
 

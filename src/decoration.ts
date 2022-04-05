@@ -20,9 +20,10 @@ interface MarkDecorationSpec {
   /// Shorthand for `{attributes: {class: value}}`.
   class?: string
   /// Add a wrapping element around the text in the marked range. Note
-  /// that there will not be a single element covering the entire
-  /// range—content is split on mark starts and ends, and each piece
-  /// gets its own element.
+  /// that there will not necessarily be a single element covering the
+  /// entire range—other decorations with lower precedence might split
+  /// this one if they partially overlap it, and line breaks always
+  /// end decoration elements.
   tagName?: string
   /// Decoration specs allow extra properties, which can be retrieved
   /// through the decoration's [`spec`](#view.Decoration.spec)
@@ -85,7 +86,7 @@ interface LineDecorationSpec {
 /// Widgets added to the content are described by subclasses of this
 /// class. Using a description object like that makes it possible to
 /// delay creating of the DOM structure for a widget until it is
-/// needed, and to avoid redrawing widgets even when the decorations
+/// needed, and to avoid redrawing widgets even if the decorations
 /// that define them are recreated.
 export abstract class WidgetType {
   /// Build the DOM structure for this widget instance.
@@ -98,14 +99,14 @@ export abstract class WidgetType {
   /// decoration of the same type. The default implementation just
   /// returns `false`, which will cause new instances of the widget to
   /// always be redrawn.
-  eq(_widget: WidgetType): boolean { return false }
+  eq(widget: WidgetType): boolean { return false }
 
   /// Update a DOM element created by a widget of the same type (but
   /// different, non-`eq` content) to reflect this widget. May return
   /// true to indicate that it could update, false to indicate it
   /// couldn't (in which case the widget will be redrawn). The default
   /// implementation just returns false.
-  updateDOM(_dom: HTMLElement): boolean { return false }
+  updateDOM(dom: HTMLElement): boolean { return false }
 
   /// @internal
   compare(other: WidgetType): boolean {
@@ -121,14 +122,14 @@ export abstract class WidgetType {
   /// Can be used to configure which kinds of events inside the widget
   /// should be ignored by the editor. The default is to ignore all
   /// events.
-  ignoreEvent(_event: Event): boolean { return true }
+  ignoreEvent(event: Event): boolean { return true }
 
   /// @internal
   get customView(): null | typeof WidgetView { return null }
 
   /// This is called when the an instance of the widget is removed
   /// from the editor view.
-  destroy(_dom: HTMLElement) {}
+  destroy(dom: HTMLElement) {}
 }
 
 /// A decoration set represents a collection of decorated ranges,
@@ -193,17 +194,16 @@ export abstract class Decoration extends RangeValue {
   /// Create a mark decoration, which influences the styling of the
   /// content in its range. Nested mark decorations will cause nested
   /// DOM elements to be created. Nesting order is determined by
-  /// precedence of the [facet](#view.EditorView^decorations) or
-  /// (below the facet-provided decorations) [view
-  /// plugin](#view.PluginSpec.decorations). Such elements are split
-  /// on line boundaries and on the boundaries of higher-precedence
-  /// decorations.
+  /// precedence of the [facet](#view.EditorView^decorations), with
+  /// the higher-precedence decorations creating the inner DOM nodes.
+  /// Such elements are split on line boundaries and on the boundaries
+  /// of lower-precedence decorations.
   static mark(spec: MarkDecorationSpec): Decoration {
     return new MarkDecoration(spec)
   }
 
-  /// Create a widget decoration, which adds an element at the given
-  /// position.
+  /// Create a widget decoration, which displays a DOM element at the
+  /// given position.
   static widget(spec: WidgetDecorationSpec): Decoration {
     let side = spec.side || 0, block = !!spec.block
     side += block ? (side > 0 ? Side.BlockAfter : Side.BlockBefore) : (side > 0 ? Side.InlineAfter : Side.InlineBefore)
