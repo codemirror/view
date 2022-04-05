@@ -97,7 +97,13 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     if (this.openStart < 0) this.openStart = openStart
   }
 
-  point(from: number, to: number, deco: Decoration, active: MarkDecoration[], openStart: number) {
+  point(from: number, to: number, deco: Decoration, active: MarkDecoration[], openStart: number, index: number) {
+    if (this.disallowBlockEffectsFor[index] && deco instanceof PointDecoration) {
+      if (deco.block)
+        throw new RangeError("Block decorations may not be specified via plugins")
+      if (to > this.doc.lineAt(this.pos).to)
+        throw new RangeError("Decorations that replace line breaks may not be specified via plugins")
+    }
     let len = to - from
     if (deco instanceof PointDecoration) {
       if (deco.block) {
@@ -135,16 +141,6 @@ export class ContentBuilder implements SpanIterator<Decoration> {
       this.pos = to
     }
     if (this.openStart < 0) this.openStart = openStart
-  }
-
-  filterPoint(from: number, to: number, value: Decoration, index: number) {
-    if (this.disallowBlockEffectsFor[index] && value instanceof PointDecoration) {
-      if (value.block)
-        throw new RangeError("Block decorations may not be specified via plugins")
-      if (to > this.doc.lineAt(this.pos).to)
-        throw new RangeError("Decorations that replace line breaks may not be specified via plugins")
-    }
-    return true
   }
 
   static build(text: Text, from: number, to: number, decorations: readonly DecorationSet[], dynamicDecorationMap: boolean[]):
