@@ -41,10 +41,6 @@ export interface Panel {
   /// Whether the panel should be at the top or bottom of the editor.
   /// Defaults to false.
   top?: boolean
-  /// An optional number that is used to determine the ordering when
-  /// there are multiple panels. Those with a lower `pos` value will
-  /// come first. Defaults to 0.
-  pos?: number
 }
 
 /// Get the active panel created by the given constructor, if any.
