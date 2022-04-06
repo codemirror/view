@@ -15,7 +15,7 @@ export abstract class GutterMarker extends RangeValue {
   eq(other: GutterMarker): boolean { return false }
 
   /// Render the DOM node for this marker, if any.
-  toDOM?(_view: EditorView): Node
+  toDOM?(view: EditorView): Node
 
   /// This property can be used to add CSS classes to the gutter
   /// element that contains this marker.
