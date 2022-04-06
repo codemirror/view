@@ -1,11 +1,9 @@
-import {EditorView, ViewPlugin, ViewUpdate, Direction, logException} from "@codemirror/view"
+import {EditorView, ViewPlugin, ViewUpdate, Direction, logException, Rect} from "@codemirror/view"
 import {EditorState, StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
 
 const ios = typeof navigator != "undefined" &&
   !/Edge\/(\d+)/.exec(navigator.userAgent) && /Apple Computer/.test(navigator.vendor) &&
   (/Mobile\/\w+/.test(navigator.userAgent) || navigator.maxTouchPoints > 2)
-
-type Rect = {left: number, right: number, top: number, bottom: number}
 
 type Measured = {
   editor: DOMRect,
@@ -66,7 +64,7 @@ class TooltipViewManager {
   }
 }
 
-/// Return an extension that configures tooltip behavior.
+/// Creates an extension that configures tooltip behavior.
 export function tooltips(config: {
   /// By default, tooltips use `"fixed"`
   /// [positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/position),
@@ -367,13 +365,13 @@ export interface Tooltip {
   /// representation](#tooltip.TooltipView).
   create(view: EditorView): TooltipView
   /// Whether the tooltip should be shown above or below the target
-  /// position. Not guaranteed for hover tooltips since all hover
-  /// tooltips for the same range are always positioned together.
-  /// Defaults to false.
+  /// position. Not guaranteed to be respected for hover tooltips
+  /// since all hover tooltips for the same range are always
+  /// positioned together. Defaults to false.
   above?: boolean
   /// Whether the `above` option should be honored when there isn't
   /// enough space on that side to show the tooltip inside the
-  /// viewport. Not guaranteed for hover tooltips. Defaults to false.
+  /// viewport. Defaults to false.
   strictSide?: boolean,
   /// When set to true, show a triangle connecting the tooltip element
   /// to position `pos`.
@@ -410,7 +408,7 @@ export interface TooltipView {
 
 const noOffset = {x: 0, y: 0}
 
-/// Behavior by which an extension can provide a tooltip to be shown.
+/// Facet to which an extension can add a value to show a tooltip.
 export const showTooltip = Facet.define<Tooltip | null>({
   enables: [tooltipPlugin, baseTheme]
 })
@@ -588,10 +586,10 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
   return false
 }
 
-/// Enable a hover tooltip, which shows up when the pointer hovers
+/// Set up a hover tooltip, which shows up when the pointer hovers
 /// over ranges of text. The callback is called when the mouse hovers
 /// over the document text. It should, if there is a tooltip
-/// associated with position `pos` return the tooltip description
+/// associated with position `pos`, return the tooltip description
 /// (either directly or in a promise). The `side` argument indicates
 /// on which side of the position the pointer is—it will be -1 if the
 /// pointer is before the position, 1 if after the position.
