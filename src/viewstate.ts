@@ -128,6 +128,7 @@ export class ViewState {
 
   stateDeco: readonly DecorationSet[]
   viewportLines!: BlockInfo[]
+  defaultTextDirection: Direction = Direction.RTL
 
   // The main viewport for the visible part of the document
   viewport: Viewport
@@ -219,9 +220,10 @@ export class ViewState {
   measure(view: EditorView) {
     let dom = view.contentDOM, style = window.getComputedStyle(dom)
     let oracle = this.heightOracle
-    let whiteSpace = style.whiteSpace!, direction = style.direction == "rtl" ? Direction.RTL : Direction.LTR
+    let whiteSpace = style.whiteSpace!
+    this.defaultTextDirection = style.direction == "rtl" ? Direction.RTL : Direction.LTR
 
-    let refresh = this.heightOracle.mustRefreshForStyle(whiteSpace, direction)
+    let refresh = this.heightOracle.mustRefreshForWrapping(whiteSpace)
     let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != dom.clientHeight
     let result = 0, bias = 0
     if (this.editorWidth != view.scrollDOM.clientWidth) {
@@ -265,7 +267,7 @@ export class ViewState {
       if (oracle.mustRefreshForHeights(lineHeights)) refresh = true
       if (refresh || oracle.lineWrapping && Math.abs(contentWidth - this.contentDOMWidth) > oracle.charWidth) {
         let {lineHeight, charWidth} = view.docView.measureTextSize()
-        refresh = oracle.refresh(whiteSpace, direction, lineHeight, charWidth, contentWidth / charWidth, lineHeights)
+        refresh = oracle.refresh(whiteSpace, lineHeight, charWidth, contentWidth / charWidth, lineHeights)
         if (refresh) {
           view.docView.minWidth = 0
           result |= UpdateFlag.Geometry
@@ -280,6 +282,7 @@ export class ViewState {
         oracle, 0, refresh, new MeasuredHeights(this.viewport.from, lineHeights))
       if (oracle.heightChanged) result |= UpdateFlag.Height
     }
+
     let viewportChange = !this.viewportIsAppropriate(this.viewport, bias) ||
       this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from || this.scrollTarget.range.head > this.viewport.to)
     if (viewportChange) this.viewport = this.getViewport(bias, this.scrollTarget)
@@ -369,7 +372,7 @@ export class ViewState {
   ensureLineGaps(current: readonly LineGap[]) {
     let gaps: LineGap[] = []
     // This won't work at all in predominantly right-to-left text.
-    if (this.heightOracle.direction != Direction.LTR) return gaps
+    if (this.defaultTextDirection != Direction.LTR) return gaps
     for (let line of this.viewportLines) {
       if (line.length < LG.DoubleMargin) continue
       let structure = lineStructure(line.from, line.to, this.stateDeco)

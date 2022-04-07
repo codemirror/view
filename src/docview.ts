@@ -280,7 +280,7 @@ export class DocView extends ContentView {
     let result = [], {from, to} = this.view.viewState.viewport
     let contentWidth = this.view.contentDOM.clientWidth
     let isWider = contentWidth > Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
-    let widest = -1
+    let widest = -1, ltr = this.view.textDirection == Direction.LTR
     for (let pos = 0, i = 0; i < this.children.length; i++) {
       let child = this.children[i], end = pos + child.length
       if (end > to) break
@@ -292,8 +292,7 @@ export class DocView extends ContentView {
           let rects = last ? clientRectsFor(last) : []
           if (rects.length) {
             let rect = rects[rects.length - 1]
-            let width = this.view.textDirection == Direction.LTR ? rect.right - childRect.left
-              : childRect.right - rect.left
+            let width = ltr ? rect.right - childRect.left : childRect.right - rect.left
             if (width > widest) {
               widest = width
               this.minWidth = contentWidth
@@ -306,6 +305,11 @@ export class DocView extends ContentView {
       pos = end + child.breakAfter
     }
     return result
+  }
+
+  textDirectionAt(pos: number) {
+    let {i} = this.childPos(pos, 1)
+    return getComputedStyle(this.children[i].dom!).direction == "rtl" ? Direction.RTL : Direction.LTR
   }
 
   measureTextSize(): {lineHeight: number, charWidth: number} {

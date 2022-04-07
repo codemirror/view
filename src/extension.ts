@@ -29,6 +29,10 @@ export const updateListener = Facet.define<(update: ViewUpdate) => void>()
 
 export const inputHandler = Facet.define<(view: EditorView, from: number, to: number, text: string) => boolean>()
 
+export const perLineTextDirection = Facet.define<boolean, boolean>({
+  combine: values => values.some(x => x)
+})
+
 export class ScrollTarget {
   constructor(
     readonly range: SelectionRange,

@@ -14,7 +14,7 @@ import {ViewUpdate, styleModule,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginInstance, decorations, atomicRanges,
-        scrollMargins, MeasureRequest, editable, inputHandler,
+        scrollMargins, MeasureRequest, editable, inputHandler, perLineTextDirection,
         scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
@@ -632,8 +632,22 @@ export class EditorView {
 
   /// The text direction
   /// ([`direction`](https://developer.mozilla.org/en-US/docs/Web/CSS/direction)
-  /// CSS property) of the editor.
-  get textDirection(): Direction { return this.viewState.heightOracle.direction }
+  /// CSS property) of the editor's content element.
+  get textDirection(): Direction { return this.viewState.defaultTextDirection }
+
+  /// Find the text direction of the block at the given position, as
+  /// assigned by CSS. If
+  /// [`perLineTextDirection`](#view.EditorView^perLineTextDirection)
+  /// isn't enabled, or the given position is outside of the viewport,
+  /// this will always return the same as
+  /// [`textDirection`](#view.EditorView.textDirection). Note that
+  /// this may trigger a DOM layout.
+  textDirectionAt(pos: number) {
+    let perLine = this.state.facet(perLineTextDirection)
+    if (!perLine || pos < this.viewport.from || pos > this.viewport.to) return this.textDirection
+    this.readMeasured()
+    return this.docView.textDirectionAt(pos)
+  }
 
   /// Whether this editor [wraps lines](#view.EditorView.lineWrapping)
   /// (as determined by the
@@ -649,9 +663,9 @@ export class EditorView {
   /// rightmost spans come first.
   bidiSpans(line: Line) {
     if (line.length > MaxBidiLine) return trivialOrder(line.length)
-    let dir = this.textDirection
+    let dir = this.textDirectionAt(line.from)
     for (let entry of this.bidiCache) if (entry.from == line.from && entry.dir == dir) return entry.order
-    let order = computeOrder(line.text, this.textDirection)
+    let order = computeOrder(line.text, dir)
     this.bidiCache.push(new CachedOrder(line.from, line.to, dir, order))
     return order
   }
@@ -740,6 +754,12 @@ export class EditorView {
   /// content. When one returns true, no further input handlers are
   /// called and the default behavior is prevented.
   static inputHandler = inputHandler
+
+  /// By default, the editor assumes all its content has the same
+  /// [text direction](#view.Direction). Configure this with a `true`
+  /// value to make it read and store the text direction of every
+  /// (rendered) line separately.
+  static perLineTextDirection = perLineTextDirection
 
   /// Allows you to provide a function that should be called when the
   /// library catches an exception from an extension (mostly from view

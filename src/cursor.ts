@@ -218,7 +218,8 @@ export function moveToLineBoundary(view: EditorView, start: SelectionRange, forw
     : view.coordsAtPos(start.assoc < 0 && start.head > line.from ? start.head - 1 : start.head)
   if (coords) {
     let editorRect = view.dom.getBoundingClientRect()
-    let pos = view.posAtCoords({x: forward == (view.textDirection == Direction.LTR) ? editorRect.right - 1 : editorRect.left + 1,
+    let direction = view.textDirectionAt(line.from)
+    let pos = view.posAtCoords({x: forward == (direction == Direction.LTR) ? editorRect.right - 1 : editorRect.left + 1,
                                 y: (coords.top + coords.bottom) / 2})
     if (pos != null) return EditorSelection.cursor(pos, forward ? -1 : 1)
   }
@@ -230,8 +231,9 @@ export function moveToLineBoundary(view: EditorView, start: SelectionRange, forw
 export function moveByChar(view: EditorView, start: SelectionRange, forward: boolean,
                            by?: (initial: string) => (next: string) => boolean) {
   let line = view.state.doc.lineAt(start.head), spans = view.bidiSpans(line)
+  let direction = view.textDirectionAt(line.from)
   for (let cur = start, check: null | ((next: string) => boolean) = null;;) {
-    let next = moveVisually(line, spans, view.textDirection, cur, forward), char = movedOver
+    let next = moveVisually(line, spans, direction, cur, forward), char = movedOver
     if (!next) {
       if (line.number == (forward ? view.state.doc.lines : 1)) return cur
       char = "\n"
