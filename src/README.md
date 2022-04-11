@@ -70,3 +70,9 @@ representation.
 @Range
 
 @MatchDecorator
+
+### Rectangular Selection
+
+@rectangularSelection
+
+@crosshairCursor
