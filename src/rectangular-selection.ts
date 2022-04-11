@@ -1,6 +1,8 @@
 import {Extension, EditorSelection, EditorState} from "@codemirror/state"
-import {EditorView, MouseSelectionStyle, ViewPlugin} from "@codemirror/view"
 import {countColumn, findColumn} from "@codemirror/text"
+import {EditorView} from "./editorview"
+import {MouseSelectionStyle} from "./input"
+import {ViewPlugin} from "./extension"
 
 type Pos = {line: number, col: number, off: number}
 

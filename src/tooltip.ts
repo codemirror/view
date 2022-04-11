@@ -1,5 +1,8 @@
-import {EditorView, ViewPlugin, ViewUpdate, Direction, logException, Rect} from "@codemirror/view"
 import {EditorState, StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
+import {EditorView} from "./editorview"
+import {ViewPlugin, ViewUpdate, logException} from "./extension"
+import {Direction} from "./bidi"
+import {Rect} from "./dom"
 
 const ios = typeof navigator != "undefined" &&
   !/Edge\/(\d+)/.exec(navigator.userAgent) && /Apple Computer/.test(navigator.vendor) &&
