@@ -242,8 +242,8 @@ class HeightMapBlock extends HeightMap {
     return this.blockAt(0, doc, top, offset)
   }
 
-  forEachLine(_from: number, _to: number, doc: Text, top: number, offset: number, f: (line: BlockInfo) => void) {
-    f(this.blockAt(0, doc, top, offset))
+  forEachLine(from: number, to: number, doc: Text, top: number, offset: number, f: (line: BlockInfo) => void) {
+    if (from <= offset + this.length && to >= offset) f(this.blockAt(0, doc, top, offset))
   }
 
   updateHeight(oracle: HeightOracle, offset: number = 0, _force: boolean = false, measured?: MeasuredHeights) {
