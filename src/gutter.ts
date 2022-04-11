@@ -1,6 +1,10 @@
-import {EditorView, ViewPlugin, ViewUpdate, BlockType, BlockInfo, Direction} from "@codemirror/view"
 import {RangeValue, RangeSet, RangeCursor} from "@codemirror/rangeset"
 import {combineConfig, MapMode, Facet, Extension, EditorState} from "@codemirror/state"
+import {EditorView} from "./editorview"
+import {ViewPlugin, ViewUpdate} from "./extension"
+import {BlockType} from "./decoration"
+import {BlockInfo} from "./heightmap"
+import {Direction} from "./bidi"
 
 /// A gutter marker represents a bit of information attached to a line
 /// in a specific gutter. Your own custom markers have to extend this
