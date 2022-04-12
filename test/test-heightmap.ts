@@ -1,5 +1,5 @@
 import {Decoration, WidgetType, BlockType, BlockInfo, __test} from "@codemirror/view"
-import {Text} from "@codemirror/text"
+import {Text} from "@codemirror/state"
 import ist from "ist"
 
 const {HeightMap, HeightOracle, MeasuredHeights, QueryType, ChangedRange} = __test

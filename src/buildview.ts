@@ -1,9 +1,8 @@
-import {SpanIterator, RangeSet} from "@codemirror/state"
+import {SpanIterator, RangeSet, Text, TextIterator} from "@codemirror/state"
 import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, BlockType, WidgetType} from "./decoration"
 import {ContentView} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {WidgetView, TextView, MarkView, WidgetBufferView} from "./inlineview"
-import {Text, TextIterator} from "@codemirror/text"
 
 const enum T { Chunk = 512 }
 

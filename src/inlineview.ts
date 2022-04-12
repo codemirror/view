@@ -1,4 +1,4 @@
-import {Text as DocText} from "@codemirror/text"
+import {Text as DocText} from "@codemirror/state"
 import {ContentView, DOMPos, Dirty, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
 import {Rect, Rect0, flattenRect, textRange, clientRectsFor, clearAttributes, contains} from "./dom"

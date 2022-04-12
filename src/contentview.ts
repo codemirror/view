@@ -1,4 +1,4 @@
-import {Text} from "@codemirror/text"
+import {Text} from "@codemirror/state"
 import {Rect, maxOffset, domIndex} from "./dom"
 import {EditorView} from "./editorview"
 

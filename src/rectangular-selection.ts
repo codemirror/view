@@ -1,5 +1,4 @@
-import {Extension, EditorSelection, EditorState} from "@codemirror/state"
-import {countColumn, findColumn} from "@codemirror/text"
+import {Extension, EditorSelection, EditorState, countColumn, findColumn} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {MouseSelectionStyle} from "./input"
 import {ViewPlugin} from "./extension"

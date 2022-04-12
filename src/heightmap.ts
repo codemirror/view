@@ -1,5 +1,4 @@
-import {Text} from "@codemirror/text"
-import {ChangeSet, RangeSet, SpanIterator} from "@codemirror/state"
+import {Text, ChangeSet, RangeSet, SpanIterator} from "@codemirror/state"
 import {DecorationSet, PointDecoration, Decoration, BlockType, addRange} from "./decoration"
 import {ChangedRange} from "./extension"
 

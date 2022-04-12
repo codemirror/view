@@ -2,8 +2,7 @@ import {Decoration, DecorationSet, WidgetType} from "./decoration"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {EditorView} from "./editorview"
 import {MatchDecorator} from "./matchdecorator"
-import {combineConfig, Facet, Extension} from "@codemirror/state"
-import {countColumn, codePointAt} from "@codemirror/text"
+import {combineConfig, Facet, Extension, countColumn, codePointAt} from "@codemirror/state"
 
 interface SpecialCharConfig {
   /// An optional function that renders the placeholder elements.
