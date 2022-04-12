@@ -3,10 +3,7 @@ import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate, logException} from "./extension"
 import {Direction} from "./bidi"
 import {Rect} from "./dom"
-
-const ios = typeof navigator != "undefined" &&
-  !/Edge\/(\d+)/.exec(navigator.userAgent) && /Apple Computer/.test(navigator.vendor) &&
-  (/Mobile\/\w+/.test(navigator.userAgent) || navigator.maxTouchPoints > 2)
+import browser from "./browser"
 
 type Measured = {
   editor: DOMRect,
@@ -108,7 +105,7 @@ function windowSpace() {
 
 const tooltipConfig = Facet.define<Partial<TooltipConfig>, TooltipConfig>({
   combine: values => ({
-    position: ios ? "absolute" : values.find(conf => conf.position)?.position || "fixed",
+    position: browser.ios ? "absolute" : values.find(conf => conf.position)?.position || "fixed",
     parent: values.find(conf => conf.parent)?.parent || null,
     tooltipSpace: values.find(conf => conf.tooltipSpace)?.tooltipSpace || windowSpace,
   })
