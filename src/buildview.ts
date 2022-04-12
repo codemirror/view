@@ -1,4 +1,4 @@
-import {SpanIterator, RangeSet} from "@codemirror/rangeset"
+import {SpanIterator, RangeSet} from "@codemirror/state"
 import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, BlockType, WidgetType} from "./decoration"
 import {ContentView} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"

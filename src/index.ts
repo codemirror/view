@@ -14,7 +14,6 @@ export {placeholder} from "./placeholder"
 export {Rect} from "./dom"
 export {MatchDecorator} from "./matchdecorator"
 export {rectangularSelection, crosshairCursor} from "./rectangular-selection"
-export {Range} from "@codemirror/rangeset"
 export {showTooltip, Tooltip, TooltipView, tooltips, getTooltip, hoverTooltip, hasHoverTooltips,
         closeHoverTooltips, repositionTooltips} from "./tooltip"
 export {showPanel, PanelConstructor, Panel, getPanel, panels} from "./panel"

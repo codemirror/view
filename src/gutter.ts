@@ -1,5 +1,5 @@
-import {RangeValue, RangeSet, RangeCursor} from "@codemirror/rangeset"
-import {combineConfig, MapMode, Facet, Extension, EditorState} from "@codemirror/state"
+import {combineConfig, MapMode, Facet, Extension, EditorState,
+        RangeValue, RangeSet, RangeCursor} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {BlockType} from "./decoration"

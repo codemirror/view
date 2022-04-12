@@ -1,6 +1,5 @@
 import {Text} from "@codemirror/text"
-import {ChangeSet} from "@codemirror/state"
-import {RangeSet, SpanIterator} from "@codemirror/rangeset"
+import {ChangeSet, RangeSet, SpanIterator} from "@codemirror/state"
 import {DecorationSet, PointDecoration, Decoration, BlockType, addRange} from "./decoration"
 import {ChangedRange} from "./extension"
 

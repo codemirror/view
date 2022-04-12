@@ -1,6 +1,5 @@
 import {EditorState, Transaction, ChangeSet, ChangeDesc, Facet,
-        StateEffect, Extension, SelectionRange} from "@codemirror/state"
-import {RangeSet} from "@codemirror/rangeset"
+        StateEffect, Extension, SelectionRange, RangeSet} from "@codemirror/state"
 import {StyleModule} from "style-mod"
 import {DecorationSet, Decoration} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"

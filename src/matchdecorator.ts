@@ -1,5 +1,4 @@
-import {Text} from "@codemirror/state"
-import {RangeSetBuilder} from "@codemirror/rangeset"
+import {Text, RangeSetBuilder} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewUpdate} from "./extension"
 import {Decoration, DecorationSet} from "./decoration"

@@ -1,6 +1,6 @@
 import {tempView} from "@codemirror/buildhelper/lib/tempview"
 import {EditorView, Decoration, WidgetType} from "@codemirror/view"
-import {Range} from "@codemirror/rangeset"
+import {Range} from "@codemirror/state"
 import ist from "ist"
 
 const inline = new class extends WidgetType {

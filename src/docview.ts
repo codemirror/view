@@ -1,5 +1,4 @@
-import {RangeSet} from "@codemirror/rangeset"
-import {ChangeSet} from "@codemirror/state"
+import {ChangeSet, RangeSet} from "@codemirror/state"
 import {ContentView, ChildCursor, Dirty, DOMPos, replaceRange} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {CompositionView} from "./inlineview"

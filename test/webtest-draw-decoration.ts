@@ -1,6 +1,6 @@
-import {EditorView, Decoration, DecorationSet, WidgetType, Range, ViewPlugin} from "@codemirror/view"
+import {EditorView, Decoration, DecorationSet, WidgetType, ViewPlugin} from "@codemirror/view"
 import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
-import {EditorSelection, StateEffect, StateField} from "@codemirror/state"
+import {EditorSelection, StateEffect, StateField, Range} from "@codemirror/state"
 import ist from "ist"
 
 const filterDeco = StateEffect.define<(from: number, to: number, spec: any) => boolean>()

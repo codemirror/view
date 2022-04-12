@@ -1,6 +1,5 @@
 import {Text} from "@codemirror/text"
-import {EditorState, ChangeSet, ChangeDesc} from "@codemirror/state"
-import {RangeSet} from "@codemirror/rangeset"
+import {EditorState, ChangeSet, ChangeDesc, RangeSet} from "@codemirror/state"
 import {Rect} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
 import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget} from "./extension"
