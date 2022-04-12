@@ -191,29 +191,6 @@ function rm(node: ChildNode) {
   return next
 }
 
-const baseTheme = EditorView.baseTheme({
-  ".cm-panels": {
-    boxSizing: "border-box",
-    position: "sticky",
-    left: 0,
-    right: 0
-  },
-  "&light .cm-panels": {
-    backgroundColor: "#f5f5f5",
-    color: "black"
-  },
-  "&light .cm-panels-top": {
-    borderBottom: "1px solid #ddd"
-  },
-  "&light .cm-panels-bottom": {
-    borderTop: "1px solid #ddd"
-  },
-  "&dark .cm-panels": {
-    backgroundColor: "#333338",
-    color: "white"
-  }
-})
-
 /// A function that initializes a panel. Used in
 /// [`showPanel`](#panel.showPanel).
 export type PanelConstructor = (view: EditorView) => Panel
@@ -222,5 +199,5 @@ export type PanelConstructor = (view: EditorView) => Panel
 /// the panel through this facet. (The panel is closed again when its
 /// constructor is no longer provided.) Values of `null` are ignored.
 export const showPanel = Facet.define<PanelConstructor | null>({
-  enables: [panelPlugin, baseTheme]
+  enables: panelPlugin
 })

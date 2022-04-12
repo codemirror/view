@@ -89,55 +89,6 @@ export function gutter(config: GutterConfig): Extension {
   return [gutters(), activeGutters.of({...defaults, ...config})]
 }
 
-const baseTheme = EditorView.baseTheme({
-  ".cm-gutters": {
-    display: "flex",
-    height: "100%",
-    boxSizing: "border-box",
-    left: 0,
-    zIndex: 200
-  },
-
-  "&light .cm-gutters": {
-    backgroundColor: "#f5f5f5",
-    color: "#6c6c6c",
-    borderRight: "1px solid #ddd"
-  },
-
-  "&dark .cm-gutters": {
-    backgroundColor: "#333338",
-    color: "#ccc"
-  },
-
-  ".cm-gutter": {
-    display: "flex !important", // Necessary -- prevents margin collapsing
-    flexDirection: "column",
-    flexShrink: 0,
-    boxSizing: "border-box",
-    minHeight: "100%",
-    overflow: "hidden"
-  },
-
-  ".cm-gutterElement": {
-    boxSizing: "border-box"
-  },
-
-  ".cm-lineNumbers .cm-gutterElement": {
-    padding: "0 3px 0 5px",
-    minWidth: "20px",
-    textAlign: "right",
-    whiteSpace: "nowrap"
-  },
-
-  "&light .cm-activeLineGutter": {
-    backgroundColor: "#e2f2ff"
-  },
-
-  "&dark .cm-activeLineGutter": {
-    backgroundColor: "#222227"
-  }
-})
-
 const unfixGutters = Facet.define<boolean, boolean>({
   combine: values => values.some(x => x)
 })
@@ -151,9 +102,8 @@ const unfixGutters = Facet.define<boolean, boolean>({
 /// CSS [`position:
 /// sticky`](https://developer.mozilla.org/en-US/docs/Web/CSS/position#sticky)).
 export function gutters(config?: {fixed?: boolean}): Extension {
-  let result = [
+  let result: Extension[] = [
     gutterView,
-    baseTheme
   ]
   if (config && config.fixed === false) result.push(unfixGutters.of(true))
   return result

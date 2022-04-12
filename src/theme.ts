@@ -142,6 +142,74 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "&light .cm-specialChar": { color: "red" },
   "&dark .cm-specialChar": { color: "#f78" },
 
+  ".cm-gutters": {
+    display: "flex",
+    height: "100%",
+    boxSizing: "border-box",
+    left: 0,
+    zIndex: 200
+  },
+
+  "&light .cm-gutters": {
+    backgroundColor: "#f5f5f5",
+    color: "#6c6c6c",
+    borderRight: "1px solid #ddd"
+  },
+
+  "&dark .cm-gutters": {
+    backgroundColor: "#333338",
+    color: "#ccc"
+  },
+
+  ".cm-gutter": {
+    display: "flex !important", // Necessary -- prevents margin collapsing
+    flexDirection: "column",
+    flexShrink: 0,
+    boxSizing: "border-box",
+    minHeight: "100%",
+    overflow: "hidden"
+  },
+
+  ".cm-gutterElement": {
+    boxSizing: "border-box"
+  },
+
+  ".cm-lineNumbers .cm-gutterElement": {
+    padding: "0 3px 0 5px",
+    minWidth: "20px",
+    textAlign: "right",
+    whiteSpace: "nowrap"
+  },
+
+  "&light .cm-activeLineGutter": {
+    backgroundColor: "#e2f2ff"
+  },
+
+  "&dark .cm-activeLineGutter": {
+    backgroundColor: "#222227"
+  },
+
+  ".cm-panels": {
+    boxSizing: "border-box",
+    position: "sticky",
+    left: 0,
+    right: 0
+  },
+  "&light .cm-panels": {
+    backgroundColor: "#f5f5f5",
+    color: "black"
+  },
+  "&light .cm-panels-top": {
+    borderBottom: "1px solid #ddd"
+  },
+  "&light .cm-panels-bottom": {
+    borderTop: "1px solid #ddd"
+  },
+  "&dark .cm-panels": {
+    backgroundColor: "#333338",
+    color: "white"
+  },
+
   ".cm-tab": {
     display: "inline-block",
     overflow: "hidden",
