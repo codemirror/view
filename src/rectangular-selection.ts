@@ -97,7 +97,7 @@ const showCrosshair = {style: "cursor: crosshair"}
 /// crosshair when a given modifier key, defaulting to Alt, is held
 /// down. Can serve as a visual hint that rectangular selection is
 /// going to happen when paired with
-/// [`rectangularSelection`](#rectangular-selection.rectangularSelection).
+/// [`rectangularSelection`](#view.rectangularSelection).
 export function crosshairCursor(options: {
   key?: "Alt" | "Control" | "Shift" | "Meta"
 } = {}): Extension {

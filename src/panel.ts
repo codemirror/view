@@ -192,7 +192,7 @@ function rm(node: ChildNode) {
 }
 
 /// A function that initializes a panel. Used in
-/// [`showPanel`](#panel.showPanel).
+/// [`showPanel`](#view.showPanel).
 export type PanelConstructor = (view: EditorView) => Panel
 
 /// Opening a panel is done by providing a constructor function for

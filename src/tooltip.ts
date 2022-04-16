@@ -353,7 +353,7 @@ const baseTheme = EditorView.baseTheme({
 })
 
 /// Describes a tooltip. Values of this type, when provided through
-/// the [`showTooltip`](#tooltip.showTooltip) facet, control the
+/// the [`showTooltip`](#view.showTooltip) facet, control the
 /// individual tooltips on the editor.
 export interface Tooltip {
   /// The document position at which to show the tooltip.
@@ -362,7 +362,7 @@ export interface Tooltip {
   /// from `pos`.
   end?: number
   /// A constructor function that creates the tooltip's [DOM
-  /// representation](#tooltip.TooltipView).
+  /// representation](#view.TooltipView).
   create(view: EditorView): TooltipView
   /// Whether the tooltip should be shown above or below the target
   /// position. Not guaranteed to be respected for hover tooltips

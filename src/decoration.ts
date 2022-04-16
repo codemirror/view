@@ -133,7 +133,7 @@ export abstract class WidgetType {
 
 /// A decoration set represents a collection of decorated ranges,
 /// organized for efficient access and mapping. See
-/// [`RangeSet`](#rangeset.RangeSet) for its methods.
+/// [`RangeSet`](#state.RangeSet) for its methods.
 export type DecorationSet = RangeSet<Decoration>
 
 const enum Side {
@@ -166,7 +166,7 @@ export enum BlockType {
 
 /// A decoration provides information on how to draw or style a piece
 /// of content. You'll usually use it wrapped in a
-/// [`Range`](#rangeset.Range), which adds a start and end position.
+/// [`Range`](#state.Range), which adds a start and end position.
 /// @nonabstract
 export abstract class Decoration extends RangeValue {
   /// @internal

@@ -527,7 +527,7 @@ export class EditorView {
   }
 
   /// Move a cursor position by [grapheme
-  /// cluster](#text.findClusterBreak). `forward` determines whether
+  /// cluster](#state.findClusterBreak). `forward` determines whether
   /// the motion is away from the line start, or towards it. In
   /// bidirectional text, the line is traversed in visual order, using
   /// the editor's [text direction](#view.EditorView.textDirection).

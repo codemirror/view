@@ -38,8 +38,8 @@ GutterMarker.prototype.point = true
 
 /// Facet used to add a class to all gutter elements for a given line.
 /// Markers given to this facet should _only_ define an
-/// [`elementclass`](#gutter.GutterMarker.elementClass), not a
-/// [`toDOM`](#gutter.GutterMarker.toDOM) (or the marker will appear
+/// [`elementclass`](#view.GutterMarker.elementClass), not a
+/// [`toDOM`](#view.GutterMarker.toDOM) (or the marker will appear
 /// in all gutters for the line).
 export const gutterLineClass = Facet.define<RangeSet<GutterMarker>>()
 
