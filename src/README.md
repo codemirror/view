@@ -67,8 +67,6 @@ representation.
 
 @WidgetType
 
-@Range
-
 @MatchDecorator
 
 ### Gutters
