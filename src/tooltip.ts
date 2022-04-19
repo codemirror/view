@@ -413,7 +413,9 @@ export const showTooltip = Facet.define<Tooltip | null>({
   enables: [tooltipPlugin, baseTheme]
 })
 
-const showHoverTooltip = Facet.define<Tooltip | null>()
+const showHoverTooltip = Facet.define<Tooltip | null>({
+  combine(x) { console.log("show", x.map(x => !!x)); return x }
+})
 
 class HoverTooltipHost implements TooltipView {
   private readonly manager: TooltipViewManager
@@ -460,6 +462,7 @@ class HoverTooltipHost implements TooltipView {
 
 const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
   let tooltips = state.facet(showHoverTooltip).filter(t => t) as Tooltip[]
+  console.log("hover tooltips: ", tooltips.length)
   if (tooltips.length === 0) return null
 
   return {
@@ -613,19 +616,21 @@ export function hoverTooltip(
     create() { return null },
 
     update(value, tr) {
+      console.log("update tooltip", !!value)
       if (value && (options.hideOnChange && (tr.docChanged || tr.selection))) return null
-      for (let effect of tr.effects) {
-        if (effect.is(setHover)) return effect.value
-        if (effect.is(closeHoverTooltipEffect)) return null
-      }
       if (value && tr.docChanged) {
         let newPos = tr.changes.mapPos(value.pos, -1, MapMode.TrackDel)
         if (newPos == null) return null
         let copy: Tooltip = Object.assign(Object.create(null), value)
         copy.pos = newPos
         if (value.end != null) copy.end = tr.changes.mapPos(value.end)
-        return copy
+        value = copy
       }
+      for (let effect of tr.effects) {
+        if (effect.is(setHover)) value = effect.value
+        if (effect.is(closeHoverTooltipEffect)) value = (console.log("CLOSE"), null)
+      }
+      console.log("updated: " + !!value)
       return value
     },
 

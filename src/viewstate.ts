@@ -261,7 +261,7 @@ export class ViewState {
     }
 
     if (measureContent) {
-      let lineHeights = view.docView.measureVisibleLineHeights()
+      let lineHeights = view.docView.measureVisibleLineHeights(this.viewport)
       if (oracle.mustRefreshForHeights(lineHeights)) refresh = true
       if (refresh || oracle.lineWrapping && Math.abs(contentWidth - this.contentDOMWidth) > oracle.charWidth) {
         let {lineHeight, charWidth} = view.docView.measureTextSize()
@@ -276,8 +276,10 @@ export class ViewState {
       else if (dTop < 0 && dBottom < 0) bias = Math.min(dTop, dBottom)
 
       oracle.heightChanged = false
-      this.heightMap = this.heightMap.updateHeight(
-        oracle, 0, refresh, new MeasuredHeights(this.viewport.from, lineHeights))
+      for (let vp of this.viewports) {
+        let heights = vp.from == this.viewport.from ? lineHeights : view.docView.measureVisibleLineHeights(vp)
+        this.heightMap = this.heightMap.updateHeight(oracle, 0, refresh, new MeasuredHeights(vp.from, heights))
+      }
       if (oracle.heightChanged) result |= UpdateFlag.Height
     }
 

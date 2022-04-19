@@ -275,8 +275,8 @@ export class DocView extends ContentView {
     }
   }
 
-  measureVisibleLineHeights() {
-    let result = [], {from, to} = this.view.viewState.viewport
+  measureVisibleLineHeights(viewport: {from: number, to: number}) {
+    let result = [], {from, to} = viewport
     let contentWidth = this.view.contentDOM.clientWidth
     let isWider = contentWidth > Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
     let widest = -1, ltr = this.view.textDirection == Direction.LTR
