@@ -1,3 +1,37 @@
+## 0.20.0 (2022-04-20)
+
+### Breaking changes
+
+The deprecated interfaces `blockAtHeight`, `visualLineAtHeight`, `viewportLines`, `visualLineAt`, `scrollPosIntoView`, `scrollTo`, and `centerOn` were removed from the library.
+
+All decorations are now provided through `EditorView.decorations`, and are part of a single precedence ordering. Decoration sources that need access to the view are provided as functions.
+
+Atomic ranges are now specified through a facet (`EditorView.atomicRanges`).
+
+Scroll margins are now specified through a facet (`EditorView.scrollMargins`).
+
+Plugin fields no longer exist in the library (and are replaced by facets holding function values).
+
+This package no longer re-exports the Range type from @codemirror/state.
+
+This package no longer exports the `Range` type (now from @codemirror/state).
+
+### Bug fixes
+
+Fix a bug where zero-length block widgets could cause `viewportLineBlocks` to contain overlapping ranges.
+
+### New features
+
+The new `perLineTextDirection` facet configures whether the editor reads text direction per line, or uses a single direction for the entire editor. `EditorView.textDirectionAt` returns the direction around a given position.
+
+`rectangularSelection` and `crosshairCursor` from @codemirror/rectangular-selection were merged into this package.
+
+This package now exports the tooltip functionality that used to live in @codemirror/tooltip.
+
+The exports from the old @codemirror/panel package are now available from this package.
+
+The exports from the old @codemirror/gutter package are now available from this package.
+
 ## 0.19.48 (2022-03-30)
 
 ### Bug fixes

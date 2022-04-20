@@ -1,6 +1,6 @@
 {
   "name": "@codemirror/view",
-  "version": "0.19.48",
+  "version": "0.20.0",
   "description": "DOM view component for the CodeMirror code editor",
   "scripts": {
     "test": "cm-runtests",
@@ -26,7 +26,7 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/state": "^0.19.3",
+    "@codemirror/state": "^0.20.0",
     "style-mod": "^4.0.0",
     "w3c-keyname": "^2.2.4"
   },
