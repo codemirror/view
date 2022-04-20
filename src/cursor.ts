@@ -270,7 +270,7 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
     if (goal == null) goal = startCoords.left - rect.left
     startY = dir < 0 ? startCoords.top : startCoords.bottom
   } else {
-    let line = view.viewState.lineBlockAt(startPos - docTop)
+    let line = view.viewState.lineBlockAt(startPos)
     if (goal == null) goal = Math.min(rect.right - rect.left, view.defaultCharacterWidth * (startPos - line.from))
     startY = (dir < 0 ? line.top : line.bottom) + docTop
   }
