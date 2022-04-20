@@ -1,3 +1,11 @@
+## 0.20.1 (2022-04-20)
+
+### Bug fixes
+
+Remove debug statements that accidentally made it into 0.20.0.
+
+Fix a regression in `moveVertically`.
+
 ## 0.20.0 (2022-04-20)
 
 ### Breaking changes
