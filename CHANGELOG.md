@@ -14,8 +14,6 @@ Plugin fields no longer exist in the library (and are replaced by facets holding
 
 This package no longer re-exports the Range type from @codemirror/state.
 
-This package no longer exports the `Range` type (now from @codemirror/state).
-
 ### Bug fixes
 
 Fix a bug where zero-length block widgets could cause `viewportLineBlocks` to contain overlapping ranges.
