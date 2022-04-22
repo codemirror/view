@@ -1,3 +1,9 @@
+## 0.20.2 (2022-04-22)
+
+### New features
+
+The new `hideOn` option to `hoverTooltip` allows more fine-grained control over when the tooltip should hide.
+
 ## 0.20.1 (2022-04-20)
 
 ### Bug fixes
