@@ -1,4 +1,5 @@
-import {EditorState, StateEffect, StateEffectType, Facet, StateField, Extension, MapMode} from "@codemirror/state"
+import {EditorState, Transaction, StateEffect, StateEffectType,
+        Facet, StateField, Extension, MapMode} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate, logException} from "./extension"
 import {Direction} from "./bidi"
@@ -600,9 +601,12 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
 export function hoverTooltip(
   source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
   options: {
+    /// Controls whether a transaction hides the tooltip. The default
+    /// is to not hide.
+    hideOn?: (tr: Transaction, tooltip: Tooltip) => boolean,
     /// When enabled (this defaults to false), close the tooltip
-    /// whenever the document changes.
-    hideOnChange?: boolean,
+    /// whenever the document changes or the selection is set.
+    hideOnChange?: boolean | "touch",
     /// Hover time after which the tooltip should appear, in
     /// milliseconds. Defaults to 300ms.
     hoverTime?: number
@@ -613,7 +617,9 @@ export function hoverTooltip(
     create() { return null },
 
     update(value, tr) {
-      if (value && (options.hideOnChange && (tr.docChanged || tr.selection))) return null
+      if (value && (options.hideOnChange && (tr.docChanged || tr.selection) ||
+                    options.hideOn && options.hideOn(tr, value)))
+        return null
       if (value && tr.docChanged) {
         let newPos = tr.changes.mapPos(value.pos, -1, MapMode.TrackDel)
         if (newPos == null) return null
