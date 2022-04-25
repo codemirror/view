@@ -251,6 +251,7 @@ export class DOMObserver {
       let key = this.delayedAndroidKey!
       this.delayedAndroidKey = null
       let startState = this.view.state
+      this.readSelectionRange()
       if (dispatchKey(this.view.contentDOM, key.key, key.keyCode)) this.processRecords()
       else this.flush()
       if (this.view.state == startState) this.view.update([])

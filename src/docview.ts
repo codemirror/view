@@ -477,7 +477,9 @@ function computeCompositionDeco(view: EditorView, changes: ChangeSet): Decoratio
   let topView = ContentView.get(node)
   if (topView instanceof CompositionView) topView = topView.widget.topView
   else if (topView) topView.parent = null
-  return Decoration.set(Decoration.replace({widget: new CompositionWidget(node, textNode, topView)}).range(newFrom, newTo))
+  return Decoration.set(
+    Decoration.replace({widget: new CompositionWidget(node, textNode, topView), inclusive: true})
+      .range(newFrom, newTo))
 }
 
 export class CompositionWidget extends WidgetType {
