@@ -1,3 +1,9 @@
+## 0.20.3 (2022-04-27)
+
+### Bug fixes
+
+Fix a bug where the input handling could crash on repeated (or held) backspace presses on Chrome Android.
+
 ## 0.20.2 (2022-04-22)
 
 ### New features
