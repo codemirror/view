@@ -756,8 +756,8 @@ export class EditorView {
 
   /// By default, the editor assumes all its content has the same
   /// [text direction](#view.Direction). Configure this with a `true`
-  /// value to make it read and store the text direction of every
-  /// (rendered) line separately.
+  /// value to make it read the text direction of every (rendered)
+  /// line separately.
   static perLineTextDirection = perLineTextDirection
 
   /// Allows you to provide a function that should be called when the
