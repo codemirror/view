@@ -240,7 +240,7 @@ export class EditorView {
     if (state.facet(EditorState.phrases) != this.state.facet(EditorState.phrases))
       return this.setState(state)
 
-    update = new ViewUpdate(this, state, transactions)
+    update = ViewUpdate.create(this, state, transactions)
     let scrollTarget = this.viewState.scrollTarget
     try {
       this.updateState = UpdateState.Updating
@@ -356,7 +356,7 @@ export class EditorView {
           try { return m.read(this) }
           catch(e) { logException(this.state, e); return BadMeasure }
         })
-        let update = new ViewUpdate(this, this.state), redrawn = false, scrolled = false
+        let update = ViewUpdate.create(this, this.state, []), redrawn = false, scrolled = false
         update.flags |= changed
         if (!updated) updated = update
         else updated.flags |= changed

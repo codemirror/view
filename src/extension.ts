@@ -14,8 +14,6 @@ import {MakeSelectionStyle} from "./input"
 /// transaction) and return `true`.
 export type Command = (target: EditorView) => boolean
 
-const none: readonly any[] = []
-
 export const clickAddsSelectionRange = Facet.define<(event: MouseEvent) => boolean>()
 
 export const dragMovesSelection = Facet.define<(event: MouseEvent) => boolean>()
@@ -282,14 +280,13 @@ export class ViewUpdate {
   /// @internal
   changedRanges: readonly ChangedRange[]
 
-  /// @internal
-  constructor(
+  private constructor(
     /// The editor view that the update is associated with.
     readonly view: EditorView,
     /// The new editor state.
     readonly state: EditorState,
     /// The transactions involved in the update. May be empty.
-    readonly transactions: readonly Transaction[] = none
+    readonly transactions: readonly Transaction[]
   ) {
     this.startState = view.state
     this.changes = ChangeSet.empty(this.startState.doc.length)
@@ -302,6 +299,11 @@ export class ViewUpdate {
       view.inputState.notifiedFocused = focus
       this.flags |= UpdateFlag.Focus
     }
+  }
+
+  /// @internal
+  static create(view: EditorView, state: EditorState, transactions: readonly Transaction[]) {
+    return new ViewUpdate(view, state, transactions)
   }
 
   /// Tells you whether the [viewport](#view.EditorView.viewport) or

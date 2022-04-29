@@ -169,8 +169,7 @@ export enum BlockType {
 /// [`Range`](#state.Range), which adds a start and end position.
 /// @nonabstract
 export abstract class Decoration extends RangeValue {
-  /// @internal
-  constructor(
+  protected constructor(
     /// @internal
     readonly startSide: number,
     /// @internal
