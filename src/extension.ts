@@ -101,8 +101,8 @@ export interface PluginSpec<V extends PluginValue> {
   provide?: (plugin: ViewPlugin<V>) => Extension
 
   /// Allow the plugin to provide decorations. When given, this should
-  /// a function that take the plugin value and return a [decoration
-  /// set](#view.DecorationSet). See also the caveat about
+  /// created a function that take the plugin value and return a 
+  /// [decoration set](#view.DecorationSet). See also the caveat about
   /// [layout-changing decorations](#view.EditorView^decorations)
   /// that depend on the view.
   decorations?: (value: V) => DecorationSet
