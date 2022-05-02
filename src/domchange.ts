@@ -68,6 +68,11 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
       from: sel.from, to: sel.to,
       insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
     }
+  // Detect insert-period-on-double-space Mac behavior, and transform
+  // it into a regular space insert.
+  else if (browser.mac && change && change.from == change.to && change.from == sel.head - 1 &&
+           change.insert.toString() == ".")
+    change = {from: sel.from, to: sel.to, insert: Text.of([" "])}
 
   if (change) {
     let startState = view.state
