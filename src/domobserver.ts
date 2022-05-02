@@ -182,6 +182,10 @@ export class DOMObserver {
     this.selectionChanged = false
   }
 
+  clearSelectionRange() {
+    this.selectionRange.set(null, 0, null, 0)
+  }
+
   listenForScroll() {
     this.parentCheck = -1
     let i = 0, changed: HTMLElement[] | null = null

@@ -622,10 +622,17 @@ handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
     })
 }
 
-handlers.focus = handlers.blur = view => {
+function updateForFocusChange(view: EditorView) {
   setTimeout(() => {
     if (view.hasFocus != view.inputState.notifiedFocused) view.update([])
   }, 10)
+}
+
+handlers.focus = updateForFocusChange
+
+handlers.blur = view => {
+  view.observer.clearSelectionRange()
+  updateForFocusChange(view)
 }
 
 function forceClearComposition(view: EditorView, rapid: boolean) {
