@@ -1,3 +1,11 @@
+## 0.20.4 (2022-05-03)
+
+### Bug fixes
+
+Prevent Mac-style behavior of inserting a period when the user inserts two spaces.
+
+Fix an issue where the editor would sometimes not restore the DOM selection when refocused with a selection identical to the one it held when it lost focus.
+
 ## 0.20.3 (2022-04-27)
 
 ### Bug fixes
