@@ -313,6 +313,7 @@ class GutterElement {
 
   constructor(view: EditorView, height: number, above: number, markers: readonly GutterMarker[]) {
     this.dom = document.createElement("div")
+    this.dom.className = "cm-gutterElement"
     this.update(view, height, above, markers)
   }
 
