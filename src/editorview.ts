@@ -410,6 +410,7 @@ export class EditorView {
       class: "cm-content",
       style: `${browser.tabSize}: ${this.state.tabSize}`,
       role: "textbox",
+      "aria-label": "editor",
       "aria-multiline": "true"
     }
     if (this.state.readOnly) contentAttrs["aria-readonly"] = "true"
