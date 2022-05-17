@@ -72,6 +72,7 @@ export class InputState {
 
   ensureHandlers(view: EditorView, plugins: readonly PluginInstance[]) {
     let handlers
+    this.customHandlers = []
     for (let plugin of plugins) if (handlers = plugin.update(view).spec?.domEventHandlers) {
       this.customHandlers.push({plugin: plugin.value!, handlers})
       for (let type in handlers) if (this.registeredEvents.indexOf(type) < 0 && type != "scroll") {
