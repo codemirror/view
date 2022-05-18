@@ -1,3 +1,11 @@
+## 0.20.5 (2022-05-18)
+
+### Bug fixes
+
+Fix an issue where gutter elements without any markers in them would not get the `cm-gutterElement` class assigned.
+
+Fix an issue where DOM event handlers registered by plugins were retained indefinitely, even after the editor was reconfigured.
+
 ## 0.20.4 (2022-05-03)
 
 ### Bug fixes
