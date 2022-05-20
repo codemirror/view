@@ -223,23 +223,20 @@ export class ViewState {
 
     let refresh = this.heightOracle.mustRefreshForWrapping(whiteSpace)
     let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != dom.clientHeight
+    this.contentDOMHeight = dom.clientHeight
+    this.mustMeasureContent = false
     let result = 0, bias = 0
+    // Vertical padding
+    let paddingTop = parseInt(style.paddingTop!) || 0, paddingBottom = parseInt(style.paddingBottom!) || 0
+    if (this.paddingTop != paddingTop || this.paddingBottom != paddingBottom) {
+      this.paddingTop = paddingTop
+      this.paddingBottom = paddingBottom
+      result |= UpdateFlag.Geometry | UpdateFlag.Height
+    }
     if (this.editorWidth != view.scrollDOM.clientWidth) {
       if (oracle.lineWrapping) measureContent = true
       this.editorWidth = view.scrollDOM.clientWidth
       result |= UpdateFlag.Geometry
-    }
-
-    if (measureContent) {
-      this.mustMeasureContent = false
-      this.contentDOMHeight = dom.clientHeight
-      // Vertical padding
-      let paddingTop = parseInt(style.paddingTop!) || 0, paddingBottom = parseInt(style.paddingBottom!) || 0
-      if (this.paddingTop != paddingTop || this.paddingBottom != paddingBottom) {
-        result |= UpdateFlag.Geometry
-        this.paddingTop = paddingTop
-        this.paddingBottom = paddingBottom
-      }
     }
 
     // Pixel viewport
