@@ -1,3 +1,9 @@
+## 0.20.6 (2022-05-20)
+
+### Bug fixes
+
+Make sure the editor re-measures itself when its attributes are updated.
+
 ## 0.20.5 (2022-05-18)
 
 ### Bug fixes
