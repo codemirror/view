@@ -51,6 +51,7 @@ export class LineView extends ContentView implements BlockView {
 
   transferDOM(other: LineView) {
     if (!this.dom) return
+    this.markDirty()
     other.setDOM(this.dom)
     other.prevAttrs = this.prevAttrs === undefined ? this.attrs : this.prevAttrs
     this.prevAttrs = undefined

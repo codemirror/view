@@ -236,6 +236,7 @@ export class EditorView {
       return
     }
 
+    this.observer.clear()
     // When the phrases change, redraw the editor
     if (state.facet(EditorState.phrases) != this.state.facet(EditorState.phrases))
       return this.setState(state)
