@@ -136,10 +136,10 @@ function textCoords(text: Text, pos: number, side: number): Rect {
   if (pos == 0 && side < 0 || pos == length && side >= 0) {
     if (!(browser.chrome || browser.gecko)) { // These browsers reliably return valid rectangles for empty ranges
       if (pos) { from--; flatten = 1 } // FIXME this is wrong in RTL text
-      else { to++; flatten = -1 }
+      else if (to < length) { to++; flatten = -1 }
     }
   } else {
-    if (side < 0) from--; else to++
+    if (side < 0) from--; else if (to < length) to++
   }
   let rects = textRange(text, from, to).getClientRects()
   if (!rects.length) return Rect0
