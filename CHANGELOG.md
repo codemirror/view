@@ -1,3 +1,15 @@
+## 0.20.7 (2022-05-30)
+
+### Bug fixes
+
+Fix an issue on Chrome Android where the DOM could fail to display the actual document after backspace.
+
+Avoid an issue on Chrome Android where DOM changes were sometimes inappropriately replace by a backspace key effect due to spurious beforeinput events.
+
+Fix a problem where the content element's width didn't cover the width of the actual content.
+
+Work around a bug in Chrome 102 which caused wheel scrolling of the editor to be interrupted every few lines.
+
 ## 0.20.6 (2022-05-20)
 
 ### Bug fixes
