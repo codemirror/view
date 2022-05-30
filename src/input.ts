@@ -12,6 +12,7 @@ import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
 export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
+  chromeScrollHack = -1
 
   // On iOS, some keys need to have their default behavior happen
   // (after which we retroactively handle them and reset the DOM) to
@@ -63,6 +64,19 @@ export class InputState {
         else handler(view, event)
       })
       this.registeredEvents.push(type)
+    }
+    if (browser.chrome && browser.chrome_version >= 102) {
+      // On Chrome 102, viewport updates somehow stop wheel-based
+      // scrolling. Turning off pointer events during the scroll seems
+      // to avoid the issue.
+      view.scrollDOM.addEventListener("wheel", () => {
+        if (this.chromeScrollHack < 0) view.contentDOM.style.pointerEvents = "none"
+        else window.clearTimeout(this.chromeScrollHack)
+        this.chromeScrollHack = setTimeout(() => {
+          this.chromeScrollHack = -1
+          view.contentDOM.style.pointerEvents = ""
+        }, 100)
+      }, {passive: true})
     }
     this.notifiedFocused = view.hasFocus
     // On Safari adding an input event handler somehow prevents an
