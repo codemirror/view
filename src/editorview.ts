@@ -3,6 +3,7 @@ import {EditorState, Transaction, TransactionSpec, Extension, Prec, ChangeDesc,
 import {StyleModule, StyleSpec} from "style-mod"
 
 import {DocView} from "./docview"
+import {ContentView} from "./contentview"
 import {InputState} from "./input"
 import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
@@ -886,6 +887,14 @@ export class EditorView {
   /// noticed by screen reader users (such as moving to the next
   /// search match).
   static announce = StateEffect.define<string>()
+
+  /// Retrieve an editor view instance from the view's DOM
+  /// representation.
+  static findFromDOM(dom: HTMLElement): EditorView | null {
+    let content = dom.querySelector(".cm-content")
+    let cView = content && ContentView.get(content) || ContentView.get(dom)
+    return (cView?.rootView as DocView)?.view || null
+  }
 }
 
 /// Helper type that maps event names to event object types, or the
