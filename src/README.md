@@ -1,6 +1,8 @@
 The “view” is the part of the editor that the user sees—a DOM
 component that displays the editor state and allows text input.
 
+@EditorViewConfig
+
 @EditorView
 
 @Direction

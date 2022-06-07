@@ -1,5 +1,5 @@
 import {EditorState, Transaction, TransactionSpec, Extension, Prec, ChangeDesc,
-        EditorSelection, SelectionRange, StateEffect, Facet, Line} from "@codemirror/state"
+        EditorSelection, SelectionRange, StateEffect, Facet, Line, EditorStateConfig} from "@codemirror/state"
 import {StyleModule, StyleSpec} from "style-mod"
 
 import {DocView} from "./docview"
@@ -23,9 +23,13 @@ import browser from "./browser"
 import {applyDOMChange} from "./domchange"
 import {computeOrder, trivialOrder, BidiSpan, Direction} from "./bidi"
 
-interface EditorConfig {
-  /// The view's initial state. Defaults to an extension-less state
-  /// with an empty document.
+/// The type of object given to the [`EditorView`](#view.EditorView)
+/// constructor.
+export interface EditorViewConfig extends EditorStateConfig {
+  /// The view's initial state. If not given, a new state is created
+  /// by passing this configuration object to
+  /// [`EditorState.create`](#state.EditorState^create), using its
+  /// `doc`, `selection`, and `extensions` field (if provided).
   state?: EditorState,
   /// When given, the editor is immediately appended to the given
   /// element on creation. (Otherwise, you'll have to place the view's
@@ -156,10 +160,7 @@ export class EditorView {
   /// Construct a new view. You'll want to either provide a `parent`
   /// option, or put `view.dom` into your document after creating a
   /// view, so that the user can see the editor.
-  constructor(
-    /// Initialization options.
-    config: EditorConfig = {}
-  ) {
+  constructor(config: EditorViewConfig = {}) {
     this.contentDOM = document.createElement("div")
 
     this.scrollDOM = document.createElement("div")
@@ -179,7 +180,7 @@ export class EditorView {
     this.dispatch = this.dispatch.bind(this)
     this.root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
 
-    this.viewState = new ViewState(config.state || EditorState.create())
+    this.viewState = new ViewState(config.state || EditorState.create(config))
     this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec))
     for (let plugin of this.plugins) plugin.update(this)
     this.observer = new DOMObserver(this, (from, to, typeOver) => {

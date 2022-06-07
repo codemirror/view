@@ -1,4 +1,4 @@
-export {EditorView, DOMEventMap, DOMEventHandlers} from "./editorview"
+export {EditorView, EditorViewConfig, DOMEventMap, DOMEventHandlers} from "./editorview"
 export {Command, ViewPlugin, PluginValue, PluginSpec, ViewUpdate, logException} from "./extension"
 export {Decoration, DecorationSet, WidgetType, BlockType} from "./decoration"
 export {BlockInfo} from "./heightmap"
