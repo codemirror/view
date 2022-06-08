@@ -1,6 +1,6 @@
 # @codemirror/view [![NPM version](https://img.shields.io/npm/v/@codemirror/view.svg)](https://www.npmjs.org/package/@codemirror/view)
 
-[ [**WEBSITE**](https://codemirror.net/) | [**DOCS**](https://codemirror.net/docs/ref/#view) | [**ISSUES**](https://github.com/codemirror/codemirror.next/issues) | [**FORUM**](https://discuss.codemirror.net/c/next/) | [**CHANGELOG**](https://github.com/codemirror/view/blob/main/CHANGELOG.md) ]
+[ [**WEBSITE**](https://codemirror.net/) | [**DOCS**](https://codemirror.net/docs/ref/#view) | [**ISSUES**](https://github.com/codemirror/dev/issues) | [**FORUM**](https://discuss.codemirror.net/c/next/) | [**CHANGELOG**](https://github.com/codemirror/view/blob/main/CHANGELOG.md) ]
 
 This package implements the DOM view component for the
 [CodeMirror](https://codemirror.net/) code editor.

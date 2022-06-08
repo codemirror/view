@@ -169,7 +169,7 @@ export class DOMObserver {
   readSelectionRange() {
     let {root} = this.view, domSel = getSelection(root)
     // The Selection object is broken in shadow roots in Safari. See
-    // https://github.com/codemirror/codemirror.next/issues/414
+    // https://github.com/codemirror/dev/issues/414
     let range = browser.safari && (root as any).nodeType == 11 && deepActiveElement() == this.view.contentDOM &&
       safariSelectionRangeHack(this.view) || domSel
     if (this.selectionRange.eq(range)) return false
