@@ -1,3 +1,11 @@
+## 6.0.0 (2022-06-08)
+
+### New features
+
+The new static `EditorView.findFromDOM` method can be used to retrieve an editor instance from its DOM structure.
+
+Instead of passing a constructed state to the `EditorView` constructor, it is now also possible to inline the configuration options to the state in the view config object.
+
 ## 0.20.7 (2022-05-30)
 
 ### Bug fixes
