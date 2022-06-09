@@ -30,6 +30,9 @@
     "style-mod": "^4.0.0",
     "w3c-keyname": "^2.2.4"
   },
+  "peerDependencies": {
+    "@codemirror/state": "^6.0.0"
+  },
   "devDependencies": {
     "@codemirror/buildhelper": "^0.1.6"
   },
