@@ -234,8 +234,9 @@ export class DocView extends ContentView {
   }
 
   mayControlSelection() {
-    return this.view.state.facet(editable) ? this.root.activeElement == this.dom
-      : hasSelection(this.dom, this.view.observer.selectionRange)
+    let active = this.root.activeElement
+    return hasSelection(this.dom, this.view.observer.selectionRange) &&
+      !(active && active != this.dom && this.dom.contains(active))
   }
 
   nearest(dom: Node): ContentView | null {
