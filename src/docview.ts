@@ -8,7 +8,7 @@ import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./deco
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet,
-        editable, ChangedRange, ScrollTarget, scrollMargins} from "./extension"
+        ChangedRange, ScrollTarget, scrollMargins} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 import {DOMReader, LineBreakPlaceholder} from "./domreader"
