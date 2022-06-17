@@ -1,3 +1,11 @@
+## 6.0.1 (2022-06-17)
+
+### Bug fixes
+
+Avoid DOM selection corruption when the editor doesn't have focus but has selection and updates its content.
+
+Fall back to dispatching by key code when a key event produces a non-ASCII character (so that Cyrillic and Arabic keyboards can still use bindings specified with Latin characters).
+
 ## 6.0.0 (2022-06-08)
 
 ### New features
