@@ -317,7 +317,7 @@ function isInPrimarySelection(view: EditorView, event: MouseEvent) {
   // On boundary clicks, check whether the coordinates are inside the
   // selection's client rectangles
   let sel = getSelection(view.root)
-  if (sel.rangeCount == 0) return true
+  if (!sel || sel.rangeCount == 0) return true
   let rects = sel.getRangeAt(0).getClientRects()
   for (let i = 0; i < rects.length; i++) {
     let rect = rects[i]

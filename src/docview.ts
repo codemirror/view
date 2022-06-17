@@ -182,7 +182,9 @@ export class DocView extends ContentView {
           this.dom.focus({preventScroll: true})
         }
         let rawSel = getSelection(this.root)
-        if (main.empty) {
+        if (!rawSel) {
+          // No DOM selection for some reason—do nothing
+        } else if (main.empty) {
           // Work around https://bugzilla.mozilla.org/show_bug.cgi?id=1612076
           if (browser.gecko) {
             let nextTo = nextToUneditable(anchor.node, anchor.offset)
@@ -221,7 +223,7 @@ export class DocView extends ContentView {
     if (this.compositionDeco.size) return
     let cursor = this.view.state.selection.main
     let sel = getSelection(this.root)
-    if (!cursor.empty || !cursor.assoc || !sel.modify) return
+    if (!sel || !cursor.empty || !cursor.assoc || !sel.modify) return
     let line = LineView.find(this, cursor.head)
     if (!line) return
     let lineStart = line.posAtStart

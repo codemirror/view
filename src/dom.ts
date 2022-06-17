@@ -1,4 +1,4 @@
-export function getSelection(root: DocumentOrShadowRoot): Selection {
+export function getSelection(root: DocumentOrShadowRoot): Selection | null {
   let target
   // Browsers differ on whether shadow roots have a getSelection
   // method. If it exists, use that, otherwise, call it on the
@@ -8,7 +8,7 @@ export function getSelection(root: DocumentOrShadowRoot): Selection {
   } else {
     target = root as Document
   }
-  return target.getSelection()!
+  return target.getSelection()
 }
 
 export function contains(dom: Node, node: Node | null) {
