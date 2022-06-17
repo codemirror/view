@@ -1,8 +1,8 @@
 import {EditorView} from "./editorview"
 import {Command} from "./extension"
 import {modifierCodes} from "./input"
-import {base, keyName} from "w3c-keyname"
-import {Facet, EditorState} from "@codemirror/state"
+import {base, shift, keyName} from "w3c-keyname"
+import {Facet, EditorState, codePointSize, codePointAt} from "@codemirror/state"
 
 import browser from "./browser"
 
@@ -185,7 +185,8 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
 }
 
 function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope: string): boolean {
-  let name = keyName(event), isChar = name.length == 1 && name != " "
+  let name = keyName(event)
+  let charCode = codePointAt(name, 0), isChar = codePointSize(charCode) == name.length && name != " "
   let prefix = "", fallthrough = false
   if (storedPrefix && storedPrefix.view == view && storedPrefix.scope == scope) {
     prefix = storedPrefix.prefix + " "
@@ -204,9 +205,11 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
   let scopeObj = map[scope], baseName
   if (scopeObj) {
     if (runFor(scopeObj[prefix + modifiers(name, event, !isChar)])) return true
-    if (isChar && (event.shiftKey || event.altKey || event.metaKey) &&
-      (baseName = base[event.keyCode]) && baseName != name) {
+    if (isChar && (event.shiftKey || event.altKey || event.metaKey || charCode > 127) &&
+        (baseName = base[event.keyCode]) && baseName != name) {
       if (runFor(scopeObj[prefix + modifiers(baseName, event, true)])) return true
+      else if (event.shiftKey && shift[event.keyCode] != baseName &&
+               runFor(scopeObj[prefix + modifiers(shift[event.keyCode], event, false)])) return true
     } else if (isChar && event.shiftKey) {
       if (runFor(scopeObj[prefix + modifiers(name, event, true)])) return true
     }
