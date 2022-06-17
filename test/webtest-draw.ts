@@ -216,14 +216,12 @@ describe("EditorView drawing", () => {
 
   it("notices it is added to the DOM even if initially detached", () => {
     if (!(window as any).IntersectionObserver) return // Only works with intersection observer support
-    let cm = tempView("a\n\b\nc\nd", [EditorView.contentAttributes.of({style: "font-size: 60px"})])
-    let parent = cm.dom.parentNode!
-    cm.dom.remove()
+    let cm = new EditorView({doc: "a\nb\nc\nd"})
+    let defaultHeight = cm.contentHeight
+    ;(document.querySelector("#workspace") as HTMLElement).appendChild(cm.dom)
     return later().then(() => {
-      parent.appendChild(cm.dom)
-      return later().then(() => {
-        ist(cm.contentHeight, 200, ">")
-      })
+      ist(cm.contentHeight, defaultHeight, "!=")
+      cm.destroy()
     })
   })
 
