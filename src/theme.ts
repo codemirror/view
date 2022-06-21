@@ -54,6 +54,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   ".cm-content": {
     margin: 0,
     flexGrow: 2,
+    flexShrink: 0,
     minHeight: "100%",
     display: "block",
     whiteSpace: "pre",
