@@ -73,7 +73,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     whiteSpace_fallback: "pre-wrap", // For IE
     whiteSpace: "break-spaces",
     wordBreak: "break-word", // For Safari, which doesn't support overflow-wrap: anywhere
-    overflowWrap: "anywhere"
+    overflowWrap: "anywhere",
+    flexShrink: 1
   },
 
   "&light .cm-content": { caretColor: "black" },
