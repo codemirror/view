@@ -1,3 +1,11 @@
+## 6.0.2 (2022-06-23)
+
+### Bug fixes
+
+Fix a CSS issue that broke horizontal scroll width stabilization.
+
+Fix a bug where `defaultLineHeight` could get an incorrect value in very narrow editors.
+
 ## 6.0.1 (2022-06-17)
 
 ### Bug fixes
