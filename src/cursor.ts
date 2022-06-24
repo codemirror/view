@@ -175,7 +175,9 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
       let range = doc.caretRangeFromPoint(x, y)
       if (range) {
         ;({startContainer: node, startOffset: offset} = range)
-        if (browser.safari && isSuspiciousCaretResult(node, offset, x)) node = undefined
+        if (browser.safari && isSuspiciousSafariCaretResult(node, offset, x) ||
+            browser.chrome && isSuspiciousChromeCaretResult(node, offset, x))
+          node = undefined
       }
     }
   }
@@ -203,12 +205,26 @@ function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockI
 // the space between lines as belonging to the last character of the
 // line before. This is used to detect such a result so that it can be
 // ignored (issue #401).
-function isSuspiciousCaretResult(node: Node, offset: number, x: number) {
+function isSuspiciousSafariCaretResult(node: Node, offset: number, x: number) {
   let len
   if (node.nodeType != 3 || offset != (len = node.nodeValue!.length)) return false
   for (let next = node.nextSibling; next; next = next.nextSibling)
     if (next.nodeType != 1 || next.nodeName != "BR") return false
   return textRange(node as Text, len - 1, len).getBoundingClientRect().left > x
+}
+
+// Chrome will move positions between lines to the start of the next line
+function isSuspiciousChromeCaretResult(node: Node, offset: number, x: number) {
+  if (offset != 0) return false
+  for (let cur = node;;) {
+    let parent = cur.parentNode
+    if (!parent || parent.nodeType != 1 || parent.firstChild != cur) return false
+    if ((parent as HTMLElement).classList.contains("cm-line")) break
+    cur = parent
+  }
+  let rect = node.nodeType == 1 ? (node as HTMLElement).getBoundingClientRect()
+    : textRange(node as Text, 0, Math.max(node.nodeValue!.length, 1)).getBoundingClientRect()
+  return x - rect.left > 5
 }
 
 export function moveToLineBoundary(view: EditorView, start: SelectionRange, forward: boolean, includeWrap: boolean) {
