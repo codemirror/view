@@ -118,8 +118,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   // Two animations defined so that we can switch between them to
   // restart the animation without forcing another style
   // recomputation.
-  "@keyframes cm-blink": {"0%": {}, "50%": {visibility: "hidden"}, "100%": {}},
-  "@keyframes cm-blink2": {"0%": {}, "50%": {visibility: "hidden"}, "100%": {}},
+  "@keyframes cm-blink": {"0%": {}, "50%": {opacity: 0}, "100%": {}},
+  "@keyframes cm-blink2": {"0%": {}, "50%": {opacity: 0}, "100%": {}},
 
   ".cm-cursor, .cm-dropCursor": {
     position: "absolute",
