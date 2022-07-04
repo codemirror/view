@@ -2,7 +2,7 @@ import {EditorView} from "./editorview"
 import {Command} from "./extension"
 import {modifierCodes} from "./input"
 import {base, shift, keyName} from "w3c-keyname"
-import {Facet, EditorState, codePointSize, codePointAt} from "@codemirror/state"
+import {Facet, Prec, EditorState, codePointSize, codePointAt} from "@codemirror/state"
 
 import browser from "./browser"
 
@@ -103,11 +103,11 @@ type Binding = {preventDefault: boolean, commands: Command[]}
 
 type Keymap = {[scope: string]: {[key: string]: Binding}}
 
-const handleKeyEvents = EditorView.domEventHandlers({
+const handleKeyEvents = Prec.default(EditorView.domEventHandlers({
   keydown(event, view) {
     return runHandlers(getKeymap(view.state), event, view, "editor")
   }
-})
+}))
 
 /// Facet used for registering keymaps.
 ///
