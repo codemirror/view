@@ -498,8 +498,12 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
       }
       if (extend)
         return startSel.replaceRange(startSel.main.extend(range.from, range.to))
-      else if (multiple)
-        return startSel.addRange(range)
+      else if (multiple) {
+        if (startSel.ranges.length > 1 && startSel.ranges.some(r => r.eq(range)))
+          return EditorSelection.create(startSel.ranges.filter(r => !r.eq(range)))
+        else
+          return startSel.addRange(range)
+      }
       else
         return EditorSelection.create([range])
     }
