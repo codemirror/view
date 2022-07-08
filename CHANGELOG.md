@@ -1,3 +1,13 @@
+## 6.0.3 (2022-07-08)
+
+### Bug fixes
+
+Fix a problem where `posAtCoords` could incorrectly return the start of the next line when querying positions between lines.
+
+Fix an issue where registering a high-precedence keymap made keymap handling take precedence over other keydown event handlers.
+
+Ctrl/Cmd-clicking can now remove ranges from a multi-range selection.
+
 ## 6.0.2 (2022-06-23)
 
 ### Bug fixes
