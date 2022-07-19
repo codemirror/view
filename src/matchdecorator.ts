@@ -1,13 +1,13 @@
-import {Text, RangeSetBuilder} from "@codemirror/state"
+import {Text, RangeSetBuilder, Range} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewUpdate} from "./extension"
 import {Decoration, DecorationSet} from "./decoration"
 
-function iterMatches(doc: Text, re: RegExp, from: number, to: number, f: (from: number, to: number, m: RegExpExecArray) => void) {
+function iterMatches(doc: Text, re: RegExp, from: number, to: number, f: (from: number, m: RegExpExecArray) => void) {
   re.lastIndex = 0
   for (let cursor = doc.iterRange(from, to), pos = from, m; !cursor.next().done; pos += cursor.value.length) {
     if (!cursor.lineBreak) while (m = re.exec(cursor.value))
-      f(pos + m.index, pos + m.index + m[0].length, m)
+      f(pos + m.index, m)
   }
 }
 
@@ -31,7 +31,10 @@ function matchRanges(view: EditorView, maxLength: number) {
 /// represent a matching configuration.
 export class MatchDecorator {
   private regexp: RegExp
-  private getDeco: (match: RegExpExecArray, view: EditorView, pos: number) => Decoration
+  private addMatch: (match: RegExpExecArray,
+                     view: EditorView,
+                     from: number,
+                     add: (from: number, to: number, deco: Decoration) => void) => void
   private boundary: RegExp | undefined
   private maxLength: number
 
@@ -43,7 +46,16 @@ export class MatchDecorator {
     regexp: RegExp,
     /// The decoration to apply to matches, either directly or as a
     /// function of the match.
-    decoration: Decoration | ((match: RegExpExecArray, view: EditorView, pos: number) => Decoration),
+    decoration?: Decoration | ((match: RegExpExecArray, view: EditorView, pos: number) => Decoration),
+    /// Customize the way decorations are added for matches. This
+    /// function, when given, will be called for matches and should
+    /// call `add` to create decorations for them. Note that the
+    /// decorations should appear *in* the given range, and the
+    /// function should have no side effects beyond calling `add`.
+    ///
+    /// The `decoration` option is ignored when `decorate` is
+    /// provided.
+    decorate?: (add: (from: number, to: number, decoration: Decoration) => void, from: number, to: number, match: RegExpExecArray, view: EditorView) => void,
     /// By default, changed lines are re-matched entirely. You can
     /// provide a boundary expression, which should match single
     /// character strings that can never occur in `regexp`, to reduce
@@ -56,10 +68,17 @@ export class MatchDecorator {
     /// include in its matches. Defaults to 1000.
     maxLength?: number,
   }) {
-    let {regexp, decoration, boundary, maxLength = 1000} = config
+    const {regexp, decoration, decorate, boundary, maxLength = 1000} = config
     if (!regexp.global) throw new RangeError("The regular expression given to MatchDecorator should have its 'g' flag set")
     this.regexp = regexp
-    this.getDeco = typeof decoration == "function" ? decoration as any : () => decoration
+    if (decorate) {
+      this.addMatch = (match, view, from, add) => decorate(add, from, from + match[0].length, match, view)
+    } else if (decoration) {
+      let getDeco = typeof decoration == "function" ? decoration as any : () => decoration
+      this.addMatch = (match, view, from, add) => add(from, from + match[0].length, getDeco(match, view, from))
+    } else {
+      throw new RangeError("Either 'decorate' or 'decoration' should be provided to MatchDecorator")
+    }
     this.boundary = boundary
     this.maxLength = maxLength
   }
@@ -68,9 +87,9 @@ export class MatchDecorator {
   /// view's viewport. You'll want to call this when initializing your
   /// plugin.
   createDeco(view: EditorView) {
-    let build = new RangeSetBuilder<Decoration>()
+    let build = new RangeSetBuilder<Decoration>(), add = build.add.bind(build)
     for (let {from, to} of matchRanges(view, this.maxLength))
-      iterMatches(view.state.doc, this.regexp, from, to, (a, b, m) => build.add(a, b, this.getDeco(m, view, a)))
+      iterMatches(view.state.doc, this.regexp, from, to, (from, m) => this.addMatch(m, view, from, add))
     return build.finish()
   }
 
@@ -108,16 +127,14 @@ export class MatchDecorator {
             break
           }
         }
-        let ranges = [], m
+        let ranges: Range<Decoration>[] = [], m
+        let add = (from: number, to: number, deco: Decoration) => ranges.push(deco.range(from, to))
         if (fromLine == toLine) {
           this.regexp.lastIndex = start - fromLine.from
-          while ((m = this.regexp.exec(fromLine.text)) && m.index < end - fromLine.from) {
-            let pos = m.index + fromLine.from
-            ranges.push(this.getDeco(m, view, pos).range(pos, pos + m[0].length))
-          }
+          while ((m = this.regexp.exec(fromLine.text)) && m.index < end - fromLine.from)
+            this.addMatch(m, view, m.index + fromLine.from, add)
         } else {
-          iterMatches(view.state.doc, this.regexp, start, end,
-                      (from, to, m) => ranges.push(this.getDeco(m, view, from).range(from, to)))
+          iterMatches(view.state.doc, this.regexp, start, end, (from, m) => this.addMatch(m, view, from, add))
         }
         deco = deco.update({filterFrom: start, filterTo: end, filter: (from, to) => from < start || to > end, add: ranges})
       }
