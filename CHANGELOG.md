@@ -1,3 +1,9 @@
+## 6.1.0 (2022-07-19)
+
+### New features
+
+`MatchDecorator` now supports a `decorate` option that can be used to customize the way decorations are added for each match.
+
 ## 6.0.3 (2022-07-08)
 
 ### Bug fixes
