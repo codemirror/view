@@ -3,7 +3,7 @@ import {ContentView, Dirty} from "./contentview"
 import {EditorView} from "./editorview"
 import {editable} from "./extension"
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition,
-        deepActiveElement, dispatchKey} from "./dom"
+        deepActiveElement, dispatchKey, atElementStart} from "./dom"
 
 const observeOptions = {
   childList: true,
@@ -167,14 +167,26 @@ export class DOMObserver {
   }
 
   readSelectionRange() {
-    let {root} = this.view
+    let {view} = this
     // The Selection object is broken in shadow roots in Safari. See
     // https://github.com/codemirror/dev/issues/414
-    let range = browser.safari && (root as any).nodeType == 11 && deepActiveElement() == this.view.contentDOM &&
-      safariSelectionRangeHack(this.view) || getSelection(root)
+    let range = browser.safari && (view.root as any).nodeType == 11 && deepActiveElement() == this.dom &&
+      safariSelectionRangeHack(this.view) || getSelection(view.root)
     if (!range || this.selectionRange.eq(range)) return false
+    let local = hasSelection(this.dom, range)
+    // Detect the situation where the browser has, on focus, moved the
+    // selection to the start of the content element. Reset it to the
+    // position from the editor state.
+    if (local && !this.selectionChanged && this.selectionRange.focusNode &&
+        view.inputState.lastFocusTime > Date.now() - 200 &&
+        view.inputState.lastTouchTime < Date.now() - 300 &&
+        atElementStart(this.dom, range)) {
+      view.docView.updateSelection()
+      return false
+    }
     this.selectionRange.setRange(range)
-    return this.selectionChanged = true
+    if (local) this.selectionChanged = true
+    return true
   }
 
   setSelectionRange(anchor: {node: Node, offset: number}, head: {node: Node, offset: number}) {
@@ -256,7 +268,7 @@ export class DOMObserver {
       this.delayedAndroidKey = null
       this.delayedFlush = -1
       if (!this.flush())
-        dispatchKey(this.view.contentDOM, key.key, key.keyCode)
+        dispatchKey(this.dom, key.key, key.keyCode)
     })
     // Since backspace beforeinput is sometimes signalled spuriously,
     // Enter always takes precedence.
@@ -310,6 +322,7 @@ export class DOMObserver {
     let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
     if (from < 0 && !newSel) return
 
+    this.view.inputState.lastFocusTime = 0
     this.selectionChanged = false
     let startState = this.view.state
     let handled = this.onChange(from, to, typeOver)

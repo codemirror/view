@@ -12,6 +12,10 @@ import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
 export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
+  lastTouchTime = 0
+  lastFocusTime = 0
+  lastScrollTop = 0
+  lastScrollLeft = 0
   chromeScrollHack = -1
 
   // On iOS, some keys need to have their default behavior happen
@@ -114,6 +118,8 @@ export class InputState {
   }
 
   runScrollHandlers(view: EditorView, event: Event) {
+    this.lastScrollTop = view.scrollDOM.scrollTop
+    this.lastScrollLeft = view.scrollDOM.scrollLeft
     for (let set of this.customHandlers) {
       let handler = set.handlers.scroll
       if (handler) {
@@ -392,10 +398,8 @@ handlers.keydown = (view, event: KeyboardEvent) => {
   else if (modifierCodes.indexOf(event.keyCode) < 0) view.inputState.lastEscPress = 0
 }
 
-let lastTouch = 0
-
 handlers.touchstart = (view, e) => {
-  lastTouch = Date.now()
+  view.inputState.lastTouchTime = Date.now()
   view.inputState.setSelectionOrigin("select.pointer")
 }
 
@@ -405,7 +409,7 @@ handlers.touchmove = view => {
 
 handlers.mousedown = (view, event: MouseEvent) => {
   view.observer.flush()
-  if (lastTouch > Date.now() - 2000 && getClickType(event) == 1) return // Ignore touch interaction
+  if (view.inputState.lastTouchTime > Date.now() - 2000 && getClickType(event) == 1) return // Ignore touch interaction
   let style: MouseSelectionStyle | null = null
   for (let makeStyle of view.state.facet(mouseSelectionStyle)) {
     style = makeStyle(view, event)
@@ -653,7 +657,15 @@ function updateForFocusChange(view: EditorView) {
   }, 10)
 }
 
-handlers.focus = updateForFocusChange
+handlers.focus = view => {
+  view.inputState.lastFocusTime = Date.now()
+  // When focusing reset the scroll position, move it back to where it was
+  if (!view.scrollDOM.scrollTop && (view.inputState.lastScrollTop || view.inputState.lastScrollLeft)) {
+    view.scrollDOM.scrollTop = view.inputState.lastScrollTop
+    view.scrollDOM.scrollLeft = view.inputState.lastScrollLeft
+  }
+  updateForFocusChange(view)
+}
 
 handlers.blur = view => {
   view.observer.clearSelectionRange()
