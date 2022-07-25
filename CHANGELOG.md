@@ -1,3 +1,13 @@
+## 6.1.1 (2022-07-25)
+
+### Bug fixes
+
+Make `highlightSpecialChars` replace directional isolate characters by default.
+
+The editor will now try to suppress browsers' native behavior of resetting the selection in the editable content when the editable element is focused (programmatically, with tab, etc).
+
+Fix a CSS issue that made it possible, when the gutters were wide enough, for them to overlap with the content.
+
 ## 6.1.0 (2022-07-19)
 
 ### New features
