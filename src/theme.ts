@@ -145,6 +145,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "&dark .cm-specialChar": { color: "#f78" },
 
   ".cm-gutters": {
+    flexShrink: 0,
     display: "flex",
     height: "100%",
     boxSizing: "border-box",
