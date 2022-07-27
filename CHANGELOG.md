@@ -1,3 +1,11 @@
+## 6.1.2 (2022-07-27)
+
+### Bug fixes
+
+Fix an issue where double tapping enter to confirm IME input and insert a newline on iOS would sometimes insert two newlines.
+
+Fix an issue on iOS where a composition could get aborted if the editor scrolled on backspace.
+
 ## 6.1.1 (2022-07-25)
 
 ### Bug fixes
