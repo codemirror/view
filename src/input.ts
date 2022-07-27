@@ -69,7 +69,7 @@ export class InputState {
       })
       this.registeredEvents.push(type)
     }
-    if (browser.chrome && browser.chrome_version >= 102) {
+    if (browser.chrome && browser.chrome_version == 102) { // FIXME remove at some point
       // On Chrome 102, viewport updates somehow stop wheel-based
       // scrolling. Turning off pointer events during the scroll seems
       // to avoid the issue.
