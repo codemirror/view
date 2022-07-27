@@ -285,8 +285,8 @@ export class DOMObserver {
     if (this.delayedFlush >= 0) {
       window.clearTimeout(this.delayedFlush)
       this.delayedFlush = -1
-      this.flush()
     }
+    this.flush()
   }
 
   processRecords() {

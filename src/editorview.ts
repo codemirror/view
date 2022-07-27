@@ -336,7 +336,7 @@ export class EditorView {
     if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
     this.measureScheduled = 0 // Prevent requestMeasure calls from scheduling another animation frame
 
-    if (flush) this.observer.flush()
+    if (flush) this.observer.forceFlush()
 
     let updated: ViewUpdate | null = null
     try {
