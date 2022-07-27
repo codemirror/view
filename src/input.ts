@@ -177,7 +177,7 @@ export class InputState {
     // compositionend and keydown events are sometimes emitted in the
     // wrong order. The key event should still be ignored, even when
     // it happens after the compositionend event.
-    if (browser.safari && Date.now() - this.compositionEndedAt < 100) {
+    if (browser.safari && !browser.ios && Date.now() - this.compositionEndedAt < 100) {
       this.compositionEndedAt = 0
       return true
     }
