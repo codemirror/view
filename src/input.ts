@@ -66,7 +66,7 @@ export class InputState {
         if (this.mustFlushObserver(event)) view.observer.forceFlush()
         if (this.runCustomHandlers(type, view, event)) event.preventDefault()
         else handler(view, event)
-      })
+      }, handlerOptions[type])
       this.registeredEvents.push(type)
     }
     if (browser.chrome && browser.chrome_version == 102) { // FIXME remove at some point
@@ -343,6 +343,7 @@ function eventBelongsToEditor(view: EditorView, event: Event): boolean {
 }
 
 const handlers: {[key: string]: (view: EditorView, event: any) => void} = Object.create(null)
+const handlerOptions: {[key: string]: AddEventListenerOptions} = Object.create(null)
 
 // This is very crude, but unfortunately both these browsers _pretend_
 // that they have a clipboard API—all the objects and methods are
@@ -406,6 +407,8 @@ handlers.touchstart = (view, e) => {
 handlers.touchmove = view => {
   view.inputState.setSelectionOrigin("select.pointer")
 }
+
+handlerOptions.touchstart = handlerOptions.touchmove = {passive: true}
 
 handlers.mousedown = (view, event: MouseEvent) => {
   view.observer.flush()
