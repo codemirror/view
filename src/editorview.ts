@@ -339,10 +339,13 @@ export class EditorView {
     if (flush) this.observer.forceFlush()
 
     let updated: ViewUpdate | null = null
+    let {scrollHeight, scrollTop, clientHeight} = this.scrollDOM
+    let refHeight = scrollTop > scrollHeight - clientHeight - 4 ? scrollHeight : scrollTop
     try {
       for (let i = 0;; i++) {
         this.updateState = UpdateState.Measuring
         let oldViewport = this.viewport
+        let refBlock = this.viewState.lineBlockAtHeight(refHeight)
         let changed = this.viewState.measure(this)
         if (!changed && !this.measureRequests.length && this.viewState.scrollTarget == null) break
         if (i > 5) {
@@ -380,6 +383,12 @@ export class EditorView {
           this.docView.scrollIntoView(this.viewState.scrollTarget)
           this.viewState.scrollTarget = null
           scrolled = true
+        } else {
+          let diff = this.viewState.lineBlockAt(refBlock.from).top - refBlock.top
+          if (diff > 1 || diff < -1) {
+            this.scrollDOM.scrollTop += diff
+            scrolled = true
+          }
         }
         if (redrawn) this.docView.updateSelection(true)
         if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to &&
