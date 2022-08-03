@@ -1,3 +1,11 @@
+## 6.1.3 (2022-08-03)
+
+### Bug fixes
+
+Fix a bug where a document that contains only non-printing characters would lead to bogus text measurements (and, from those, to crashing).
+
+Make sure differences between estimated and actual block heights don't cause visible scroll glitches.
+
 ## 6.1.2 (2022-07-27)
 
 ### Bug fixes
