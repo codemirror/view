@@ -122,13 +122,15 @@ export class LineView extends ContentView implements BlockView {
     if (this.children.length == 0 || this.length > 20) return null
     let totalWidth = 0
     for (let child of this.children) {
-      if (!(child instanceof TextView)) return null
+      if (!(child instanceof TextView) || /[^ -~]/.test(child.text)) return null
       let rects = clientRectsFor(child.dom!)
       if (rects.length != 1) return null
       totalWidth += rects[0].width
     }
-    return {lineHeight: this.dom!.getBoundingClientRect().height,
-            charWidth: totalWidth / this.length}
+    return !totalWidth ? null : {
+      lineHeight: this.dom!.getBoundingClientRect().height,
+      charWidth: totalWidth / this.length
+    }
   }
 
   coordsAt(pos: number, side: number): Rect | null {
