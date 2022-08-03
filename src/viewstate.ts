@@ -21,7 +21,7 @@ function visiblePixelRange(dom: HTMLElement, paddingTop: number): Rect {
         left = Math.max(left, parentRect.left)
         right = Math.min(right, parentRect.right)
         top = Math.max(top, parentRect.top)
-        bottom = Math.min(bottom, parentRect.bottom)
+        bottom = parent == dom.parentNode ? parentRect.bottom : Math.min(bottom, parentRect.bottom)
       }
       parent = style.position == "absolute" || style.position == "fixed" ? elt.offsetParent : elt.parentNode
     } else if (parent.nodeType == 11) { // Shadow root
