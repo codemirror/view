@@ -116,6 +116,15 @@ describe("EditorView decoration", () => {
     ist(cm.contentDOM.querySelectorAll(".a").length, 1)
   })
 
+  it("merges stacked decorations", () => {
+    let cm = tempView("one", [
+      decos(Decoration.set([], true)),
+      EditorView.decorations.of(Decoration.set(d(0, 3, {class: "a"})))
+    ])
+    cm.dispatch({effects: [addDeco.of([d(1, 2, {class: "b"})])]})
+    ist(cm.contentDOM.querySelectorAll(".a").length, 1)
+  })
+
   it("keeps decorations together when deleting inside of them", () => {
     let cm = decoEditor("one\ntwo", [d(1, 6, {class: "a"})])
     ist(cm.contentDOM.querySelectorAll(".a").length, 2)
