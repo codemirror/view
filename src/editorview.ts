@@ -503,7 +503,7 @@ export class EditorView {
 
   /// Find the text line or block widget at the given vertical
   /// position (which is interpreted as relative to the [top of the
-  /// document](#view.EditorView.documentTop)
+  /// document](#view.EditorView.documentTop)).
   elementAtHeight(height: number) {
     this.readMeasured()
     return this.viewState.elementAtHeight(height)
@@ -511,7 +511,8 @@ export class EditorView {
 
   /// Find the line block (see
   /// [`lineBlockAt`](#view.EditorView.lineBlockAt) at the given
-  /// height.
+  /// height, again interpreted relative to the [top of the
+  /// document](#view.EditorView.documentTop).
   lineBlockAtHeight(height: number): BlockInfo {
     this.readMeasured()
     return this.viewState.lineBlockAtHeight(height)
