@@ -1,3 +1,9 @@
+## 6.1.4 (2022-08-04)
+
+### Bug fixes
+
+Make selection-restoration on focus more reliable.
+
 ## 6.1.3 (2022-08-03)
 
 ### Bug fixes
