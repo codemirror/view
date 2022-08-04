@@ -323,6 +323,7 @@ export class DOMObserver {
     let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
     if (from < 0 && !newSel) return
 
+    this.view.inputState.lastFocusTime = 0
     this.selectionChanged = false
     let startState = this.view.state
     let handled = this.onChange(from, to, typeOver)
