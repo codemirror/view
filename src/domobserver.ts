@@ -177,10 +177,11 @@ export class DOMObserver {
     // Detect the situation where the browser has, on focus, moved the
     // selection to the start of the content element. Reset it to the
     // position from the editor state.
-    if (local && !this.selectionChanged && this.selectionRange.focusNode &&
+    if (local && !this.selectionChanged &&
         view.inputState.lastFocusTime > Date.now() - 200 &&
         view.inputState.lastTouchTime < Date.now() - 300 &&
         atElementStart(this.dom, range)) {
+      this.view.inputState.lastFocusTime = 0
       view.docView.updateSelection()
       return false
     }
@@ -322,7 +323,6 @@ export class DOMObserver {
     let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
     if (from < 0 && !newSel) return
 
-    this.view.inputState.lastFocusTime = 0
     this.selectionChanged = false
     let startState = this.view.state
     let handled = this.onChange(from, to, typeOver)
