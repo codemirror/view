@@ -1,3 +1,13 @@
+## 6.2.0 (2022-08-05)
+
+### Bug fixes
+
+Fix a bug where `posAtCoords` would return the wrong results for positions to the right of wrapped lines.
+
+### New features
+
+The new `EditorView.setRoot` method can be used when an editor view is moved to a new document or shadow root.
+
 ## 6.1.4 (2022-08-04)
 
 ### Bug fixes
