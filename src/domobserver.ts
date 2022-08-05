@@ -19,6 +19,7 @@ const useCharData = browser.ie && browser.ie_version <= 11
 
 export class DOMObserver {
   dom: HTMLElement
+  win: Window
 
   observer: MutationObserver
   active: boolean = false
@@ -82,19 +83,21 @@ export class DOMObserver {
       }
 
     this.onSelectionChange = this.onSelectionChange.bind(this)
+    this.onResize = this.onResize.bind(this)
+    this.onPrint = this.onPrint.bind(this)
+    this.onScroll = this.onScroll.bind(this)
 
-    window.addEventListener("resize", this.onResize = this.onResize.bind(this))
     if (typeof ResizeObserver == "function") {
       this.resize = new ResizeObserver(() => {
         if (this.view.docView.lastUpdate < Date.now() - 75) this.onResize()
       })
       this.resize.observe(view.scrollDOM)
     }
-    window.addEventListener("beforeprint", this.onPrint = this.onPrint.bind(this))
+    this.win = view.dom.ownerDocument.defaultView
+    this.addWindowListeners(this.win)
 
     this.start()
 
-    window.addEventListener("scroll", this.onScroll = this.onScroll.bind(this))
     if (typeof IntersectionObserver == "function") {
       this.intersection = new IntersectionObserver(entries => {
         if (this.parentCheck < 0) this.parentCheck = setTimeout(this.listenForScroll.bind(this), 1000)
@@ -112,7 +115,6 @@ export class DOMObserver {
     }
     this.listenForScroll()
     this.readSelectionRange()
-    this.dom.ownerDocument.addEventListener("selectionchange", this.onSelectionChange)
   }
 
   onScroll(e: Event) {
@@ -350,16 +352,35 @@ export class DOMObserver {
     }
   }
 
+  setWindow(win: Window) {
+    if (win != this.win) {
+      this.removeWindowListeners(this.win)
+      this.win = win
+      this.addWindowListeners(this.win)
+    }
+  }
+
+  addWindowListeners(win: Window) {
+    win.addEventListener("resize", this.onResize)
+    win.addEventListener("beforeprint", this.onPrint)
+    win.addEventListener("scroll", this.onScroll)
+    win.document.addEventListener("selectionchange", this.onSelectionChange)
+  }
+
+  removeWindowListeners(win: Window) {
+    win.removeEventListener("scroll", this.onScroll)
+    win.removeEventListener("resize", this.onResize)
+    win.removeEventListener("beforeprint", this.onPrint)
+    win.document.removeEventListener("selectionchange", this.onSelectionChange)
+  }
+
   destroy() {
     this.stop()
     this.intersection?.disconnect()
     this.gapIntersection?.disconnect()
     this.resize?.disconnect()
     for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
-    window.removeEventListener("scroll", this.onScroll)
-    window.removeEventListener("resize", this.onResize)
-    window.removeEventListener("beforeprint", this.onPrint)
-    this.dom.ownerDocument.removeEventListener("selectionchange", this.onSelectionChange)
+    this.removeWindowListeners(this.win)
     clearTimeout(this.parentCheck)
     clearTimeout(this.resizeTimeout)
   }

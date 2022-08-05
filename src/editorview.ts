@@ -109,8 +109,10 @@ export class EditorView {
   
   private _dispatch: (tr: Transaction) => void
 
+  private _root: DocumentOrShadowRoot
+
   /// The document or shadow root that the view lives in.
-  readonly root: DocumentOrShadowRoot
+  get root() { return this._root }
 
   /// The DOM element that wraps the entire editor view.
   readonly dom: HTMLElement
@@ -178,7 +180,7 @@ export class EditorView {
 
     this._dispatch = config.dispatch || ((tr: Transaction) => this.update([tr]))
     this.dispatch = this.dispatch.bind(this)
-    this.root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
+    this._root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
 
     this.viewState = new ViewState(config.state || EditorState.create(config))
     this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec))
@@ -700,6 +702,16 @@ export class EditorView {
       focusPreventScroll(this.contentDOM)
       this.docView.updateSelection()
     })
+  }
+
+  /// Update the [root](##view.EditorViewConfig.root) in which the editor lives. This is only
+  /// necessary when moving the editor's existing DOM to a new window or shadow root.
+  setRoot(root: Document | ShadowRoot) {
+    if (this._root != root) {
+      this._root = root
+      this.observer.setWindow((root.nodeType == 9 ? root as Document : root.ownerDocument!).defaultView!)
+      this.mountStyles()
+    }
   }
 
   /// Clean up this editor view, removing its element from the
