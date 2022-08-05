@@ -43,8 +43,6 @@ export class DocView extends ContentView {
   // ourselves
   lastUpdate = Date.now()
 
-  get root() { return this.view.root }
-
   get editorView() { return this.view }
 
   get length() { return this.view.state.doc.length }
@@ -181,7 +179,7 @@ export class DocView extends ContentView {
           this.dom.blur()
           this.dom.focus({preventScroll: true})
         }
-        let rawSel = getSelection(this.root)
+        let rawSel = getSelection(this.view.root)
         if (!rawSel) {
           // No DOM selection for some reason—do nothing
         } else if (main.empty) {
@@ -222,7 +220,7 @@ export class DocView extends ContentView {
   enforceCursorAssoc() {
     if (this.compositionDeco.size) return
     let cursor = this.view.state.selection.main
-    let sel = getSelection(this.root)
+    let sel = getSelection(this.view.root)
     if (!sel || !cursor.empty || !cursor.assoc || !sel.modify) return
     let line = LineView.find(this, cursor.head)
     if (!line) return
@@ -236,7 +234,7 @@ export class DocView extends ContentView {
   }
 
   mayControlSelection() {
-    let active = this.root.activeElement
+    let active = this.view.root.activeElement
     return active == this.dom ||
       hasSelection(this.dom, this.view.observer.selectionRange) && !(active && this.dom.contains(active))
   }
