@@ -222,6 +222,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   ".cm-widgetBuffer": {
     verticalAlign: "text-top",
     height: "1em",
+    width: 0,
     display: "inline"
   },
 
