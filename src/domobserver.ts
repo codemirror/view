@@ -93,7 +93,7 @@ export class DOMObserver {
       })
       this.resize.observe(view.scrollDOM)
     }
-    this.win = view.dom.ownerDocument.defaultView
+    this.win = view.dom.ownerDocument.defaultView!
     this.addWindowListeners(this.win)
 
     this.start()
