@@ -57,7 +57,7 @@ function upBot(rect: ClientRect, bottom: number): ClientRect {
 }
 
 function domPosAtCoords(parent: HTMLElement, x: number, y: number): {node: Node, offset: number} {
-  let closest, closestRect!: ClientRect, closestX!: number, closestY!: number
+  let closest, closestRect!: ClientRect, closestX!: number, closestY!: number, closestOverlap = false
   let above, below, aboveRect, belowRect
   for (let child: Node | null = parent.firstChild; child; child = child.nextSibling) {
     let rects = clientRectsFor(child)
@@ -70,6 +70,7 @@ function domPosAtCoords(parent: HTMLElement, x: number, y: number): {node: Node,
         return child.nodeType == 3 ? domPosInText(child as Text, x, y) : domPosAtCoords(child as HTMLElement, x, y)
       if (!closest || closestY > dy || closestY == dy && closestX > dx) {
         closest = child; closestRect = rect; closestX = dx; closestY = dy
+        closestOverlap = !dx || (dx > 0 ? i < rects.length - 1 : i > 0)
       }
       if (dx == 0) {
         if (y > rect.bottom && (!aboveRect || aboveRect.bottom < rect.bottom)) { above = child; aboveRect = rect }
@@ -87,7 +88,7 @@ function domPosAtCoords(parent: HTMLElement, x: number, y: number): {node: Node,
   if (!closest) return {node: parent, offset: 0}
   let clipX = Math.max(closestRect!.left, Math.min(closestRect!.right, x))
   if (closest.nodeType == 3) return domPosInText(closest as Text, clipX, y)
-  if (!closestX && (closest as HTMLElement).contentEditable == "true")
+  if (closestOverlap && (closest as HTMLElement).contentEditable != "false")
     return domPosAtCoords(closest as HTMLElement, clipX, y)
   let offset = Array.prototype.indexOf.call(parent.childNodes, closest) +
     (x >= (closestRect!.left + closestRect!.right) / 2 ? 1 : 0)
@@ -175,7 +176,8 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
       let range = doc.caretRangeFromPoint(x, y)
       if (range) {
         ;({startContainer: node, startOffset: offset} = range)
-        if (browser.safari && isSuspiciousSafariCaretResult(node, offset, x) ||
+        if (!view.contentDOM.contains(node) ||
+            browser.safari && isSuspiciousSafariCaretResult(node, offset, x) ||
             browser.chrome && isSuspiciousChromeCaretResult(node, offset, x))
           node = undefined
       }
