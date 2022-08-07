@@ -15,8 +15,8 @@ export function contains(dom: Node, node: Node | null) {
   return node ? dom == node || dom.contains(node.nodeType != 1 ? node.parentNode : node) : false
 }
 
-export function deepActiveElement() {
-  let elt = document.activeElement
+export function deepActiveElement(doc) {
+  let elt = doc.activeElement
   while (elt && elt.shadowRoot) elt = elt.shadowRoot.activeElement
   return elt
 }

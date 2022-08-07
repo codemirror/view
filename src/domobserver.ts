@@ -172,7 +172,8 @@ export class DOMObserver {
     let {view} = this
     // The Selection object is broken in shadow roots in Safari. See
     // https://github.com/codemirror/dev/issues/414
-    let range = browser.safari && (view.root as any).nodeType == 11 && deepActiveElement() == this.dom &&
+    let range = browser.safari && (view.root as any).nodeType == 11 &&
+      deepActiveElement(this.dom.ownerDocument) == this.dom &&
       safariSelectionRangeHack(this.view) || getSelection(view.root)
     if (!range || this.selectionRange.eq(range)) return false
     let local = hasSelection(this.dom, range)
@@ -410,7 +411,7 @@ function safariSelectionRangeHack(view: EditorView) {
     found = (event as any).getTargetRanges()[0]
   }
   view.contentDOM.addEventListener("beforeinput", read, true)
-  document.execCommand("indent")
+  view.dom.ownerDocument.execCommand("indent")
   view.contentDOM.removeEventListener("beforeinput", read, true)
   if (!found) return null
   let anchorNode = found!.startContainer, anchorOffset = found!.startOffset
