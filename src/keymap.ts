@@ -202,14 +202,14 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
     return false
   }
 
-  let scopeObj = map[scope], baseName
+  let scopeObj = map[scope], baseName, shiftName
   if (scopeObj) {
     if (runFor(scopeObj[prefix + modifiers(name, event, !isChar)])) return true
     if (isChar && (event.shiftKey || event.altKey || event.metaKey || charCode > 127) &&
         (baseName = base[event.keyCode]) && baseName != name) {
       if (runFor(scopeObj[prefix + modifiers(baseName, event, true)])) return true
-      else if (event.shiftKey && shift[event.keyCode] != baseName &&
-               runFor(scopeObj[prefix + modifiers(shift[event.keyCode], event, false)])) return true
+      else if (event.shiftKey && (shiftName = shift[event.keyCode]) != name && shiftName != baseName &&
+               runFor(scopeObj[prefix + modifiers(shiftName, event, false)])) return true
     } else if (isChar && event.shiftKey) {
       if (runFor(scopeObj[prefix + modifiers(name, event, true)])) return true
     }
