@@ -152,9 +152,10 @@ export class InputState {
     // applyDOMChange, notify key handlers of it and reset to
     // the state they produce.
     let pending
-    if (browser.ios && (pending = PendingKeys.find(key => key.keyCode == event.keyCode)) &&
-        !(event.ctrlKey || event.altKey || event.metaKey) && !(event as any).synthetic) {
-      this.pendingIOSKey = pending
+    if (browser.ios && !(event as any).synthetic && !event.altKey && !event.metaKey &&
+        ((pending = PendingKeys.find(key => key.keyCode == event.keyCode)) && !event.ctrlKey ||
+         EmacsyPendingKeys.indexOf(event.key) > -1 && event.ctrlKey && !event.shiftKey)) {
+      this.pendingIOSKey = pending || event
       setTimeout(() => this.flushIOSKey(view), 250)
       return true
     }
@@ -209,6 +210,8 @@ const PendingKeys = [
   {key: "Enter", keyCode: 13, inputType: "insertParagraph"},
   {key: "Delete", keyCode: 46, inputType: "deleteContentForward"}
 ]
+
+const EmacsyPendingKeys = "dthko"
 
 // Key codes for modifier keys
 export const modifierCodes = [16, 17, 18, 20, 91, 92, 224, 225]
