@@ -121,7 +121,7 @@ export class MarkView extends ContentView {
   }
 
   domAtPos(pos: number): DOMPos {
-    return inlineDOMAtPos(this.dom!, this.children, pos)
+    return inlineDOMAtPos(this, pos)
   }
 
   coordsAt(pos: number, side: number): Rect | null {
@@ -278,11 +278,13 @@ function scanCompositionTree<T>(pos: number, side: number, view: ContentView, te
                                 enterView: (view: ContentView, pos: number, side: number) => T,
                                 fromText: (pos: number, side: number) => T): T {
   if (view instanceof MarkView) {
-    for (let child of view.children) {
-      let hasComp = contains(child.dom!, text)
-      let len = hasComp ? text.nodeValue!.length : child.length
-      if (pos < len || pos == len && child.getSide() <= 0)
-        return hasComp ? scanCompositionTree(pos, side, child, text, enterView, fromText) : enterView(child, pos, side)
+    for (let child = view.dom!.firstChild; child; child = child.nextSibling) {
+      let desc = ContentView.get(child)!
+      if (!desc) return fromText(pos, side)
+      let hasComp = contains(child, text)
+      let len = desc.length + (hasComp ? text.nodeValue!.length : 0)
+      if (pos < len || pos == len && desc.getSide() <= 0)
+        return hasComp ? scanCompositionTree(pos, side, desc, text, enterView, fromText) : enterView(desc, pos, side)
       pos -= len
     }
     return enterView(view, view.length, -1)
@@ -381,8 +383,8 @@ function inlineSiblingRect(view: ContentView, side: -1 | 1) {
   return undefined
 }
 
-export function inlineDOMAtPos(dom: HTMLElement, children: readonly ContentView[], pos: number) {
-  let i = 0
+export function inlineDOMAtPos(parent: ContentView, pos: number) {
+  let dom = parent.dom!, {children} = parent, i = 0
   for (let off = 0; i < children.length; i++) {
     let child = children[i], end = off + child.length
     if (end == off && child.getSide() <= 0) continue
@@ -390,9 +392,14 @@ export function inlineDOMAtPos(dom: HTMLElement, children: readonly ContentView[
     if (pos <= off) break
     off = end
   }
-  for (; i > 0; i--) {
-    let before = children[i - 1].dom!
-    if (before.parentNode == dom) return DOMPos.after(before)
+//  if (i) return DOMPos.after(children[i - 1].dom!)
+  for (let j = i; j > 0; j--) {
+    let prev = children[j - 1]
+    if (prev.dom!.parentNode == dom) return prev.domAtPos(prev.length)
+  }
+  for (let j = i; j < children.length; j++) {
+    let next = children[j]
+    if (next.dom!.parentNode == dom) return next.domAtPos(0)
   }
   return new DOMPos(dom, 0)
 }

@@ -66,7 +66,7 @@ describe("EditorView drawing", () => {
 
   it("redraws lazily", () => {
     let cm = tempView("one\ntwo\nthree")
-    let line0 = cm.domAtPos(0).node, line1 = line0.nextSibling!, line2 = line1.nextSibling!
+    let line0 = cm.contentDOM.firstChild!, line1 = line0.nextSibling!, line2 = line1.nextSibling!
     let text0 = line0.firstChild!, text2 = line2.firstChild!
     cm.dispatch({changes: {from: 5, insert: "x"}})
     ist(text0.parentElement, line0)

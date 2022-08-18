@@ -16,7 +16,7 @@ describe("DOM changes", () => {
   })
 
   it("handles browser enter behavior", () => {
-    let cm = tempView("foo\nbar"), line0 = cm.domAtPos(0).node
+    let cm = tempView("foo\nbar"), line0 = cm.contentDOM.firstChild!
     line0.appendChild(document.createElement("br"))
     line0.appendChild(document.createElement("br"))
     flush(cm)
@@ -25,7 +25,7 @@ describe("DOM changes", () => {
 
   it("supports deleting lines", () => {
     let cm = tempView("1\n2\n3\n4\n5\n6")
-    for (let i = 0, lineDOM = cm.domAtPos(0).node.parentNode!; i < 4; i++) lineDOM.childNodes[1].remove()
+    for (let i = 0, lineDOM = cm.contentDOM; i < 4; i++) lineDOM.childNodes[1].remove()
     flush(cm)
     ist(cm.state.doc.toString(), "1\n6")
   })
@@ -125,7 +125,7 @@ describe("DOM changes", () => {
       provide: f => EditorView.decorations.from(f)
     })
     let cm = tempView("abcd", [field])
-    cm.domAtPos(0).node.firstChild!.textContent = "x"
+    cm.domAtPos(0).node.textContent = "x"
     flush(cm)
     ist(cm.state.doc.toString(), "xbcd")
   })
@@ -161,7 +161,7 @@ describe("DOM changes", () => {
       provide: f => EditorView.decorations.from(f)
     })
     let cm = tempView("abcd", [field])
-    cm.domAtPos(0).node.appendChild(document.createTextNode("x"))
+    cm.contentDOM.firstChild!.appendChild(document.createTextNode("x"))
     flush(cm)
     ist(cm.state.doc.toString(), "abcdx")
   })
@@ -189,14 +189,14 @@ describe("DOM changes", () => {
       cm.dispatch({changes: {from, to, insert: insert.toUpperCase()}})
       return true
     })])
-    cm.domAtPos(0).node.appendChild(document.createTextNode("d"))
+    cm.contentDOM.firstChild!.appendChild(document.createTextNode("d"))
     flush(cm)
     ist(cm.state.doc.toString(), "abcD")
   })
 
   it("ignores dom-changes in read-only mode", () => {
     let cm = tempView("abc", [EditorState.readOnly.of(true)])
-    cm.domAtPos(0).node.firstChild!.nodeValue = "abx"
+    cm.domAtPos(0).node.nodeValue = "abx"
     flush(cm)
     ist(cm.state.doc.toString(), "abc")
     ist(cm.contentDOM.textContent, "abc")

@@ -80,7 +80,7 @@ export class LineView extends ContentView implements BlockView {
   }
 
   domAtPos(pos: number): DOMPos {
-    return inlineDOMAtPos(this.dom!, this.children, pos)
+    return inlineDOMAtPos(this, pos)
   }
 
   reuseDOM(node: Node) {

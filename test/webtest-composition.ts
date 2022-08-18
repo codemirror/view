@@ -87,7 +87,7 @@ describe("Composition", () => {
 
   it("supports composition at end of line in a new node", () => {
     let cm = requireFocus(tempView("foo"))
-    compose(cm, () => up(cm.domAtPos(0).node.appendChild(document.createTextNode("!"))), [
+    compose(cm, () => up(cm.contentDOM.firstChild!.appendChild(document.createTextNode("!"))), [
       n => up(n, "?")
     ])
     ist(cm.state.doc.toString(), "foo!?")
@@ -96,7 +96,7 @@ describe("Composition", () => {
   it("supports composition at start of line in a new node", () => {
     let cm = requireFocus(tempView("foo"))
     compose(cm, () => {
-      let l0 = cm.domAtPos(0).node
+      let l0 = cm.contentDOM.firstChild!
       return up(l0.insertBefore(document.createTextNode("!"), l0.firstChild))
     }, [
       n => up(n, "?")
