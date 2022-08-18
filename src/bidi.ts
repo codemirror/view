@@ -63,10 +63,11 @@ function charType(ch: number) {
     0x600 <= ch && ch <= 0x6f9 ? ArabicTypes[ch - 0x600] :
     0x6ee <= ch && ch <= 0x8ac ? T.AL :
     0x2000 <= ch && ch <= 0x200b ? T.NI :
+    0xfb50 <= ch && ch <= 0xfdff ? T.AL :
     ch == 0x200c ? T.NI : T.L
 }
 
-const BidiRE = /[\u0590-\u05f4\u0600-\u06ff\u0700-\u08ac]/
+const BidiRE = /[\u0590-\u05f4\u0600-\u06ff\u0700-\u08ac\ufb50-\ufdff]/
 
 /// Represents a contiguous range of text that has a single direction
 /// (as in left-to-right or right-to-left).
