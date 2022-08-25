@@ -1,3 +1,17 @@
+## 6.2.1 (2022-08-25)
+
+### Bug fixes
+
+Don't use the global `document` variable to track focus, since that doesn't work in another window/frame.
+
+Fix an issue where key handlers that didn't return true were sometimes called twice for the same keypress.
+
+Avoid editing glitches when using deletion keys like ctrl-d on iOS.
+
+Properly treat characters from the 'Arabic Presentation Forms-A' Unicode block as right-to-left.
+
+Work around a Firefox bug that inserts text at the wrong point for specific cross-line selections.
+
 ## 6.2.0 (2022-08-05)
 
 ### Bug fixes
