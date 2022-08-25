@@ -147,13 +147,17 @@ export class DOMObserver {
   }
 
   onSelectionChange(event: Event) {
+    let wasChanged = this.selectionChanged
     if (!this.readSelectionRange() || this.delayedAndroidKey) return
     let {view} = this, sel = this.selectionRange
     if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(view.dom, sel))
       return
 
     let context = sel.anchorNode && view.docView.nearest(sel.anchorNode)
-    if (context && context.ignoreEvent(event)) return
+    if (context && context.ignoreEvent(event)) {
+      if (!wasChanged) this.selectionChanged = false
+      return
+    }
 
     // Deletions on IE11 fire their events in the wrong order, giving
     // us a selection change event before the DOM changes are
