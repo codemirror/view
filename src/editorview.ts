@@ -837,7 +837,7 @@ export class EditorView {
   /// If you want decorated ranges to behave like atomic units for
   /// cursor motion and deletion purposes, also provide the range set
   /// containing the decorations to
-  /// [`EditorView.atomicRanges`](##view.EditorView^atomicRanges).
+  /// [`EditorView.atomicRanges`](#view.EditorView^atomicRanges).
   static decorations = decorations
 
   /// Used to provide ranges that should be treated as atoms as far as
