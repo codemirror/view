@@ -833,6 +833,11 @@ export class EditorView {
   /// functions are called _after_ the new viewport has been computed,
   /// and thus **must not** introduce block widgets or replacing
   /// decorations that cover line breaks.
+  ///
+  /// If you want decorated ranges to behave like atomic units for
+  /// cursor motion and deletion purposes, also provide the range set
+  /// containing the decorations to
+  /// [`EditorView.atomicRanges`](##view.EditorView^atomicRanges).
   static decorations = decorations
 
   /// Used to provide ranges that should be treated as atoms as far as
