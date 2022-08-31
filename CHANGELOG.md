@@ -1,3 +1,9 @@
+## 6.2.2 (2022-08-31)
+
+### Bug fixes
+
+Don't reset the selection for selection change events that were suppressed by a node view.
+
 ## 6.2.1 (2022-08-25)
 
 ### Bug fixes
