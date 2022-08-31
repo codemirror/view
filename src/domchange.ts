@@ -71,7 +71,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
   // Detect insert-period-on-double-space Mac behavior, and transform
   // it into a regular space insert.
   else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
-           change.insert.toString() == ".")
+           change.insert.toString() == ". ")
     change = {from: sel.from, to: sel.to, insert: Text.of([" "])}
 
   if (change) {
