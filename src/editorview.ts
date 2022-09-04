@@ -13,7 +13,7 @@ import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, AttrSource,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
-        viewPlugin, ViewPlugin, PluginInstance, decorations, atomicRanges,
+        viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, atomicRanges,
         scrollMargins, MeasureRequest, editable, inputHandler, perLineTextDirection,
         scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
@@ -484,7 +484,7 @@ export class EditorView {
   /// plugins that crash can be dropped from a view, so even when you
   /// know you registered a given plugin, it is recommended to check
   /// the return value of this method.
-  plugin<T>(plugin: ViewPlugin<T>): T | null {
+  plugin<T extends PluginValue>(plugin: ViewPlugin<T>): T | null {
     let known = this.pluginMap.get(plugin)
     if (known === undefined || known && known.spec != plugin)
       this.pluginMap.set(plugin, known = this.plugins.find(p => p.spec == plugin) || null)
