@@ -309,7 +309,7 @@ export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: Selecti
     for (let set of atoms) {
       set.between(pos.from - 1, pos.from + 1, (from, to, value) => {
         if (pos.from > from && pos.from < to) {
-          pos = oldPos.from > pos.from ? EditorSelection.cursor(from, 1) : EditorSelection.cursor(to, -1)
+          pos = oldPos.head > pos.from ? EditorSelection.cursor(from, 1) : EditorSelection.cursor(to, -1)
           moved = true
         }
       })
