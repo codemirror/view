@@ -466,7 +466,7 @@ function findPositionSide(view: EditorView, pos: number, x: number, y: number) {
   return before && insideY(y, before) ? -1 : 1
 }
 
-function queryPos(view: EditorView, event: MouseEvent): {pos: number, bias: 1 | -1} | null {
+function queryPos(view: EditorView, event: MouseEvent): {pos: number, bias: 1 | -1} {
   let pos = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
   return {pos, bias: findPositionSide(view, pos, event.clientX, event.clientY)}
 }
@@ -490,7 +490,7 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
   return {
     update(update) {
       if (update.docChanged) {
-        if (start) start.pos = update.changes.mapPos(start.pos)
+        start.pos = update.changes.mapPos(start.pos)
         startSel = startSel.map(update.changes)
         lastEvent = null
       }
@@ -499,7 +499,6 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
       let cur
       if (lastEvent && event.clientX == lastEvent.clientX && event.clientY == lastEvent.clientY) cur = last
       else { cur = last = queryPos(view, event); lastEvent = event }
-      if (!cur || !start) return startSel
       let range = rangeForClick(view, cur.pos, cur.bias, type)
       if (start.pos != cur.pos && !extend) {
         let startRange = rangeForClick(view, start.pos, start.bias, type)
