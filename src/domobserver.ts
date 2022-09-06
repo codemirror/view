@@ -93,8 +93,7 @@ export class DOMObserver {
       })
       this.resize.observe(view.scrollDOM)
     }
-    this.win = view.dom.ownerDocument.defaultView!
-    this.addWindowListeners(this.win)
+    this.addWindowListeners(this.win = view.win)
 
     this.start()
 
@@ -271,7 +270,7 @@ export class DOMObserver {
   // detected (via beforeinput or keydown), and then tries to flush
   // them or, if that has no effect, dispatches the given key.
   delayAndroidKey(key: string, keyCode: number) {
-    if (!this.delayedAndroidKey) requestAnimationFrame(() => {
+    if (!this.delayedAndroidKey) this.view.win.requestAnimationFrame(() => {
       let key = this.delayedAndroidKey!
       this.delayedAndroidKey = null
       this.delayedFlush = -1
@@ -286,12 +285,12 @@ export class DOMObserver {
 
   flushSoon() {
     if (this.delayedFlush < 0)
-      this.delayedFlush = window.setTimeout(() => { this.delayedFlush = -1; this.flush() }, 20)
+      this.delayedFlush = this.view.win.requestAnimationFrame(() => { this.delayedFlush = -1; this.flush() })
   }
 
   forceFlush() {
     if (this.delayedFlush >= 0) {
-      window.clearTimeout(this.delayedFlush)
+      this.view.win.cancelAnimationFrame(this.delayedFlush)
       this.delayedFlush = -1
     }
     this.flush()

@@ -138,7 +138,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         this.measureSoon()
     }, {threshold: [1]}) : null
     this.observeIntersection()
-    view.dom.ownerDocument.defaultView?.addEventListener("resize", this.measureSoon = this.measureSoon.bind(this))
+    view.win.addEventListener("resize", this.measureSoon = this.measureSoon.bind(this))
     this.maybeMeasure()
   }
 
@@ -207,7 +207,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   destroy() {
-    this.view.dom.ownerDocument.defaultView?.removeEventListener("resize", this.measureSoon)
+    this.view.win.removeEventListener("resize", this.measureSoon)
     for (let {dom} of this.manager.tooltipViews) dom.remove()
     this.intersectionObserver?.disconnect()
     clearTimeout(this.measureTimeout)

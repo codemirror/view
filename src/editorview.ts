@@ -114,6 +114,9 @@ export class EditorView {
   /// The document or shadow root that the view lives in.
   get root() { return this._root }
 
+  /// @internal
+  get win() { return this.dom.ownerDocument.defaultView! }
+
   /// The DOM element that wraps the entire editor view.
   readonly dom: HTMLElement
 
@@ -468,7 +471,7 @@ export class EditorView {
   /// unnecessary DOM layout computations.
   requestMeasure<T>(request?: MeasureRequest<T>) {
     if (this.measureScheduled < 0)
-      this.measureScheduled = requestAnimationFrame(() => this.measure())
+      this.measureScheduled = this.win.requestAnimationFrame(() => this.measure())
     if (request) {
       if (request.key != null) for (let i = 0; i < this.measureRequests.length; i++) {
         if (this.measureRequests[i].key === request.key) {
