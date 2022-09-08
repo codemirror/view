@@ -37,7 +37,8 @@ export class DOMObserver {
   delayedFlush = -1
   resizeTimeout = -1
   queue: MutationRecord[] = []
-  delayedAndroidKey: {key: string, keyCode: number} | null = null
+  delayedAndroidKey: {key: string, keyCode: number, force: boolean} | null = null
+  lastChange = 0
 
   onCharData: any
 
@@ -274,13 +275,20 @@ export class DOMObserver {
       let key = this.delayedAndroidKey!
       this.delayedAndroidKey = null
       this.delayedFlush = -1
-      if (!this.flush())
+      if (!this.flush() && key.force)
         dispatchKey(this.dom, key.key, key.keyCode)
     })
     // Since backspace beforeinput is sometimes signalled spuriously,
     // Enter always takes precedence.
     if (!this.delayedAndroidKey || key == "Enter")
-      this.delayedAndroidKey = {key, keyCode}
+      this.delayedAndroidKey = {
+        key, keyCode,
+        // Only run the key handler when no changes are detected if
+        // this isn't coming right after another change, in which case
+        // it is probably part of a weird chain of updates, and should
+        // be ignored if it returns the DOM to its previous state.
+        force: this.lastChange < Date.now() - 50 || !!this.delayedAndroidKey?.force
+      }
   }
 
   flushSoon() {
@@ -328,6 +336,7 @@ export class DOMObserver {
     let {from, to, typeOver} = this.processRecords()
     let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
     if (from < 0 && !newSel) return
+    if (from > -1) this.lastInput = Date.now()
 
     this.view.inputState.lastFocusTime = 0
     this.selectionChanged = false

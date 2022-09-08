@@ -46,7 +46,6 @@ export class InputState {
   // composition)
   compositionFirstChange: boolean | null = null
   compositionEndedAt = 0
-  rapidCompositionStart = false
 
   mouseSelection: MouseSelection | null = null
 
@@ -186,8 +185,7 @@ export class InputState {
   }
 
   mustFlushObserver(event: Event) {
-    return (event.type == "keydown" && (event as any).keyCode != 229) ||
-      event.type == "compositionend" && !browser.ios
+    return event.type == "keydown" && (event as any).keyCode != 229
   }
 
   startMouseSelection(mouseSelection: MouseSelection) {
@@ -677,24 +675,12 @@ handlers.blur = view => {
   updateForFocusChange(view)
 }
 
-function forceClearComposition(view: EditorView, rapid: boolean) {
-  if (view.docView.compositionDeco.size) {
-    view.inputState.rapidCompositionStart = rapid
-    try { view.update([]) }
-    finally { view.inputState.rapidCompositionStart = false }
-  }
-}
-
 handlers.compositionstart = handlers.compositionupdate = view => {
   if (view.inputState.compositionFirstChange == null)
     view.inputState.compositionFirstChange = true
   if (view.inputState.composing < 0) {
     // FIXME possibly set a timeout to clear it again on Android
     view.inputState.composing = 0
-    if (view.docView.compositionDeco.size) {
-      view.observer.flush()
-      forceClearComposition(view, true)
-    }
   }
 }
 
@@ -702,8 +688,11 @@ handlers.compositionend = view => {
   view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
   view.inputState.compositionFirstChange = null
+  if (browser.chrome && browser.android) view.observer.flushSoon()
   setTimeout(() => {
-    if (view.inputState.composing < 0) forceClearComposition(view, false)
+    // Force the composition state to be cleared if it hasn't already been
+    if (view.inputState.composing < 0 && view.docView.compositionDeco.size)
+      view.update([])
   }, 50)
 }
 

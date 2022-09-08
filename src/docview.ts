@@ -145,8 +145,7 @@ export class DocView extends ContentView {
   // Sync the DOM selection to this.state.selection
   updateSelection(mustRead = false, fromPointer = false) {
     if (mustRead || !this.view.observer.selectionRange.focusNode) this.view.observer.readSelectionRange()
-    if (!(fromPointer || this.mayControlSelection()) ||
-        browser.ios && this.view.inputState.rapidCompositionStart) return
+    if (!(fromPointer || this.mayControlSelection())) return
     let force = this.forceSelection
     this.forceSelection = false
 
