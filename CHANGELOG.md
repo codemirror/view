@@ -1,3 +1,11 @@
+## 6.2.3 (2022-09-08)
+
+### Bug fixes
+
+Fix a bug where cursor motion, when starting from a non-empty selection range, could get stuck on atomic ranges in some circumstances.
+
+Avoid triggering Chrome Android's text-duplication issue when a period is typed in the middle of a word.
+
 ## 6.2.2 (2022-08-31)
 
 ### Bug fixes
