@@ -329,13 +329,13 @@ export class DOMObserver {
     // Completely hold off flushing when pending keys are set—the code
     // managing those will make sure processRecords is called and the
     // view is resynchronized after
-    if (this.delayedFlush >= 0 || this.delayedAndroidKey) return
+    if (this.delayedFlush >= 0 || this.delayedAndroidKey) return false
 
     if (readSelection) this.readSelectionRange()
 
     let {from, to, typeOver} = this.processRecords()
     let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
-    if (from < 0 && !newSel) return
+    if (from < 0 && !newSel) return false
     if (from > -1) this.lastInput = Date.now()
 
     this.view.inputState.lastFocusTime = 0
