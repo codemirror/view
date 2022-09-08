@@ -336,7 +336,7 @@ export class DOMObserver {
     let {from, to, typeOver} = this.processRecords()
     let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
     if (from < 0 && !newSel) return false
-    if (from > -1) this.lastInput = Date.now()
+    if (from > -1) this.lastChange = Date.now()
 
     this.view.inputState.lastFocusTime = 0
     this.selectionChanged = false
