@@ -100,8 +100,9 @@ type TooltipConfig = {
   tooltipSpace: (view: EditorView) => {top: number, left: number, bottom: number, right: number}
 }
 
-function windowSpace() {
-  return {top: 0, left: 0, bottom: innerHeight, right: innerWidth}
+function windowSpace(view: EditorView) {
+  let {win} = view
+  return {top: 0, left: 0, bottom: win.innerHeight, right: win.innerWidth}
 }
 
 const tooltipConfig = Facet.define<Partial<TooltipConfig>, TooltipConfig>({
