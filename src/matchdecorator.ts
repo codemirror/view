@@ -46,7 +46,7 @@ export class MatchDecorator {
     regexp: RegExp,
     /// The decoration to apply to matches, either directly or as a
     /// function of the match.
-    decoration?: Decoration | ((match: RegExpExecArray, view: EditorView, pos: number) => Decoration),
+    decoration?: Decoration | ((match: RegExpExecArray, view: EditorView, pos: number) => Decoration | null),
     /// Customize the way decorations are added for matches. This
     /// function, when given, will be called for matches and should
     /// call `add` to create decorations for them. Note that the
@@ -73,9 +73,13 @@ export class MatchDecorator {
     this.regexp = regexp
     if (decorate) {
       this.addMatch = (match, view, from, add) => decorate(add, from, from + match[0].length, match, view)
+    } else if (typeof decoration == "function") {
+      this.addMatch = (match, view, from, add) => {
+        let deco = decoration(match, view, from)
+        if (deco) add(from, from + match[0].length, deco)
+      }
     } else if (decoration) {
-      let getDeco = typeof decoration == "function" ? decoration as any : () => decoration
-      this.addMatch = (match, view, from, add) => add(from, from + match[0].length, getDeco(match, view, from))
+      this.addMatch = (match, _view, from, add) => add(from, from + match[0].length, decoration)
     } else {
       throw new RangeError("Either 'decorate' or 'decoration' should be provided to MatchDecorator")
     }
