@@ -446,7 +446,7 @@ const activeLineGutterMarker = new class extends GutterMarker {
 
 const activeLineGutterHighlighter = gutterLineClass.compute(["selection"], state => {
   let marks = [], last = -1
-  for (let range of state.selection.ranges) if (range.empty) {
+  for (let range of state.selection.ranges) {
     let linePos = state.doc.lineAt(range.head).from
     if (linePos > last) {
       last = linePos

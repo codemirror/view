@@ -138,8 +138,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     display: "block"
   },
 
-  "&light .cm-activeLine": { backgroundColor: "#f3f9ff" },
-  "&dark .cm-activeLine": { backgroundColor: "#223039" },
+  "&light .cm-activeLine": { backgroundColor: "#cceeff44" },
+  "&dark .cm-activeLine": { backgroundColor: "#99eeff33" },
 
   "&light .cm-specialChar": { color: "red" },
   "&dark .cm-specialChar": { color: "#f78" },
