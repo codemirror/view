@@ -114,7 +114,7 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
         bounding = windowRect(win)
       } else {
         if (cur.scrollHeight <= cur.clientHeight && cur.scrollWidth <= cur.clientWidth) {
-          cur = cur.parentNode
+          cur = cur.assignedSlot || cur.parentNode
           continue
         }
         let rect = cur.getBoundingClientRect()
@@ -163,23 +163,25 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
         if (top) {
           win.scrollBy(moveX, moveY)
         } else {
+          let movedX = 0, movedY = 0
           if (moveY) {
             let start = cur.scrollTop
             cur.scrollTop += moveY
-            moveY = cur.scrollTop - start
+            movedY = cur.scrollTop - start
           }
           if (moveX) {
             let start = cur.scrollLeft
             cur.scrollLeft += moveX
-            moveX = cur.scrollLeft - start
+            movedX = cur.scrollLeft - start
           }
-          rect = {left: rect.left - moveX, top: rect.top - moveY,
-                  right: rect.right - moveX, bottom: rect.bottom - moveY} as ClientRect
+          rect = {left: rect.left - movedX, top: rect.top - movedY,
+                  right: rect.right - movedX, bottom: rect.bottom - movedY} as ClientRect
+          if (movedX && Math.abs(movedX - moveX) < 1) x = "nearest"
+          if (movedY && Math.abs(movedY - moveY) < 1) y = "nearest"
         }
       }
       if (top) break
       cur = cur.assignedSlot || cur.parentNode
-      x = y = "nearest"
     } else if (cur.nodeType == 11) { // A shadow root
       cur = cur.host
     } else {
