@@ -115,7 +115,7 @@ export class EditorView {
   get root() { return this._root }
 
   /// @internal
-  get win() { return this.dom.ownerDocument.defaultView! }
+  get win() { return this.dom.ownerDocument.defaultView || window }
 
   /// The DOM element that wraps the entire editor view.
   readonly dom: HTMLElement
