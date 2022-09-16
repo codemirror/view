@@ -248,7 +248,7 @@ export class ViewState {
       this.inView = inView
       if (inView) measureContent = true
     }
-    if (!this.inView) return 0
+    if (!this.inView && !this.scrollTarget) return 0
 
     let contentWidth = dom.clientWidth
     if (this.contentDOMWidth != contentWidth || this.editorHeight != view.scrollDOM.clientHeight) {
