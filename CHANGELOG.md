@@ -1,3 +1,13 @@
+## 6.2.4 (2022-09-16)
+
+### Bug fixes
+
+Highlight the active line even when there is a selection. Prevent the active line background from obscuring the selection backdrop.
+
+Fix an issue where elements with negative margins would confuse the editor's scrolling-into-view logic.
+
+Fix scrolling to a specific position in an editor that has not been in view yet.
+
 ## 6.2.3 (2022-09-08)
 
 ### Bug fixes
