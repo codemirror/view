@@ -8,7 +8,7 @@ import {Direction} from "./bidi"
 
 function visiblePixelRange(dom: HTMLElement, paddingTop: number): Rect {
   let rect = dom.getBoundingClientRect()
-  let doc = dom.ownerDocument, win = doc.defaultView!
+  let doc = dom.ownerDocument, win = doc.defaultView || window
   let left = Math.max(0, rect.left), right = Math.min(win.innerWidth, rect.right)
   let top = Math.max(0, rect.top), bottom = Math.min(win.innerHeight, rect.bottom)
   for (let parent = dom.parentNode as Node | null; parent && parent != doc.body;) {

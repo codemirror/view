@@ -712,7 +712,7 @@ export class EditorView {
   setRoot(root: Document | ShadowRoot) {
     if (this._root != root) {
       this._root = root
-      this.observer.setWindow((root.nodeType == 9 ? root as Document : root.ownerDocument!).defaultView!)
+      this.observer.setWindow((root.nodeType == 9 ? root as Document : root.ownerDocument!).defaultView || window)
       this.mountStyles()
     }
   }

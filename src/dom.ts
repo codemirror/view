@@ -105,7 +105,7 @@ export type ScrollStrategy = "nearest" | "start" | "end" | "center"
 export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
                                    x: ScrollStrategy, y: ScrollStrategy,
                                    xMargin: number, yMargin: number, ltr: boolean) {
-  let doc = dom.ownerDocument!, win = doc.defaultView!
+  let doc = dom.ownerDocument!, win = doc.defaultView || window
 
   for (let cur: any = dom; cur;) {
     if (cur.nodeType == 1) { // Element
