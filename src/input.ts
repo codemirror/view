@@ -413,7 +413,7 @@ handlerOptions.touchstart = handlerOptions.touchmove = {passive: true}
 
 handlers.mousedown = (view, event: MouseEvent) => {
   view.observer.flush()
-  if (view.inputState.lastTouchTime > Date.now() - 2000 && getClickType(event) == 1) return // Ignore touch interaction
+  if (view.inputState.lastTouchTime > Date.now() - 2000) return // Ignore touch interaction
   let style: MouseSelectionStyle | null = null
   for (let makeStyle of view.state.facet(mouseSelectionStyle)) {
     style = makeStyle(view, event)
