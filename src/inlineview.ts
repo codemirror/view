@@ -269,6 +269,8 @@ export class CompositionView extends WidgetView {
   }
 
   get isEditable() { return true }
+
+  canReuseDOM() { return true }
 }
 
 // Uses the old structure of a chunk of content view frozen for

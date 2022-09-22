@@ -72,7 +72,7 @@ export abstract class ContentView {
         if (child.dirty) {
           if (!child.dom && (next = prev ? prev.nextSibling : parent.firstChild)) {
             let contentView = ContentView.get(next)
-            if (!contentView || !contentView.parent && contentView.constructor == child.constructor)
+            if (!contentView || !contentView.parent && contentView.canReuseDOM(child))
               child.reuseDOM(next)
           }
           child.sync(track)
@@ -231,6 +231,8 @@ export abstract class ContentView {
   }
 
   become(other: ContentView): boolean { return false }
+
+  canReuseDOM(other: ContentView) { return other.constructor == this.constructor }
 
   abstract split(at: number): ContentView
 
