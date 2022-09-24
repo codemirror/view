@@ -198,7 +198,11 @@ export class DocView extends ContentView {
           // (one where the focus is before the anchor), but not all
           // browsers support it yet.
           rawSel.collapse(anchor.node, anchor.offset)
-          rawSel.extend(head.node, head.offset)
+          // Safari will ignore the call above when the editor is
+          // hidden, and then raise an error on the call to extend
+          // (#940).
+          try { rawSel.extend(head.node, head.offset) }
+          catch(_) {}
         } else {
           // Primitive (IE) way
           let range = document.createRange()
