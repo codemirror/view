@@ -1,3 +1,11 @@
+## 6.2.5 (2022-09-24)
+
+### Bug fixes
+
+Don't override double/triple tap behavior on touch screen devices, so that the mobile selection menu pops up properly.
+
+Fix an issue where updating the selection could crash on Safari when the editor was hidden.
+
 ## 6.2.4 (2022-09-16)
 
 ### Bug fixes
