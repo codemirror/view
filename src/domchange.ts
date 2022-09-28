@@ -7,7 +7,7 @@ import {compositionSurroundingNode} from "./docview"
 import {EditorSelection, Text} from "@codemirror/state"
 
 export function applyDOMChange(view: EditorView, start: number, end: number, typeOver: boolean): boolean {
-  let change: undefined | {from: number, to: number, insert: Text}, newSel
+  let change: undefined | {from: number, to: number, insert: Text}, newSel: EditorSelection | null | undefined
   let sel = view.state.selection.main
   if (start > -1) {
     let bounds = view.docView.domBoundsAround(start, end, 0)
@@ -55,24 +55,26 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
 
   if (!change && !newSel) return false
 
-  // Heuristic to notice typing over a selected character
-  if (!change && typeOver && !sel.empty && newSel && newSel.main.empty)
+  if (!change && typeOver && !sel.empty && newSel && newSel.main.empty) {
+    // Heuristic to notice typing over a selected character
     change = {from: sel.from, to: sel.to, insert: view.state.doc.slice(sel.from, sel.to)}
-  // If the change is inside the selection and covers most of it,
-  // assume it is a selection replace (with identical characters at
-  // the start/end not included in the diff)
-  else if (change && change.from >= sel.from && change.to <= sel.to &&
+  } else if (change && change.from >= sel.from && change.to <= sel.to &&
            (change.from != sel.from || change.to != sel.to) &&
-           (sel.to - sel.from) - (change.to - change.from) <= 4)
+           (sel.to - sel.from) - (change.to - change.from) <= 4) {
+    // If the change is inside the selection and covers most of it,
+    // assume it is a selection replace (with identical characters at
+    // the start/end not included in the diff)
     change = {
       from: sel.from, to: sel.to,
       insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
     }
-  // Detect insert-period-on-double-space Mac behavior, and transform
-  // it into a regular space insert.
-  else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
-           change.insert.toString() == ".")
+  } else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
+           /^\. ?$/.test(change.insert.toString())) {
+    // Detect insert-period-on-double-space Mac and Android behavior,
+    // and transform it into a regular space insert.
+    if (newSel && change.insert.length == 2) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)
     change = {from: sel.from, to: sel.to, insert: Text.of([" "])}
+  }
 
   if (change) {
     let startState = view.state
