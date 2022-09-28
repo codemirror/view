@@ -44,11 +44,14 @@ export interface KeyBinding {
   /// The command to execute when this binding is triggered. When the
   /// command function returns `false`, further bindings will be tried
   /// for the key.
-  run: Command,
+  run?: Command,
   /// When given, this defines a second binding, using the (possibly
   /// platform-specific) key name prefixed with `Shift-` to activate
   /// this command.
   shift?: Command
+  /// When this property is present, the function is called for every
+  /// key that is not a multi-stroke prefix.
+  any?: (view: EditorView, event: KeyboardEvent) => boolean
   /// By default, key bindings apply when focus is on the editor
   /// content (the `"editor"` scope). Some extensions, mostly those
   /// that define their own panels, might want to allow you to
@@ -99,8 +102,10 @@ function modifiers(name: string, event: KeyboardEvent, shift: boolean) {
   return name
 }
 
-type Binding = {preventDefault: boolean, commands: Command[]}
+type Binding = {preventDefault: boolean, run: ((view: EditorView, event: KeyboardEvent) => boolean)[]}
 
+// In each scope, the `_all` property is used for bindings that apply
+// to all keys.
 type Keymap = {[scope: string]: {[key: string]: Binding}}
 
 const handleKeyEvents = Prec.default(EditorView.domEventHandlers({
@@ -151,7 +156,7 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
       throw new Error("Key binding " + name + " is used both as a regular binding and as a multi-stroke prefix")
   }
 
-  let add = (scope: string, key: string, command: Command, preventDefault?: boolean) => {
+  let add = (scope: string, key: string, command: Command | undefined, preventDefault?: boolean) => {
     let scopeObj = bound[scope] || (bound[scope] = Object.create(null))
     let parts = key.split(/ (?!$)/).map(k => normalizeKeyName(k, platform))
     for (let i = 1; i < parts.length; i++) {
@@ -159,7 +164,7 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
       checkPrefix(prefix, true)
       if (!scopeObj[prefix]) scopeObj[prefix] = {
         preventDefault: true,
-        commands: [(view: EditorView) => {
+        run: [(view: EditorView) => {
           let ourObj = storedPrefix = {view, prefix, scope}
           setTimeout(() => { if (storedPrefix == ourObj) storedPrefix = null }, PrefixTimeout)
           return true
@@ -168,15 +173,21 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
     }
     let full = parts.join(" ")
     checkPrefix(full, false)
-    let binding = scopeObj[full] || (scopeObj[full] = {preventDefault: false, commands: []})
-    binding.commands.push(command)
+    let binding = scopeObj[full] || (scopeObj[full] = {preventDefault: false, run: scopeObj._any?.run?.slice() || []})
+    if (command) binding.run.push(command)
     if (preventDefault) binding.preventDefault = true
   }
 
   for (let b of bindings) {
+    let scopes = b.scope ? b.scope.split(" ") : ["editor"]
+    if (b.any) for (let scope of scopes) {
+      let scopeObj = bound[scope] || (bound[scope] = Object.create(null))
+      if (!scopeObj._any) scopeObj._any = {preventDefault: false, run: []}
+      for (let key in scopeObj) scopeObj[key].run.push(b.any)
+    }
     let name = b[platform] || b.key
     if (!name) continue
-    for (let scope of b.scope ? b.scope.split(" ") : ["editor"]) {
+    for (let scope of scopes) {
       add(scope, name, b.run, b.preventDefault)
       if (b.shift) add(scope, "Shift-" + name, b.shift, b.preventDefault)
     }
@@ -217,6 +228,7 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
     } else if (isChar && event.shiftKey) {
       if (runFor(scopeObj[prefix + modifiers(name, event, true)])) return true
     }
+    if (runFor(scopeObj._any)) return true
   }
   return fallthrough
 }
