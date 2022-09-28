@@ -1,3 +1,17 @@
+## 6.3.0 (2022-09-28)
+
+### Bug fixes
+
+Reduce the amount of wrap-point jittering when scrolling through a very long wrapped line.
+
+Fix an issue where scrolling to content that wasn't currently drawn due to being on a very long line would often fail to scroll to the right position.
+
+Suppress double-space-adds-period behavior on Chrome Mac when it behaves weirdly next to widget.
+
+### New features
+
+Key binding objects with an `any` property will now add handlers that are called for any key, within the ordering of the keybindings.
+
 ## 6.2.5 (2022-09-24)
 
 ### Bug fixes
