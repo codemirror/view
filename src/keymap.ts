@@ -194,9 +194,13 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
       storedPrefix = null
   }
 
+  let ran: Set<(view: EditorView, event: KeyboardEvent) => boolean> = new Set
   let runFor = (binding: Binding | undefined) => {
     if (binding) {
-      for (let cmd of binding.commands) if (cmd(view)) return true
+      for (let cmd of binding.run) if (!ran.has(cmd)) {
+        ran.add(cmd)
+        if (cmd(view, event)) return true
+      }
       if (binding.preventDefault) fallthrough = true
     }
     return false
