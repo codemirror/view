@@ -366,57 +366,77 @@ export class ViewState {
   // predictable. Relies on generous margins (see LG.Margin) to hide
   // the artifacts this might produce from the user.
   ensureLineGaps(current: readonly LineGap[], mayMeasure?: EditorView) {
-    let gaps: LineGap[] = []
     let wrapping = this.heightOracle.lineWrapping
     let margin = wrapping ? LG.MarginWrap : LG.Margin, halfMargin = margin >> 1, doubleMargin = margin << 1
     // The non-wrapping logic won't work at all in predominantly right-to-left text.
-    if (this.defaultTextDirection != Direction.LTR && !wrapping) return gaps
+    if (this.defaultTextDirection != Direction.LTR && !wrapping) return []
+    let gaps: LineGap[] = []
+    let addGap = (from: number, to: number, line: BlockInfo, structure: LineStructure) => {
+      if (to - from < halfMargin) return
+      let sel = this.state.selection.main, avoid = [sel.from]
+      if (!sel.empty) avoid.push(sel.to)
+      for (let pos of avoid) {
+        if (pos > from && pos < to) {
+          addGap(from, pos - LG.SelectionMargin, line, structure)
+          addGap(pos + LG.SelectionMargin, to, line, structure)
+          return
+        }
+      }
+      let gap = find(current, gap => gap.from >= line.from && gap.to <= line.to &&
+        Math.abs(gap.from - from) < halfMargin && Math.abs(gap.to - to) < halfMargin &&
+        !avoid.some(pos => gap.from < pos && gap.to > pos))
+      if (!gap) {
+        // When scrolling down, snap gap ends to line starts to avoid shifts in wrapping
+        if (to < line.to && mayMeasure && wrapping &&
+          mayMeasure.visibleRanges.some(r => r.from <= to && r.to >= to)) {
+          let lineStart = mayMeasure.moveToLineBoundary(EditorSelection.cursor(to), false, true).head
+          if (lineStart > from) to = lineStart
+        }
+        gap = new LineGap(from, to, this.gapSize(line, from, to, structure))
+      }
+      gaps.push(gap)
+    }
+
     for (let line of this.viewportLines) {
       if (line.length < doubleMargin) continue
       let structure = lineStructure(line.from, line.to, this.stateDeco)
       if (structure.total < doubleMargin) continue
+      let target = this.scrollTarget ? this.scrollTarget.range.head : null
       let viewFrom, viewTo
       if (wrapping) {
         let marginHeight = (margin / this.heightOracle.lineLength) * this.heightOracle.lineHeight
-        viewFrom = findPosition(structure, (this.visibleTop - line.top - marginHeight) / line.height)
-        viewTo = findPosition(structure, (this.visibleBottom - line.top + marginHeight) / line.height)
-      } else {
-        let totalWidth = structure.total * this.heightOracle.charWidth
-        let marginWidth = margin * this.heightOracle.charWidth
-        viewFrom = findPosition(structure, (this.pixelViewport.left - marginWidth) / totalWidth)
-        viewTo = findPosition(structure, (this.pixelViewport.right + marginWidth) / totalWidth)
-      }
-
-      let outside = []
-      if (viewFrom > line.from) outside.push({from: line.from, to: viewFrom})
-      if (viewTo < line.to) outside.push({from: viewTo, to: line.to})
-      let sel = this.state.selection.main
-      // Make sure the gaps don't cover a selection end
-      if (sel.from >= line.from && sel.from <= line.to)
-        cutRange(outside, sel.from - LG.SelectionMargin, sel.from + LG.SelectionMargin)
-      if (!sel.empty && sel.to >= line.from && sel.to <= line.to)
-        cutRange(outside, sel.to - LG.SelectionMargin, sel.to + LG.SelectionMargin)
-
-      for (let {from, to} of outside) if (to - from > halfMargin) {
-        let gap = find(current, gap => gap.from >= line.from && gap.to <= line.to &&
-          Math.abs(gap.from - from) < halfMargin && Math.abs(gap.to - to) < halfMargin)
-        if (!gap) {
-          // When scrolling down, snap gap ends to line starts to avoid shifts in wrapping
-          if (to < line.to && mayMeasure && wrapping &&
-              mayMeasure.visibleRanges.some(r => r.from <= to && r.to >= to)) {
-            let lineStart = mayMeasure.moveToLineBoundary(EditorSelection.cursor(to), false, true).head
-            if (lineStart > from) to = lineStart
-          }
-          gap = new LineGap(from, to, this.gapSize(line, from, to, structure))
+        let top, bot
+        if (target != null) {
+          top = Math.max(line.from, target - margin)
+          bot = Math.min(line.to, target + margin)
+        } else {
+          top = (this.visibleTop - line.top - marginHeight) / line.height
+          bot = (this.visibleBottom - line.top + marginHeight) / line.height
         }
-        gaps.push(gap)
+        viewFrom = findPosition(structure, top)
+        viewTo = findPosition(structure, bot)
+      } else {
+        let left, right
+        if (target != null) {
+          left = Math.max(line.from, target - doubleMargin)
+          right = Math.min(line.to, target + doubleMargin)
+        } else {
+          let totalWidth = structure.total * this.heightOracle.charWidth
+          let marginWidth = margin * this.heightOracle.charWidth
+          left = (this.pixelViewport.left - marginWidth) / totalWidth
+          right = (this.pixelViewport.right + marginWidth) / totalWidth
+        }
+        viewFrom = findPosition(structure, left)
+        viewTo = findPosition(structure, right)
       }
+
+      if (viewFrom > line.from) addGap(line.from, viewFrom, line, structure)
+      if (viewTo < line.to) addGap(viewTo, line.to, line, structure)
     }
     return gaps
   }
 
-  gapSize(line: BlockInfo, from: number, to: number,
-          structure: {total: number, ranges: {from: number, to: number}[]}) {
+  gapSize(line: BlockInfo, from: number, to: number, structure: LineStructure) {
     let fraction = findFraction(structure, to) - findFraction(structure, from)
     if (this.heightOracle.lineWrapping) {
       return line.height * fraction
@@ -472,7 +492,9 @@ export class Viewport {
   constructor(readonly from: number, readonly to: number) {}
 }
 
-function lineStructure(from: number, to: number, stateDeco: readonly DecorationSet[]) {
+type LineStructure = {total: number, ranges: {from: number, to: number}[]}
+
+function lineStructure(from: number, to: number, stateDeco: readonly DecorationSet[]): LineStructure {
   let ranges = [], pos = from, total = 0
   RangeSet.spans(stateDeco, from, to, {
     span() {},
@@ -485,7 +507,7 @@ function lineStructure(from: number, to: number, stateDeco: readonly DecorationS
   return {total, ranges}
 }
 
-function findPosition({total, ranges}: {total: number, ranges: {from: number, to: number}[]}, ratio: number): number {
+function findPosition({total, ranges}: LineStructure, ratio: number): number {
   if (ratio <= 0) return ranges[0].from
   if (ratio >= 1) return ranges[ranges.length - 1].to
   let dist = Math.floor(total * ratio)
@@ -496,7 +518,7 @@ function findPosition({total, ranges}: {total: number, ranges: {from: number, to
   }
 }
 
-function findFraction(structure: {total: number, ranges: {from: number, to: number}[]}, pos: number) {
+function findFraction(structure: LineStructure, pos: number) {
   let counted = 0
   for (let {from, to} of structure.ranges) {
     if (pos <= to) {
@@ -506,19 +528,6 @@ function findFraction(structure: {total: number, ranges: {from: number, to: numb
     counted += to - from
   }
   return counted / structure.total
-}
-
-function cutRange(ranges: {from: number, to: number}[], from: number, to: number) {
-  for (let i = 0; i < ranges.length; i++) {
-    let r = ranges[i]
-    if (r.from < to && r.to > from) {
-      let pieces = []
-      if (r.from < from) pieces.push({from: r.from, to: from})
-      if (r.to > to) pieces.push({from: to, to: r.to})
-      ranges.splice(i, 1, ...pieces)
-      i += pieces.length - 1
-    }
-  }
 }
 
 function find<T>(array: readonly T[], f: (value: T) => boolean): T | undefined {
