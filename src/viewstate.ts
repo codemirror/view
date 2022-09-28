@@ -1,4 +1,4 @@
-import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet} from "@codemirror/state"
+import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} from "@codemirror/state"
 import {Rect} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
 import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget} from "./extension"
@@ -95,8 +95,7 @@ class LineGapWidget extends WidgetType {
 
 const enum LG {
   Margin = 2000,
-  HalfMargin = LG.Margin >> 1,
-  DoubleMargin = LG.Margin << 1,
+  MarginWrap = 10000,
   SelectionMargin = 10,
 }
 
@@ -204,7 +203,7 @@ export class ViewState {
     this.viewport = viewport
     this.updateForViewport()
     if (updateLines) this.updateViewportLines()
-    if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
+    if (this.lineGaps.length || this.viewport.to - this.viewport.from > (LG.Margin << 1))
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
     update.flags |= this.computeVisibleRanges()
 
@@ -286,8 +285,8 @@ export class ViewState {
     this.updateForViewport()
     if ((result & UpdateFlag.Height) || viewportChange) this.updateViewportLines()
 
-    if (this.lineGaps.length || this.viewport.to - this.viewport.from > LG.DoubleMargin)
-      this.updateLineGaps(this.ensureLineGaps(refresh ? [] : this.lineGaps))
+    if (this.lineGaps.length || this.viewport.to - this.viewport.from > (LG.Margin << 1))
+      this.updateLineGaps(this.ensureLineGaps(refresh ? [] : this.lineGaps, view))
     result |= this.computeVisibleRanges()
 
     if (this.mustEnforceCursorAssoc) {
@@ -366,22 +365,24 @@ export class ViewState {
   // since actual DOM coordinates aren't always available and
   // predictable. Relies on generous margins (see LG.Margin) to hide
   // the artifacts this might produce from the user.
-  ensureLineGaps(current: readonly LineGap[]) {
+  ensureLineGaps(current: readonly LineGap[], mayMeasure?: EditorView) {
     let gaps: LineGap[] = []
-    // This won't work at all in predominantly right-to-left text.
-    if (this.defaultTextDirection != Direction.LTR) return gaps
+    let wrapping = this.heightOracle.lineWrapping
+    let margin = wrapping ? LG.MarginWrap : LG.Margin, halfMargin = margin >> 1, doubleMargin = margin << 1
+    // The non-wrapping logic won't work at all in predominantly right-to-left text.
+    if (this.defaultTextDirection != Direction.LTR && !wrapping) return gaps
     for (let line of this.viewportLines) {
-      if (line.length < LG.DoubleMargin) continue
+      if (line.length < doubleMargin) continue
       let structure = lineStructure(line.from, line.to, this.stateDeco)
-      if (structure.total < LG.DoubleMargin) continue
+      if (structure.total < doubleMargin) continue
       let viewFrom, viewTo
-      if (this.heightOracle.lineWrapping) {
-        let marginHeight = (LG.Margin / this.heightOracle.lineLength) * this.heightOracle.lineHeight
+      if (wrapping) {
+        let marginHeight = (margin / this.heightOracle.lineLength) * this.heightOracle.lineHeight
         viewFrom = findPosition(structure, (this.visibleTop - line.top - marginHeight) / line.height)
         viewTo = findPosition(structure, (this.visibleBottom - line.top + marginHeight) / line.height)
       } else {
         let totalWidth = structure.total * this.heightOracle.charWidth
-        let marginWidth = LG.Margin * this.heightOracle.charWidth
+        let marginWidth = margin * this.heightOracle.charWidth
         viewFrom = findPosition(structure, (this.pixelViewport.left - marginWidth) / totalWidth)
         viewTo = findPosition(structure, (this.pixelViewport.right + marginWidth) / totalWidth)
       }
@@ -396,11 +397,19 @@ export class ViewState {
       if (!sel.empty && sel.to >= line.from && sel.to <= line.to)
         cutRange(outside, sel.to - LG.SelectionMargin, sel.to + LG.SelectionMargin)
 
-      for (let {from, to} of outside) if (to - from > LG.HalfMargin) {
-        gaps.push(
-          find(current, gap => gap.from >= line.from && gap.to <= line.to &&
-            Math.abs(gap.from - from) < LG.HalfMargin && Math.abs(gap.to - to) < LG.HalfMargin) ||
-          new LineGap(from, to, this.gapSize(line, from, to, structure)))
+      for (let {from, to} of outside) if (to - from > halfMargin) {
+        let gap = find(current, gap => gap.from >= line.from && gap.to <= line.to &&
+          Math.abs(gap.from - from) < halfMargin && Math.abs(gap.to - to) < halfMargin)
+        if (!gap) {
+          // When scrolling down, snap gap ends to line starts to avoid shifts in wrapping
+          if (to < line.to && mayMeasure && wrapping &&
+              mayMeasure.visibleRanges.some(r => r.from <= to && r.to >= to)) {
+            let lineStart = mayMeasure.moveToLineBoundary(EditorSelection.cursor(to), false, true).head
+            if (lineStart > from) to = lineStart
+          }
+          gap = new LineGap(from, to, this.gapSize(line, from, to, structure))
+        }
+        gaps.push(gap)
       }
     }
     return gaps
