@@ -223,7 +223,7 @@ export class WidgetView extends ContentView {
       rect = rects[i]
       if (pos > 0 ? i == 0 : i == rects.length - 1 || rect.top < rect.bottom) break
     }
-    return (pos == 0 && side > 0 || pos == this.length && side <= 0) ? rect : flattenRect(rect, pos == 0)
+    return flattenRect(rect, this.side > 0)
   }
 
   get isEditable() { return false }
@@ -419,20 +419,55 @@ export function joinInlineInto(parent: ContentView, view: ContentView, open: num
 }
 
 export function coordsInChildren(view: ContentView, pos: number, side: number): Rect | null {
-  for (let off = 0, i = 0; i < view.children.length; i++) {
-    let child = view.children[i], end = off + child.length, next
-    if ((side <= 0 || end == view.length || child.getSide() > 0 ? end >= pos : end > pos) &&
-        (pos < end || i + 1 == view.children.length || (next = view.children[i + 1]).length || next.getSide() > 0)) {
-      let flatten = 0
-      if (end == off) {
-        if (child.getSide() <= 0) continue
-        flatten = side = -child.getSide()
+  if (!view.children.length) return fallbackRect(view)
+  return (side <= 0 ? coordsInChildrenBefore : coordsInChildrenAfter)(view, pos)
+}
+
+function coordsInChildrenBefore(view: ContentView, pos: number): Rect | null {
+  // Find the last leaf in the tree that touches pos and doesn't have getSide() > 0
+  let found: ContentView | null = null, foundPos = -1
+  function scan(view: ContentView, pos: number) {
+    for (let i = 0, off = 0; i < view.children.length && off <= pos; i++) {
+      let child = view.children[i], end = off + child.length
+      if (end >= pos) {
+        if (child.children.length) {
+          if (scan(child, pos - off)) return true
+        } else if (end >= pos) {
+          if (end == pos && child.getSide() > 0) return true
+          found = child
+          foundPos = pos - off
+        }
       }
-      let rect = child.coordsAt(Math.max(0, pos - off), side)
-      return flatten && rect ? flattenRect(rect, side < 0) : rect
+      off = end
     }
-    off = end
   }
+  scan(view, pos)
+  return found ? (found as any).coordsAt(Math.max(0, foundPos), -1) : coordsInChildrenAfter(view, pos)
+}
+
+function coordsInChildrenAfter(view: ContentView, pos: number): Rect | null {
+  // Find the first leaf in the tree that touches pos and doesn't have getSide() < 0
+  let found: ContentView | null = null, foundPos = -1
+  function scan(view: ContentView, pos: number) {
+    for (let i = view.children.length - 1, off = view.length; i >= 0 && off >= pos; i--) {
+      let child = view.children[i]
+      off -= child.length
+      if (off <= pos) {
+        if (child.children.length) {
+          if (scan(child, pos - off)) return true
+        } else if (off <= pos) {
+          if (off == pos && child.getSide() < 0) return true
+          found = child
+          foundPos = pos - off
+        }
+      }
+    }
+  }
+  scan(view, pos)
+  return found ? (found as any).coordsAt(Math.max(0, foundPos), 1) : coordsInChildrenBefore(view, pos)
+}
+
+function fallbackRect(view: ContentView) {
   let last = view.dom!.lastChild
   if (!last) return (view.dom as HTMLElement).getBoundingClientRect()
   let rects = clientRectsFor(last)

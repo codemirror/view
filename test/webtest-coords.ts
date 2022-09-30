@@ -72,6 +72,21 @@ describe("EditorView coords", () => {
     ist(near(cm.coordsAtPos(6, -1)!.left, sides[2]))
   })
 
+  it("respects sides for widgets wrapped in marks", () => {
+    let cm = tempView("a\n\nb\n\nd", [
+      deco(Decoration.widget({widget: inline, side: 1}).range(2),
+           Decoration.widget({widget: inline, side: -1}).range(5)),
+      deco(Decoration.mark({class: "test"}).range(0, 7))
+    ])
+    let widgets = cm.contentDOM.querySelectorAll(".widget")
+    let pos2 = widgets[0].getBoundingClientRect().left
+    ist(near(cm.coordsAtPos(2, 1)!.left, pos2))
+    ist(near(cm.coordsAtPos(2, -1)!.left, pos2))
+    let pos5 = widgets[1].getBoundingClientRect().right
+    ist(near(cm.coordsAtPos(5, 1)!.left, pos5))
+    ist(near(cm.coordsAtPos(5, -1)!.left, pos5))
+  })
+
   it("takes coordinates between widgets", () => {
     let wb = Decoration.widget({widget: inline, side: -1})
     let wa = Decoration.widget({widget: inline, side: 1})
