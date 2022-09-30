@@ -394,7 +394,6 @@ export function inlineDOMAtPos(parent: ContentView, pos: number) {
     if (pos <= off) break
     off = end
   }
-//  if (i) return DOMPos.after(children[i - 1].dom!)
   for (let j = i; j > 0; j--) {
     let prev = children[j - 1]
     if (prev.dom!.parentNode == dom) return prev.domAtPos(prev.length)
