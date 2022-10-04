@@ -20,7 +20,6 @@ import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, ligh
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
 import browser from "./browser"
-import {applyDOMChange} from "./domchange"
 import {computeOrder, trivialOrder, BidiSpan, Direction} from "./bidi"
 
 /// The type of object given to the [`EditorView`](#view.EditorView)
@@ -188,12 +187,7 @@ export class EditorView {
     this.viewState = new ViewState(config.state || EditorState.create(config))
     this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec))
     for (let plugin of this.plugins) plugin.update(this)
-    this.observer = new DOMObserver(this, (from, to, typeOver) => {
-      return applyDOMChange(this, from, to, typeOver)
-    }, event => {
-      this.inputState.runScrollHandlers(this, event)
-      if (this.observer.intersecting) this.measure()
-    })
+    this.observer = new DOMObserver(this)
     this.inputState = new InputState(this)
     this.inputState.ensureHandlers(this, this.plugins)
     this.docView = new DocView(this)

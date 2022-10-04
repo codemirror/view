@@ -6,61 +6,76 @@ import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
 import {compositionSurroundingNode} from "./docview"
 import {EditorSelection, Text} from "@codemirror/state"
 
-export function applyDOMChange(view: EditorView, start: number, end: number, typeOver: boolean): boolean {
-  let change: undefined | {from: number, to: number, insert: Text}, newSel: EditorSelection | null | undefined
-  let sel = view.state.selection.main
-  if (start > -1) {
-    let bounds = view.docView.domBoundsAround(start, end, 0)
-    if (!bounds || view.state.readOnly) return false
-    let {from, to} = bounds
-    let selPoints = view.docView.impreciseHead || view.docView.impreciseAnchor ? [] : selectionPoints(view)
-    let reader = new DOMReader(selPoints, view.state)
-    reader.readRange(bounds.startDOM, bounds.endDOM)
+export class DOMChange {
+  bounds: {
+    startDOM: Node | null,
+    endDOM: Node | null,
+    from: number,
+    to: number
+  } | null = null
+  text: string = ""
+  newSel: EditorSelection | null
 
+  constructor(view: EditorView, start: number, end: number, readonly typeOver: boolean) {
+    let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
+    if (start > -1 && !view.state.readOnly && (this.bounds = view.docView.domBoundsAround(start, end, 0))) {
+      let selPoints = iHead || iAnchor ? [] : selectionPoints(view)
+      let reader = new DOMReader(selPoints, view.state)
+      reader.readRange(this.bounds.startDOM, this.bounds.endDOM)
+      this.text = reader.text
+      this.newSel = selectionFromPoints(selPoints, this.bounds.from)
+    } else {
+      let domSel = view.observer.selectionRange
+      let head = iHead && iHead.node == domSel.focusNode && iHead.offset == domSel.focusOffset ||
+        !contains(view.contentDOM, domSel.focusNode)
+        ? view.state.selection.main.head
+        : view.docView.posFromDOM(domSel.focusNode!, domSel.focusOffset)
+      let anchor = iAnchor && iAnchor.node == domSel.anchorNode && iAnchor.offset == domSel.anchorOffset ||
+        !contains(view.contentDOM, domSel.anchorNode)
+        ? view.state.selection.main.anchor
+        : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
+      this.newSel = EditorSelection.single(anchor, head)
+    }
+  }
+}
+
+export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean {
+  let change: undefined | {from: number, to: number, insert: Text}
+  let {newSel} = domChange, sel = view.state.selection.main
+  if (domChange.bounds) {
+    let {from, to} = domChange.bounds
     let preferredPos = sel.from, preferredSide = null
     // Prefer anchoring to end when Backspace is pressed (or, on
     // Android, when something was deleted)
     if (view.inputState.lastKeyCode === 8 && view.inputState.lastKeyTime > Date.now() - 100 ||
-        browser.android && reader.text.length < to - from) {
+      browser.android && domChange.text.length < to - from) {
       preferredPos = sel.to
       preferredSide = "end"
     }
-    let diff = findDiff(view.state.doc.sliceString(from, to, LineBreakPlaceholder), reader.text,
+    let diff = findDiff(view.state.doc.sliceString(from, to, LineBreakPlaceholder), domChange.text,
                         preferredPos - from, preferredSide)
     if (diff) {
       // Chrome inserts two newlines when pressing shift-enter at the
-      // end of a line. This drops one of those.
+      // end of a line. DomChange drops one of those.
       if (browser.chrome && view.inputState.lastKeyCode == 13 &&
-          diff.toB == diff.from + 2 && reader.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
+        diff.toB == diff.from + 2 && domChange.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
         diff.toB--
 
       change = {from: from + diff.from, to: from + diff.toA,
-                insert: Text.of(reader.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
+                insert: Text.of(domChange.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
     }
-    newSel = selectionFromPoints(selPoints, from)
-  } else if (view.hasFocus || !view.state.facet(editable)) {
-    let domSel = view.observer.selectionRange
-    let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
-    let head = iHead && iHead.node == domSel.focusNode && iHead.offset == domSel.focusOffset ||
-      !contains(view.contentDOM, domSel.focusNode)
-      ? view.state.selection.main.head
-      : view.docView.posFromDOM(domSel.focusNode!, domSel.focusOffset)
-    let anchor = iAnchor && iAnchor.node == domSel.anchorNode && iAnchor.offset == domSel.anchorOffset ||
-      !contains(view.contentDOM, domSel.anchorNode)
-      ? view.state.selection.main.anchor
-      : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
-    if (head != sel.head || anchor != sel.anchor)
-      newSel = EditorSelection.single(anchor, head)
+  } else if (newSel && (!view.hasFocus || !view.state.facet(editable) || newSel.main.eq(sel))) {
+    newSel = null
   }
 
   if (!change && !newSel) return false
 
-  if (!change && typeOver && !sel.empty && newSel && newSel.main.empty) {
+  if (!change && domChange.typeOver && !sel.empty && newSel && newSel.main.empty) {
     // Heuristic to notice typing over a selected character
     change = {from: sel.from, to: sel.to, insert: view.state.doc.slice(sel.from, sel.to)}
   } else if (change && change.from >= sel.from && change.to <= sel.to &&
-           (change.from != sel.from || change.to != sel.to) &&
-           (sel.to - sel.from) - (change.to - change.from) <= 4) {
+             (change.from != sel.from || change.to != sel.to) &&
+             (sel.to - sel.from) - (change.to - change.from) <= 4) {
     // If the change is inside the selection and covers most of it,
     // assume it is a selection replace (with identical characters at
     // the start/end not included in the diff)
@@ -69,7 +84,7 @@ export function applyDOMChange(view: EditorView, start: number, end: number, typ
       insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
     }
   } else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
-           /^\. ?$/.test(change.insert.toString())) {
+             /^\. ?$/.test(change.insert.toString())) {
     // Detect insert-period-on-double-space Mac and Android behavior,
     // and transform it into a regular space insert.
     if (newSel && change.insert.length == 2) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)

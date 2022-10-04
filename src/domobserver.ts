@@ -4,6 +4,7 @@ import {EditorView} from "./editorview"
 import {editable} from "./extension"
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition,
         deepActiveElement, dispatchKey, atElementStart} from "./dom"
+import {DOMChange, applyDOMChange} from "./domchange"
 
 const observeOptions = {
   childList: true,
@@ -52,9 +53,7 @@ export class DOMObserver {
   // Timeout for scheduling check of the parents that need scroll handlers
   parentCheck = -1
 
-  constructor(private view: EditorView,
-              private onChange: (from: number, to: number, typeOver: boolean) => boolean,
-              private onScrollChanged: (event: Event) => void) {
+  constructor(private view: EditorView) {
     this.dom = view.contentDOM
     this.observer = new MutationObserver(mutations => {
       for (let mut of mutations) this.queue.push(mut)
@@ -115,6 +114,11 @@ export class DOMObserver {
     }
     this.listenForScroll()
     this.readSelectionRange()
+  }
+
+  onScrollChanged(e: Event) {
+    this.view.inputState.runScrollHandlers(this.view, e)
+    if (this.intersecting) this.view.measure()
   }
 
   onScroll(e: Event) {
@@ -341,7 +345,7 @@ export class DOMObserver {
     this.view.inputState.lastFocusTime = 0
     this.selectionChanged = false
     let startState = this.view.state
-    let handled = this.onChange(from, to, typeOver)
+    let handled = applyDOMChange(this.view, new DOMChange(this.view, from, to, typeOver))
     // The view wasn't updated
     if (this.view.state == startState) this.view.update([])
     return handled
