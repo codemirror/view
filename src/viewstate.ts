@@ -407,8 +407,10 @@ export class ViewState {
         let marginHeight = (margin / this.heightOracle.lineLength) * this.heightOracle.lineHeight
         let top, bot
         if (target != null) {
-          top = Math.max(line.from, target - margin)
-          bot = Math.min(line.to, target + margin)
+          let targetFrac = findFraction(structure, target)
+          let spaceFrac = ((this.visibleBottom - this.visibleTop) / 2 + marginHeight) / line.height
+          top = targetFrac - spaceFrac
+          bot = targetFrac + spaceFrac
         } else {
           top = (this.visibleTop - line.top - marginHeight) / line.height
           bot = (this.visibleBottom - line.top + marginHeight) / line.height
@@ -416,13 +418,15 @@ export class ViewState {
         viewFrom = findPosition(structure, top)
         viewTo = findPosition(structure, bot)
       } else {
+        let totalWidth = structure.total * this.heightOracle.charWidth
+        let marginWidth = margin * this.heightOracle.charWidth
         let left, right
         if (target != null) {
-          left = Math.max(line.from, target - doubleMargin)
-          right = Math.min(line.to, target + doubleMargin)
+          let targetFrac = findFraction(structure, target)
+          let spaceFrac = ((this.pixelViewport.right - this.pixelViewport.left) / 2 + marginWidth) / totalWidth
+          left = targetFrac - spaceFrac
+          right = targetFrac + spaceFrac
         } else {
-          let totalWidth = structure.total * this.heightOracle.charWidth
-          let marginWidth = margin * this.heightOracle.charWidth
           left = (this.pixelViewport.left - marginWidth) / totalWidth
           right = (this.pixelViewport.right + marginWidth) / totalWidth
         }
