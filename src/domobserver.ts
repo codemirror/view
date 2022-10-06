@@ -39,6 +39,7 @@ export class DOMObserver {
   resizeTimeout = -1
   queue: MutationRecord[] = []
   delayedAndroidKey: {key: string, keyCode: number, force: boolean} | null = null
+  flushingAndroidKey = -1
   lastChange = 0
 
   onCharData: any
@@ -275,13 +276,17 @@ export class DOMObserver {
   // detected (via beforeinput or keydown), and then tries to flush
   // them or, if that has no effect, dispatches the given key.
   delayAndroidKey(key: string, keyCode: number) {
-    if (!this.delayedAndroidKey) this.view.win.requestAnimationFrame(() => {
-      let key = this.delayedAndroidKey!
-      this.delayedAndroidKey = null
-      this.delayedFlush = -1
-      if (!this.flush() && key.force)
-        dispatchKey(this.dom, key.key, key.keyCode)
-    })
+    if (!this.delayedAndroidKey) {
+      let flush = () => {
+        let key = this.delayedAndroidKey
+        if (key) {
+          this.clearDelayedAndroidKey()
+          if (!this.flush() && key.force)
+            dispatchKey(this.dom, key.key, key.keyCode)
+        }
+      }
+      this.flushingAndroidKey = this.view.win.requestAnimationFrame(flush)
+    }
     // Since backspace beforeinput is sometimes signalled spuriously,
     // Enter always takes precedence.
     if (!this.delayedAndroidKey || key == "Enter")
@@ -293,6 +298,12 @@ export class DOMObserver {
         // be ignored if it returns the DOM to its previous state.
         force: this.lastChange < Date.now() - 50 || !!this.delayedAndroidKey?.force
       }
+  }
+
+  clearDelayedAndroidKey() {
+    this.win.cancelAnimationFrame(this.flushingAndroidKey)
+    this.delayedAndroidKey = null
+    this.flushingAndroidKey = -1
   }
 
   flushSoon() {
@@ -328,6 +339,16 @@ export class DOMObserver {
     return {from, to, typeOver}
   }
 
+  readChange() {
+    let {from, to, typeOver} = this.processRecords()
+    let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
+    if (from < 0 && !newSel) return null
+    if (from > -1) this.lastChange = Date.now()
+    this.view.inputState.lastFocusTime = 0
+    this.selectionChanged = false
+    return new DOMChange(this.view, from, to, typeOver)
+  }
+
   // Apply pending changes, if any
   flush(readSelection = true) {
     // Completely hold off flushing when pending keys are set—the code
@@ -337,15 +358,10 @@ export class DOMObserver {
 
     if (readSelection) this.readSelectionRange()
 
-    let {from, to, typeOver} = this.processRecords()
-    let newSel = this.selectionChanged && hasSelection(this.dom, this.selectionRange)
-    if (from < 0 && !newSel) return false
-    if (from > -1) this.lastChange = Date.now()
-
-    this.view.inputState.lastFocusTime = 0
-    this.selectionChanged = false
+    let domChange = this.readChange()
+    if (!domChange) return false
     let startState = this.view.state
-    let handled = applyDOMChange(this.view, new DOMChange(this.view, from, to, typeOver))
+    let handled = applyDOMChange(this.view, domChange)
     // The view wasn't updated
     if (this.view.state == startState) this.view.update([])
     return handled
@@ -400,6 +416,8 @@ export class DOMObserver {
     this.removeWindowListeners(this.win)
     clearTimeout(this.parentCheck)
     clearTimeout(this.resizeTimeout)
+    this.win.cancelAnimationFrame(this.delayedFlush)
+    this.win.cancelAnimationFrame(this.flushingAndroidKey)
   }
 }
 

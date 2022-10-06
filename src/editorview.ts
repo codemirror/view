@@ -5,7 +5,7 @@ import {StyleModule, StyleSpec} from "style-mod"
 import {DocView} from "./docview"
 import {ContentView} from "./contentview"
 import {InputState} from "./input"
-import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy} from "./dom"
+import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy, dispatchKey} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
 import {ViewState} from "./viewstate"
@@ -21,6 +21,7 @@ import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
 import browser from "./browser"
 import {computeOrder, trivialOrder, BidiSpan, Direction} from "./bidi"
+import {applyDOMChange} from "./domchange"
 
 /// The type of object given to the [`EditorView`](#view.EditorView)
 /// constructor.
@@ -237,7 +238,20 @@ export class EditorView {
       return
     }
 
-    this.observer.clear()
+    // If there was a pending DOM change, eagerly read it and try to
+    // apply it after the given transactions.
+    let pendingKey = this.observer.delayedAndroidKey, domChange = null
+    if (pendingKey) {
+      this.observer.clearDelayedAndroidKey()
+      domChange = this.observer.readChange()
+      // Only try to apply DOM changes if the transactions didn't
+      // change the doc or selection.
+      if (domChange && !this.state.doc.eq(state.doc) || !this.state.selection.eq(state.selection))
+        domChange = null
+    } else {
+      this.observer.clear()
+    }
+
     // When the phrases change, redraw the editor
     if (state.facet(EditorState.phrases) != this.state.facet(EditorState.phrases))
       return this.setState(state)
@@ -273,6 +287,11 @@ export class EditorView {
     if (redrawn || attrsChanged || scrollTarget || this.viewState.mustEnforceCursorAssoc || this.viewState.mustMeasureContent)
       this.requestMeasure()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
+
+    if (domChange) {
+      if (!applyDOMChange(this, domChange) && pendingKey!.force)
+        dispatchKey(this.contentDOM, pendingKey!.key, pendingKey!.keyCode)
+    }
   }
 
   /// Reset the view to the given state. (This will cause the entire
