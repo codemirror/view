@@ -6,7 +6,8 @@ const plugin = ViewPlugin.fromClass(class {
   attrs = {style: "padding-bottom: 1000px"}
 
   update(update: ViewUpdate) {
-    let height = update.view.viewState.editorHeight - update.view.defaultLineHeight
+    let {view} = update
+    let height = view.viewState.editorHeight - view.defaultLineHeight - view.documentPadding.top - 0.5
     if (height != this.height) {
       this.height = height
       this.attrs = {style: `padding-bottom: ${height}px`}
