@@ -1,3 +1,15 @@
+## 6.3.1 (2022-10-10)
+
+### Bug fixes
+
+Fix a crash when trying to scroll something into view in an editor that wasn't in the visible DOM.
+
+Fix an issue where `coordsAtPos` returned the coordinates on the wrong side of a widget decoration wrapped in a mark decoration.
+
+Fix an issue where content on long wrapped lines could fail to properly scroll into view.
+
+Fix an issue where DOM change reading on Chrome Android could get confused when a transaction came in right after a beforeinput event for backspace, enter, or delete.
+
 ## 6.3.0 (2022-09-28)
 
 ### Bug fixes
