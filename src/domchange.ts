@@ -89,6 +89,13 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
     // and transform it into a regular space insert.
     if (newSel && change.insert.length == 2) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)
     change = {from: sel.from, to: sel.to, insert: Text.of([" "])}
+  } else if (browser.chrome && change && change.from == change.to && change.from == sel.head &&
+             change.insert.toString() == "\n " && view.lineWrapping) {
+    // In Chrome, if you insert a space at the start of a wrapped
+    // line, it will actually insert a newline and a space, causing a
+    // bogus new line to be created in CodeMirror (#968)
+    if (newSel) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)
+    change = {from: sel.from, to: sel.to, insert: Text.of([" "])}
   }
 
   if (change) {
