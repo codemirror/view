@@ -16,10 +16,10 @@ async function waitForSuccess(assert: () => void) {
   assert()
 }
 
-function setupHover(...tooltips: Array<string|{text: string, start: number, end: number}>) {
+function setupHover(...tooltips: Array<string|{text: string, start: number, end: number, destroy?: () => void}>) {
   const testText = "test"
   const hoverTooltips = tooltips.map(x => {
-    const {text, start, end} = typeof x === "string"
+    const {text, start, end, destroy} = typeof x === "string"
       ? {text: x, start: 0, end: testText.length - 1}
       : x
 
@@ -29,7 +29,7 @@ function setupHover(...tooltips: Array<string|{text: string, start: number, end:
       return {pos, create: () => {
         const dom = document.createElement("div")
         dom.innerText = text
-        return {dom}
+        return {dom, destroy}
       }}
     }, {hoverTime: 10})
   })
@@ -83,8 +83,9 @@ describe("hoverTooltip", () => {
   })
 
   it("removes tooltip view if mouse moves outside of the range", async () => {
+    let destroyed = false
     let view = setupHover(
-      {text: "remove", start: 0, end: 2},
+      {text: "remove", start: 0, end: 2, destroy: () => destroyed = true},
       {text: "keep", start: 0, end: 4}
     )
     mouseMove(view, 0)
@@ -92,6 +93,7 @@ describe("hoverTooltip", () => {
       '<div class="cm-tooltip-section">keep</div>')
     mouseMove(view, 3)
     await expectTooltip(view, '<div class="cm-tooltip-section">keep</div>')
+    ist(destroyed, true)
     view.destroy()
   })
 })

@@ -56,7 +56,10 @@ class TooltipViewManager {
         if (tooltipView.update) tooltipView.update(update)
       }
     }
-    for (let t of this.tooltipViews) if (tooltipViews.indexOf(t) < 0) t.dom.remove()
+    for (let t of this.tooltipViews) if (tooltipViews.indexOf(t) < 0) {
+      t.dom.remove()
+      t.destroy?.()
+    }
 
     this.input = input
     this.tooltips = tooltips
@@ -209,7 +212,10 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   destroy() {
     this.view.win.removeEventListener("resize", this.measureSoon)
-    for (let {dom} of this.manager.tooltipViews) dom.remove()
+    for (let tooltipView of this.manager.tooltipViews) {
+      tooltipView.dom.remove()
+      tooltipView.destroy?.()
+    }
     this.intersectionObserver?.disconnect()
     clearTimeout(this.measureTimeout)
   }
@@ -404,6 +410,9 @@ export interface TooltipView {
   mount?(view: EditorView): void
   /// Update the DOM element for a change in the view's state.
   update?(update: ViewUpdate): void
+  /// Called when the tooltip is removed from the editor or the editor
+  /// is destroyed.
+  destroy?(): void
   /// Called when the tooltip has been (re)positioned.
   positioned?(): void,
 }
