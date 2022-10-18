@@ -1,3 +1,21 @@
+## 6.4.0 (2022-10-18)
+
+### Bug fixes
+
+Avoid an issue where `scrollPastEnd` makes a single-line editor have a vertical scrollbar.
+
+Work around a Chrome bug where it inserts a newline when you press space at the start of a wrapped line.
+
+Align `rectangularSelection`'s behavior with other popular editors by making it create cursors at the end of lines that are too short to touch the rectangle.
+
+Fix an issue where coordinates on mark decoration boundaries were sometimes taken from the wrong side of the position.
+
+Prevent scrolling artifacts caused by attempts to scroll stuff into view when the editor isn't being displayed.
+
+### New features
+
+`TooltipView` objects can now provide a `destroy` method to be called when the tooltip is removed.
+
 ## 6.3.1 (2022-10-10)
 
 ### Bug fixes
