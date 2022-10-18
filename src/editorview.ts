@@ -397,15 +397,17 @@ export class EditorView {
             if (m.write) m.write(measured[i], this)
           } catch(e) { logException(this.state, e) }
         }
-        if (this.viewState.scrollTarget) {
-          this.docView.scrollIntoView(this.viewState.scrollTarget)
-          this.viewState.scrollTarget = null
-          scrolled = true
-        } else {
-          let diff = this.viewState.lineBlockAt(refBlock.from).top - refBlock.top
-          if (diff > 1 || diff < -1) {
-            this.scrollDOM.scrollTop += diff
+        if (this.viewState.editorHeight) {
+          if (this.viewState.scrollTarget) {
+            this.docView.scrollIntoView(this.viewState.scrollTarget)
+            this.viewState.scrollTarget = null
             scrolled = true
+          } else {
+            let diff = this.viewState.lineBlockAt(refBlock.from).top - refBlock.top
+            if (diff > 1 || diff < -1) {
+              this.scrollDOM.scrollTop += diff
+              scrolled = true
+            }
           }
         }
         if (redrawn) this.docView.updateSelection(true)
