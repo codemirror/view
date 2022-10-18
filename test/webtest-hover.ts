@@ -20,7 +20,7 @@ function setupHover(...tooltips: Array<string|{text: string, start: number, end:
   const testText = "test"
   const hoverTooltips = tooltips.map(x => {
     const {text, start, end, destroy} = typeof x === "string"
-      ? {text: x, start: 0, end: testText.length - 1}
+      ? {text: x, start: 0, end: testText.length - 1, destroy: undefined}
       : x
 
     return hoverTooltip((_, pos) => {
