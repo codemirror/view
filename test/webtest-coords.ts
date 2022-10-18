@@ -123,4 +123,10 @@ describe("EditorView coords", () => {
     ist(near(cm.coordsAtPos(2, 1)!.top, sides[2]))
     ist(near(cm.coordsAtPos(2, -1)!.top, sides[2]))
   })
+
+  it("takes proper coordinates for elements on decoration boundaries", () => {
+    let cm = tempView("a b c", [deco(Decoration.mark({attributes: {style: "padding: 0 10px"}}).range(2, 3))])
+    ist(near(cm.coordsAtPos(2, 1)!.left, cm.coordsAtPos(2, -1)!.left + 10))
+    ist(near(cm.coordsAtPos(3, -1)!.left, cm.coordsAtPos(3, 1)!.left - 10))
+  })
 })

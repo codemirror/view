@@ -419,52 +419,28 @@ export function joinInlineInto(parent: ContentView, view: ContentView, open: num
 }
 
 export function coordsInChildren(view: ContentView, pos: number, side: number): Rect | null {
-  if (!view.children.length) return fallbackRect(view)
-  return (side <= 0 ? coordsInChildrenBefore : coordsInChildrenAfter)(view, pos)
-}
-
-function coordsInChildrenBefore(view: ContentView, pos: number): Rect | null {
-  // Find the last leaf in the tree that touches pos and doesn't have getSide() > 0
-  let found: ContentView | null = null, foundPos = -1
+  let before: ContentView | null = null, beforePos = -1, after: ContentView | null = null, afterPos = -1
   function scan(view: ContentView, pos: number) {
     for (let i = 0, off = 0; i < view.children.length && off <= pos; i++) {
       let child = view.children[i], end = off + child.length
       if (end >= pos) {
         if (child.children.length) {
-          if (scan(child, pos - off)) return true
-        } else if (end >= pos) {
-          if (end == pos && child.getSide() > 0) return true
-          found = child
-          foundPos = pos - off
+          scan(child, pos - off)
+        } else if (!after && (end > pos || off == end && child.getSide() > 0)) {
+          after = child
+          afterPos = pos - off
+        } else if (off < pos || (off == end && child.getSide() < 0)) {
+          before = child
+          beforePos = pos - off
         }
       }
       off = end
     }
   }
   scan(view, pos)
-  return found ? (found as any).coordsAt(Math.max(0, foundPos), -1) : coordsInChildrenAfter(view, pos)
-}
-
-function coordsInChildrenAfter(view: ContentView, pos: number): Rect | null {
-  // Find the first leaf in the tree that touches pos and doesn't have getSide() < 0
-  let found: ContentView | null = null, foundPos = -1
-  function scan(view: ContentView, pos: number) {
-    for (let i = view.children.length - 1, off = view.length; i >= 0 && off >= pos; i--) {
-      let child = view.children[i]
-      off -= child.length
-      if (off <= pos) {
-        if (child.children.length) {
-          if (scan(child, pos - off)) return true
-        } else if (off <= pos) {
-          if (off == pos && child.getSide() < 0) return true
-          found = child
-          foundPos = pos - off
-        }
-      }
-    }
-  }
-  scan(view, pos)
-  return found ? (found as any).coordsAt(Math.max(0, foundPos), 1) : coordsInChildrenBefore(view, pos)
+  let target = (side < 0 ? before : after) || before || after
+  if (target) return (target as ContentView).coordsAt(Math.max(0, target == before ? beforePos : afterPos), side)
+  return fallbackRect(view)
 }
 
 function fallbackRect(view: ContentView) {
