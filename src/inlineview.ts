@@ -348,11 +348,13 @@ export class WidgetBufferView extends ContentView {
   domBoundsAround() { return null }
 
   coordsAt(pos: number): Rect | null {
+    let imgVisible = this.dom!.checkVisibility()
     let imgRect = this.dom!.getBoundingClientRect()
     // Since the <img> height doesn't correspond to text height, try
     // to borrow the height from some sibling node.
     let siblingRect = inlineSiblingRect(this, this.side > 0 ? -1 : 1)
-    return siblingRect && siblingRect.top < imgRect.bottom && siblingRect.bottom > imgRect.top
+    return siblingRect && !imgVisible
+      ? siblingRect : siblingRect.top < imgRect.bottom && siblingRect.bottom > imgRect.top
       ? {left: imgRect.left, right: imgRect.right, top: siblingRect.top, bottom: siblingRect.bottom} : imgRect
   }
 
