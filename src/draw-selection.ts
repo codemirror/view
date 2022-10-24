@@ -274,6 +274,7 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
 }
 
 function measureCursor(view: EditorView, cursor: SelectionRange, primary: boolean): Piece | null {
+  console.log("Query", cursor.assoc)
   let pos = view.coordsAtPos(cursor.head, cursor.assoc || 1)
   if (!pos) return null
   let base = getBase(view)

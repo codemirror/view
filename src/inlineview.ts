@@ -223,7 +223,7 @@ export class WidgetView extends ContentView {
       rect = rects[i]
       if (pos > 0 ? i == 0 : i == rects.length - 1 || rect.top < rect.bottom) break
     }
-    return flattenRect(rect, this.side > 0)
+    return this.length ? rect : flattenRect(rect, this.side > 0)
   }
 
   get isEditable() { return false }
