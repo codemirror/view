@@ -86,7 +86,7 @@ export function rectangularSelection(options?: {
   return EditorView.mouseSelectionStyle.of((view, event) => filter(event) ? rectangleSelectionStyle(view, event) : null)
 }
 
-const keys: {[key: string]: [number, (event: KeyboardEvent) => boolean]} = {
+const keys: {[key: string]: [number, (event: KeyboardEvent | MouseEvent) => boolean]} = {
   Alt: [18, e => e.altKey],
   Control: [17, e => e.ctrlKey],
   Shift: [16, e => e.shiftKey],
@@ -120,6 +120,9 @@ export function crosshairCursor(options: {
       },
       keyup(e) {
         if (e.keyCode == code || !getter(e)) this.set(false)
+      },
+      mousemove(e) {
+        this.set(getter(e))
       }
     }
   })
