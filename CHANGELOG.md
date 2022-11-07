@@ -1,3 +1,13 @@
+## 6.4.1 (2022-11-07)
+
+### Bug fixes
+
+Fix an issue where coordinates next to replaced widgets were returned incorrectly, causing the cursor to be drawn in the wrong place.
+
+Update the `crosshairCursor` state on every mousemove event.
+
+Avoid an issue in the way that the editor enforces cursor associativity that could cause the cursor to get stuck on single-character wrapped lines.
+
 ## 6.4.0 (2022-10-18)
 
 ### Bug fixes
