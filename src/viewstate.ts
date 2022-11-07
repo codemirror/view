@@ -125,7 +125,7 @@ export class ViewState {
 
   stateDeco: readonly DecorationSet[]
   viewportLines!: BlockInfo[]
-  defaultTextDirection: Direction = Direction.RTL
+  defaultTextDirection: Direction = Direction.LTR
 
   // The main viewport for the visible part of the document
   viewport: Viewport
