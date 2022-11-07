@@ -90,7 +90,7 @@ export class DOMObserver {
 
     if (typeof ResizeObserver == "function") {
       this.resize = new ResizeObserver(() => {
-        if (this.view.docView.lastUpdate < Date.now() - 75) this.onResize()
+        if (this.view.docView?.lastUpdate < Date.now() - 75) this.onResize()
       })
       this.resize.observe(view.scrollDOM)
     }
