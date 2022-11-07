@@ -275,7 +275,10 @@ export class ViewState {
       oracle.heightChanged = false
       for (let vp of this.viewports) {
         let heights = vp.from == this.viewport.from ? lineHeights : view.docView.measureVisibleLineHeights(vp)
-        this.heightMap = this.heightMap.updateHeight(oracle, 0, refresh, new MeasuredHeights(vp.from, heights))
+        this.heightMap = refresh
+          ? HeightMap.empty().applyChanges(this.stateDeco, Text.empty, this.heightOracle,
+                                           [new ChangedRange(0, 0, 0, view.state.doc.length)])
+          : this.heightMap.updateHeight(oracle, 0, refresh, new MeasuredHeights(vp.from, heights))
       }
       if (oracle.heightChanged) result |= UpdateFlag.Height
     }
