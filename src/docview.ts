@@ -222,8 +222,9 @@ export class DocView extends ContentView {
 
   enforceCursorAssoc() {
     if (this.compositionDeco.size) return
-    let cursor = this.view.state.selection.main
-    let sel = getSelection(this.view.root)
+    let {view} = this, cursor = view.state.selection.main
+    let sel = getSelection(view.root)
+    let {anchorNode, anchorOffset} = view.observer.selectionRange
     if (!sel || !cursor.empty || !cursor.assoc || !sel.modify) return
     let line = LineView.find(this, cursor.head)
     if (!line) return
@@ -234,6 +235,12 @@ export class DocView extends ContentView {
     let dom = this.domAtPos(cursor.head + cursor.assoc)
     sel.collapse(dom.node, dom.offset)
     sel.modify("move", cursor.assoc < 0 ? "forward" : "backward", "lineboundary")
+    // This can go wrong in corner cases like single-character lines,
+    // so check and reset if necessary.
+    view.observer.readSelectionRange()
+    let newRange = view.observer.selectionRange
+    if (view.docView.posFromDOM(newRange.anchorNode!, newRange.anchorOffset) != cursor.from)
+      sel.collapse(anchorNode, anchorOffset)
   }
 
   mayControlSelection() {
