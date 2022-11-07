@@ -1,7 +1,7 @@
 import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} from "@codemirror/state"
 import {Rect} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
-import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget} from "./extension"
+import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden} from "./extension"
 import {WidgetType, Decoration, DecorationSet} from "./decoration"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
@@ -210,7 +210,8 @@ export class ViewState {
     if (scrollTarget) this.scrollTarget = scrollTarget
 
     if (!this.mustEnforceCursorAssoc && update.selectionSet && update.view.lineWrapping &&
-        update.state.selection.main.empty && update.state.selection.main.assoc)
+        update.state.selection.main.empty && update.state.selection.main.assoc &&
+        !update.state.facet(nativeSelectionHidden))
       this.mustEnforceCursorAssoc = true
   }
 

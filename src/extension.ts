@@ -30,6 +30,10 @@ export const perLineTextDirection = Facet.define<boolean, boolean>({
   combine: values => values.some(x => x)
 })
 
+export const nativeSelectionHidden = Facet.define<boolean, boolean>({
+  combine: values => values.some(x => x)
+})
+
 export class ScrollTarget {
   constructor(
     readonly range: SelectionRange,

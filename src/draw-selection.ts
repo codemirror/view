@@ -1,7 +1,7 @@
 import {EditorSelection, SelectionRange, Extension, Facet, combineConfig, Prec} from "@codemirror/state"
 import {BlockType} from "./decoration"
 import {BlockInfo} from "./heightmap"
-import {ViewPlugin, ViewUpdate} from "./extension"
+import {ViewPlugin, ViewUpdate, nativeSelectionHidden} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 import browser from "./browser"
@@ -53,7 +53,8 @@ export function drawSelection(config: SelectionConfig = {}): Extension {
   return [
     selectionConfig.of(config),
     drawSelectionPlugin,
-    hideNativeSelection
+    hideNativeSelection,
+    nativeSelectionHidden.of(true)
   ]
 }
 
