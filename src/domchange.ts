@@ -18,7 +18,9 @@ export class DOMChange {
 
   constructor(view: EditorView, start: number, end: number, readonly typeOver: boolean) {
     let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
-    if (start > -1 && !view.state.readOnly && (this.bounds = view.docView.domBoundsAround(start, end, 0))) {
+    if (view.state.readOnly && start > -1) {
+      // Ignore changes when the editor is read-only
+    } else if (start > -1 && (this.bounds = view.docView.domBoundsAround(start, end, 0))) {
       let selPoints = iHead || iAnchor ? [] : selectionPoints(view)
       let reader = new DOMReader(selPoints, view.state)
       reader.readRange(this.bounds.startDOM, this.bounds.endDOM)
