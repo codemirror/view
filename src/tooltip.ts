@@ -562,10 +562,10 @@ class HoverPlugin {
     }
   }
 
-  mouseleave() {
+  mouseleave(e: MouseEvent) {
     clearTimeout(this.hoverTimeout)
     this.hoverTimeout = -1
-    if (this.active)
+    if (this.active && !isInTooltip(e.relatedTarget as HTMLElement))
       this.view.dispatch({effects: this.setHover.of(null)})
   }
 
