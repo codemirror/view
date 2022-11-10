@@ -1,7 +1,8 @@
 import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} from "@codemirror/state"
 import {Rect} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
-import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden} from "./extension"
+import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
+        contentAttributes} from "./extension"
 import {WidgetType, Decoration, DecorationSet} from "./decoration"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
@@ -111,7 +112,7 @@ export class ViewState {
   editorHeight = 0
   editorWidth = 0
 
-  heightOracle: HeightOracle = new HeightOracle
+  heightOracle: HeightOracle
   heightMap: HeightMap
   // See VP.MaxDOMHeight
   scaler = IdScaler
@@ -148,6 +149,8 @@ export class ViewState {
   mustEnforceCursorAssoc = false
 
   constructor(public state: EditorState) {
+    let guessWrapping = state.facet(contentAttributes).some(v => typeof v != "function" && v.class == "cm-lineWrapping")
+    this.heightOracle = new HeightOracle(guessWrapping)
     this.stateDeco = state.facet(decorations).filter(d => typeof d != "function") as readonly DecorationSet[]
     this.heightMap = HeightMap.empty().applyChanges(this.stateDeco, Text.empty, this.heightOracle.setDoc(state.doc),
                                                     [new ChangedRange(0, 0, 0, state.doc.length)])

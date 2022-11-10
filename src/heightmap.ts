@@ -6,13 +6,14 @@ const wrappingWhiteSpace = ["pre-wrap", "normal", "pre-line", "break-spaces"]
 
 export class HeightOracle {
   doc: Text = Text.empty
-  lineWrapping: boolean = false
   heightSamples: {[key: number]: boolean} = {}
   lineHeight: number = 14
   charWidth: number = 7
   lineLength: number = 30
   // Used to track, during updateHeight, if any actual heights changed
   heightChanged: boolean = false
+
+  constructor(public lineWrapping: boolean) {}
 
   heightForGap(from: number, to: number): number {
     let lines = this.doc.lineAt(to).number - this.doc.lineAt(from).number + 1
