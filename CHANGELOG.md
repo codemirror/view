@@ -1,3 +1,13 @@
+## 6.4.2 (2022-11-10)
+
+### Bug fixes
+
+Typing into a read-only editor no longer moves the cursor.
+
+Fix an issue where hover tooltips were closed when the mouse was moved over them if they had a custom parent element.
+
+Fix an issue where the editor could end up displaying incorrect height measurements (typically after initializing).
+
 ## 6.4.1 (2022-11-07)
 
 ### Bug fixes
