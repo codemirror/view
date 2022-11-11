@@ -7,7 +7,7 @@ const {HeightMap, HeightOracle, MeasuredHeights, QueryType, ChangedRange} = __te
 const byH = QueryType.ByHeight, byP = QueryType.ByPos
 
 function o(doc: Text) {
-  return (new HeightOracle).setDoc(doc)
+  return (new HeightOracle(false)).setDoc(doc)
 }
 
 describe("HeightMap", () => {
