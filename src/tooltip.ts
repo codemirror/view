@@ -11,7 +11,7 @@ type Measured = {
   parent: DOMRect,
   pos: (Rect | null)[],
   size: DOMRect[],
-  space: {left: number, top: number, right: number, bottom: number}
+  space: Rect
 }
 
 const Outside = "-10000px"
@@ -92,7 +92,7 @@ export function tooltips(config: {
   /// space between 0,0 and `innerWidth`,`innerHeight` to be available
   /// for showing tooltips. You can provide a function here that
   /// returns an alternative rectangle.
-  tooltipSpace?: (view: EditorView) => {top: number, left: number, bottom: number, right: number}
+  tooltipSpace?: (view: EditorView) => Rect
 } = {}): Extension {
   return tooltipConfig.of(config)
 }
@@ -100,7 +100,7 @@ export function tooltips(config: {
 type TooltipConfig = {
   position: "fixed" | "absolute",
   parent: ParentNode | null,
-  tooltipSpace: (view: EditorView) => {top: number, left: number, bottom: number, right: number}
+  tooltipSpace: (view: EditorView) => Rect
 }
 
 function windowSpace(view: EditorView) {
@@ -279,7 +279,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         others.push({left, top, right, bottom: top + height})
       dom.classList.toggle("cm-tooltip-above", above)
       dom.classList.toggle("cm-tooltip-below", !above)
-      if (tView.positioned) tView.positioned()
+      if (tView.positioned) tView.positioned(measured.space)
     }
   }
 
@@ -413,8 +413,10 @@ export interface TooltipView {
   /// Called when the tooltip is removed from the editor or the editor
   /// is destroyed.
   destroy?(): void
-  /// Called when the tooltip has been (re)positioned.
-  positioned?(): void,
+  /// Called when the tooltip has been (re)positioned. The argument is
+  /// the [space](#view.tooltips^config.tooltipSpace) available to the
+  /// tooltip.
+  positioned?(space: Rect): void,
 }
 
 const noOffset = {x: 0, y: 0}
@@ -458,9 +460,9 @@ class HoverTooltipHost implements TooltipView {
     this.mounted = true
   }
 
-  positioned() {
+  positioned(space: Rect) {
     for (let hostedView of this.manager.tooltipViews) {
-      if (hostedView.positioned) hostedView.positioned()
+      if (hostedView.positioned) hostedView.positioned(space)
     }
   }
 
