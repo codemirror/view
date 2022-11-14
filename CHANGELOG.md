@@ -1,3 +1,13 @@
+## 6.5.0 (2022-11-14)
+
+### Bug fixes
+
+Fix an issue where key bindings were activated for the wrong key in some situations with non-US keyboards.
+
+### New features
+
+A tooltip's `positioned` callback is now passed the available space for tooltips.
+
 ## 6.4.2 (2022-11-10)
 
 ### Bug fixes
