@@ -1,3 +1,9 @@
+## 6.5.1 (2022-11-15)
+
+### Bug fixes
+
+Fix a bug that caused marked unnecessary splitting of mark decoration DOM elements in some cases.
+
 ## 6.5.0 (2022-11-14)
 
 ### Bug fixes
