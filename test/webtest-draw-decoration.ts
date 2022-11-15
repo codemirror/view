@@ -332,6 +332,14 @@ describe("EditorView decoration", () => {
       ist(cm.contentDOM.querySelectorAll("[m]").length, 1)
     })
 
+    it("puts a buffer in front of widgets spanned by marks", () => {
+      let cm = tempView("a\n\nc", [
+        decos(Decoration.set([d(0, 4, "m")])),
+        decos(Decoration.set([w(2, new WordWidget("Q"), 1)])),
+      ])
+      ist(cm.contentDOM.querySelectorAll("img").length, 1)
+    })
+
     it("calls the destroy method on destroyed widgets", () => {
       let destroyed: string[] = []
       class W extends WordWidget {
