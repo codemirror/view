@@ -82,7 +82,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
 
   ".cm-line": {
     display: "block",
-    padding: "0 2px 0 4px"
+    padding: "0 2px 0 6px"
   },
 
   ".cm-selectionLayer": {
