@@ -3,7 +3,7 @@ import {BlockType} from "./decoration"
 import {BlockInfo} from "./heightmap"
 import {ViewUpdate, nativeSelectionHidden} from "./extension"
 import {EditorView} from "./editorview"
-import {layer, PlainLayerMarker} from "./layer"
+import {layer, RectangleMarker} from "./layer"
 import {Direction} from "./bidi"
 import browser from "./browser"
 
@@ -86,7 +86,6 @@ const cursorLayer = layer({
     return update.docChanged || update.selectionSet || confChange
   },
   mount(dom, view) {
-    dom.setAttribute("aria-hidden", "true")
     setBlinkRate(view.state, dom)
   },
   class: "cm-cursorLayer"
@@ -103,9 +102,6 @@ const selectionLayer = layer({
   },
   update(update, dom) {
     return update.docChanged || update.selectionSet || update.viewportChanged || configChanged(update)
-  },
-  mount(dom) {
-    dom.setAttribute("aria-hidden", "true")
   },
   class: "cm-selectionLayer"
 })
@@ -140,7 +136,7 @@ function blockAt(view: EditorView, pos: number): BlockInfo {
   return line as any
 }
 
-function measureRange(view: EditorView, range: SelectionRange): PlainLayerMarker[] {
+function measureRange(view: EditorView, range: SelectionRange): RectangleMarker[] {
   if (range.to <= view.viewport.from || range.from >= view.viewport.to) return []
   let from = Math.max(range.from, view.viewport.from), to = Math.min(range.to, view.viewport.to)
 
@@ -171,7 +167,7 @@ function measureRange(view: EditorView, range: SelectionRange): PlainLayerMarker
   }
 
   function piece(left: number, top: number, right: number, bottom: number) {
-    return new PlainLayerMarker("cm-selectionBackground",
+    return new RectangleMarker("cm-selectionBackground",
                                 left - base.left, top - base.top - C.Epsilon, right - left, bottom - top + C.Epsilon)
   }
   function pieces({top, bottom, horizontal}: {top: number, bottom: number, horizontal: number[]}) {
@@ -228,10 +224,10 @@ function measureRange(view: EditorView, range: SelectionRange): PlainLayerMarker
   }
 }
 
-function measureCursor(view: EditorView, cursor: SelectionRange, primary: boolean): PlainLayerMarker | null {
+function measureCursor(view: EditorView, cursor: SelectionRange, primary: boolean): RectangleMarker | null {
   let pos = view.coordsAtPos(cursor.head, cursor.assoc || 1)
   if (!pos) return null
   let base = getBase(view)
-  return new PlainLayerMarker(primary ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary",
+  return new RectangleMarker(primary ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary",
                               pos.left - base.left, pos.top - base.top, -1, pos.bottom - pos.top)
 }

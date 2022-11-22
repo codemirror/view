@@ -135,6 +135,24 @@ See also the [panel example](../../examples/panel/).
 
 @panels
 
+### Layers
+
+Layers are sets of DOM elements drawn over or below the document text.
+They can be useful for displaying user interface elements that don't
+take up space and shouldn't influence line wrapping, such as
+additional cursors.
+
+Note that, being outside of the regular DOM order, such elements are
+invisible to screen readers. Make sure to also
+[provide](#view.EditorView^announce) any important information they
+convey in an accesible way.
+
+@layer
+
+@LayerMarker
+
+@RectangleMarker
+
 ### Rectangular Selection
 
 @rectangularSelection

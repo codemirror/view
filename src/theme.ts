@@ -85,14 +85,13 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     padding: "0 2px 0 6px"
   },
 
-  ".cm-selectionLayer": {
-    zIndex: -1,
-    contain: "size style"
+  ".cm-layer": {
+    contain: "size style",
+    "& > *": {
+      position: "absolute"
+    }
   },
 
-  ".cm-selectionBackground": {
-    position: "absolute",
-  },
   "&light .cm-selectionBackground": {
     background: "#d9d9d9"
   },
@@ -107,8 +106,6 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   },
 
   ".cm-cursorLayer": {
-    zIndex: 100,
-    contain: "size style",
     pointerEvents: "none"
   },
   "&.cm-focused .cm-cursorLayer": {
@@ -122,7 +119,6 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "@keyframes cm-blink2": {"0%": {}, "50%": {opacity: 0}, "100%": {}},
 
   ".cm-cursor, .cm-dropCursor": {
-    position: "absolute",
     borderLeft: "1.2px solid black",
     marginLeft: "-0.6px",
     pointerEvents: "none",

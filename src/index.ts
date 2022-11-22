@@ -12,6 +12,7 @@ export {scrollPastEnd} from "./scrollpastend"
 export {highlightActiveLine} from "./active-line"
 export {placeholder} from "./placeholder"
 export {Rect} from "./dom"
+export {layer, LayerMarker, RectangleMarker} from "./layer"
 export {MatchDecorator} from "./matchdecorator"
 export {rectangularSelection, crosshairCursor} from "./rectangular-selection"
 export {showTooltip, Tooltip, TooltipView, tooltips, getTooltip, hoverTooltip, hasHoverTooltips,
