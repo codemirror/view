@@ -1,8 +1,9 @@
-import {EditorSelection, SelectionRange, Extension, Facet, combineConfig, Prec} from "@codemirror/state"
+import {EditorSelection, SelectionRange, Extension, Facet, combineConfig, Prec, EditorState} from "@codemirror/state"
 import {BlockType} from "./decoration"
 import {BlockInfo} from "./heightmap"
-import {ViewPlugin, ViewUpdate, nativeSelectionHidden} from "./extension"
+import {ViewUpdate, nativeSelectionHidden} from "./extension"
 import {EditorView} from "./editorview"
+import {layer, PlainLayerMarker} from "./layer"
 import {Direction} from "./bidi"
 import browser from "./browser"
 
@@ -52,108 +53,61 @@ const selectionConfig = Facet.define<SelectionConfig, Required<SelectionConfig>>
 export function drawSelection(config: SelectionConfig = {}): Extension {
   return [
     selectionConfig.of(config),
-    drawSelectionPlugin,
+    cursorLayer,
+    selectionLayer,
     hideNativeSelection,
     nativeSelectionHidden.of(true)
   ]
 }
 
-type Measure = {rangePieces: Piece[], cursors: Piece[]}
-
-class Piece {
-  constructor(readonly left: number, readonly top: number,
-              readonly width: number, readonly height: number,
-              readonly className: string) {}
-
-  draw() {
-    let elt = document.createElement("div")
-    elt.className = this.className
-    this.adjust(elt)
-    return elt
-  }
-
-  adjust(elt: HTMLElement) {
-    elt.style.left = this.left + "px"
-    elt.style.top = this.top + "px"
-    if (this.width >= 0) elt.style.width = this.width + "px"
-    elt.style.height = this.height + "px"
-  }
-
-  eq(p: Piece) {
-    return this.left == p.left && this.top == p.top && this.width == p.width && this.height == p.height &&
-      this.className == p.className
-  }
+function configChanged(update: ViewUpdate) {
+  return update.startState.facet(selectionConfig) != update.startState.facet(selectionConfig)
 }
 
-const drawSelectionPlugin = ViewPlugin.fromClass(class {
-  rangePieces: readonly Piece[] = []
-  cursors: readonly Piece[] = []
-  measureReq: {read: () => Measure, write: (value: Measure) => void}
-  selectionLayer: HTMLElement
-  cursorLayer: HTMLElement
-
-  constructor(readonly view: EditorView) {
-    this.measureReq = {read: this.readPos.bind(this), write: this.drawSel.bind(this)}
-    this.selectionLayer = view.scrollDOM.appendChild(document.createElement("div"))
-    this.selectionLayer.className = "cm-selectionLayer"
-    this.selectionLayer.setAttribute("aria-hidden", "true")
-    this.cursorLayer = view.scrollDOM.appendChild(document.createElement("div"))
-    this.cursorLayer.className = "cm-cursorLayer"
-    this.cursorLayer.setAttribute("aria-hidden", "true")
-    view.requestMeasure(this.measureReq)
-    this.setBlinkRate()
-  }
-
-  setBlinkRate() {
-    this.cursorLayer.style.animationDuration = this.view.state.facet(selectionConfig).cursorBlinkRate + "ms"
-  }
-
-  update(update: ViewUpdate) {
-    let confChanged = update.startState.facet(selectionConfig) != update.state.facet(selectionConfig)
-    if (confChanged || update.selectionSet || update.geometryChanged || update.viewportChanged)
-      this.view.requestMeasure(this.measureReq)
-    if (update.transactions.some(tr => tr.scrollIntoView))
-      this.cursorLayer.style.animationName = this.cursorLayer.style.animationName == "cm-blink" ? "cm-blink2" : "cm-blink"
-    if (confChanged) this.setBlinkRate()
-  }
-
-  readPos(): Measure {
-    let {state} = this.view, conf = state.facet(selectionConfig)
-    let rangePieces = state.selection.ranges.map(r => r.empty ? [] : measureRange(this.view, r)).reduce((a, b) => a.concat(b))
+const cursorLayer = layer({
+  above: true,
+  markers(view) {
+    let {state} = view, conf = state.facet(selectionConfig)
     let cursors = []
     for (let r of state.selection.ranges) {
       let prim = r == state.selection.main
       if (r.empty ? !prim || CanHidePrimary : conf.drawRangeCursor) {
-        let piece = measureCursor(this.view, r, prim)
+        let piece = measureCursor(view, r, prim)
         if (piece) cursors.push(piece)
       }
     }
-    return {rangePieces, cursors}
-  }
+    return cursors
+  },
+  update(update, dom) {
+    if (update.transactions.some(tr => tr.scrollIntoView))
+      dom.style.animationName = dom.style.animationName == "cm-blink" ? "cm-blink2" : "cm-blink"
+    let confChange = configChanged(update)
+    if (confChange) setBlinkRate(update.state, dom)
+    return update.docChanged || update.selectionSet || confChange
+  },
+  mount(dom, view) {
+    dom.setAttribute("aria-hidden", "true")
+    setBlinkRate(view.state, dom)
+  },
+  class: "cm-cursorLayer"
+})
 
-  drawSel({rangePieces, cursors}: Measure) {
-    if (rangePieces.length != this.rangePieces.length || rangePieces.some((p, i) => !p.eq(this.rangePieces[i]))) {
-      this.selectionLayer.textContent = ""
-      for (let p of rangePieces) this.selectionLayer.appendChild(p.draw())
-      this.rangePieces = rangePieces
-    }
-    if (cursors.length != this.cursors.length || cursors.some((c, i) => !c.eq(this.cursors[i]))) {
-      let oldCursors = this.cursorLayer.children
-      if (oldCursors.length !== cursors.length) {
-        this.cursorLayer.textContent = ""
-        for (const c of cursors)
-          this.cursorLayer.appendChild(c.draw())
-      } else {
-        cursors.forEach((c, idx) => c.adjust(oldCursors[idx] as HTMLElement))
-      }
-      this.cursors = cursors
-    }
-  }
+function setBlinkRate(state: EditorState, dom: HTMLElement) {
+  dom.style.animationDuration = state.facet(selectionConfig).cursorBlinkRate + "ms"
+}
 
-  destroy() {
-    this.selectionLayer.remove()
-    this.cursorLayer.remove()
-  }
+const selectionLayer = layer({
+  above: false,
+  markers(view) {
+    return view.state.selection.ranges.map(r => r.empty ? [] : measureRange(view, r)).reduce((a, b) => a.concat(b))
+  },
+  update(update, dom) {
+    return update.docChanged || update.selectionSet || update.viewportChanged || configChanged(update)
+  },
+  mount(dom) {
+    dom.setAttribute("aria-hidden", "true")
+  },
+  class: "cm-selectionLayer"
 })
 
 const themeSpec = {
@@ -186,7 +140,7 @@ function blockAt(view: EditorView, pos: number): BlockInfo {
   return line as any
 }
 
-function measureRange(view: EditorView, range: SelectionRange): Piece[] {
+function measureRange(view: EditorView, range: SelectionRange): PlainLayerMarker[] {
   if (range.to <= view.viewport.from || range.from >= view.viewport.to) return []
   let from = Math.max(range.from, view.viewport.from), to = Math.min(range.to, view.viewport.to)
 
@@ -217,8 +171,8 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
   }
 
   function piece(left: number, top: number, right: number, bottom: number) {
-    return new Piece(left - base.left, top - base.top - C.Epsilon, right - left, bottom - top + C.Epsilon,
-                     "cm-selectionBackground")
+    return new PlainLayerMarker("cm-selectionBackground",
+                                left - base.left, top - base.top - C.Epsilon, right - left, bottom - top + C.Epsilon)
   }
   function pieces({top, bottom, horizontal}: {top: number, bottom: number, horizontal: number[]}) {
     let pieces = []
@@ -274,10 +228,10 @@ function measureRange(view: EditorView, range: SelectionRange): Piece[] {
   }
 }
 
-function measureCursor(view: EditorView, cursor: SelectionRange, primary: boolean): Piece | null {
+function measureCursor(view: EditorView, cursor: SelectionRange, primary: boolean): PlainLayerMarker | null {
   let pos = view.coordsAtPos(cursor.head, cursor.assoc || 1)
   if (!pos) return null
   let base = getBase(view)
-  return new Piece(pos.left - base.left, pos.top - base.top, -1, pos.bottom - pos.top,
-                   primary ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary")
+  return new PlainLayerMarker(primary ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary",
+                              pos.left - base.left, pos.top - base.top, -1, pos.bottom - pos.top)
 }
