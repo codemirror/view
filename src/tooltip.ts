@@ -261,7 +261,14 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
             : pos.bottom + (size.bottom - size.top) + offset.y > space.bottom) &&
           above == (space.bottom - pos.bottom > pos.top - space.top))
         above = !above
-      let top = above ? pos.top - height  - arrowHeight - offset.y : pos.bottom + arrowHeight + offset.y
+      let spaceVert = (above ? pos.top - space.top : space.bottom - pos.bottom) - arrowHeight
+      if (spaceVert < height && tView.resize !== false) {
+        if (spaceVert < this.view.defaultLineHeight) { dom.style.top = Outside; continue }
+        dom.style.height = (height = spaceVert) + "px"
+      } else if (dom.style.height) {
+        dom.style.height = ""
+      }
+      let top = above ? pos.top - height - arrowHeight - offset.y : pos.bottom + arrowHeight + offset.y
       let right = left + width
       if (tView.overlap !== true) for (let r of others)
         if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
@@ -300,7 +307,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
 const baseTheme = EditorView.baseTheme({
   ".cm-tooltip": {
-    zIndex: 100
+    zIndex: 100,
+    boxSizing: "border-box"
   },
   "&light .cm-tooltip": {
     border: "1px solid #bbb",
@@ -417,6 +425,10 @@ export interface TooltipView {
   /// the [space](#view.tooltips^config.tooltipSpace) available to the
   /// tooltip.
   positioned?(space: Rect): void,
+  /// By default, the library will restrict the size of tooltips so
+  /// that they don't stick out of the available space. Set this to
+  /// false to disable that.
+  resize?: boolean
 }
 
 const noOffset = {x: 0, y: 0}
