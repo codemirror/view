@@ -1,3 +1,11 @@
+## 6.6.0 (2022-11-24)
+
+### New features
+
+The `layer` function can now be used to define extensions that draw DOM elements over or below the document text.
+
+Tooltips that are bigger than the available vertical space for them will now have their height set so that they don't stick out of the window. The new `resize` property on `TooltipView` can be used to opt out of this behavior.
+
 ## 6.5.1 (2022-11-15)
 
 ### Bug fixes
