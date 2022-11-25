@@ -46,7 +46,8 @@ export class DOMObserver {
 
   scrollTargets: HTMLElement[] = []
   intersection: IntersectionObserver | null = null
-  resize: ResizeObserver | null = null
+  resizeScroll: ResizeObserver | null = null
+  resizeContent: ResizeObserver | null = null
   intersecting: boolean = false
   gapIntersection: IntersectionObserver | null = null
   gaps: readonly HTMLElement[] = []
@@ -89,10 +90,12 @@ export class DOMObserver {
     this.onScroll = this.onScroll.bind(this)
 
     if (typeof ResizeObserver == "function") {
-      this.resize = new ResizeObserver(() => {
+      this.resizeScroll = new ResizeObserver(() => {
         if (this.view.docView?.lastUpdate < Date.now() - 75) this.onResize()
       })
-      this.resize.observe(view.scrollDOM)
+      this.resizeScroll.observe(view.scrollDOM)
+      this.resizeContent = new ResizeObserver(() => this.view.requestMeasure())
+      this.resizeContent.observe(view.contentDOM)
     }
     this.addWindowListeners(this.win = view.win)
 
@@ -411,7 +414,8 @@ export class DOMObserver {
     this.stop()
     this.intersection?.disconnect()
     this.gapIntersection?.disconnect()
-    this.resize?.disconnect()
+    this.resizeScroll?.disconnect()
+    this.resizeContent?.disconnect()
     for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
     this.removeWindowListeners(this.win)
     clearTimeout(this.parentCheck)

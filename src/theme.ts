@@ -55,7 +55,6 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     margin: 0,
     flexGrow: 2,
     flexShrink: 0,
-    minHeight: "100%",
     display: "block",
     whiteSpace: "pre",
     wordWrap: "normal", // https://github.com/codemirror/dev/issues/456

@@ -1,6 +1,6 @@
 import {tempView} from "@codemirror/buildhelper/lib/tempview"
 import {EditorSelection, Prec} from "@codemirror/state"
-import {EditorView, ViewPlugin} from "@codemirror/view"
+import {EditorView, ViewPlugin, Decoration, WidgetType} from "@codemirror/view"
 import ist from "ist"
 
 function domText(view: EditorView) {
@@ -210,8 +210,8 @@ describe("EditorView drawing", () => {
     }
   })
 
-  function later() {
-    return new Promise(resolve => setTimeout(resolve, 50))
+  function later(t = 50) {
+    return new Promise(resolve => setTimeout(resolve, t))
   }
 
   it("notices it is added to the DOM even if initially detached", () => {
@@ -279,5 +279,22 @@ describe("EditorView drawing", () => {
       Prec.highest(EditorView.contentAttributes.of({"data-x": "z"})),
     ])
     ist(cm.contentDOM.getAttribute("data-x"), "z")
+  })
+
+  it("updates height info when a widget changes size", async () => {
+    let widget = new class extends WidgetType {
+      toDOM() {
+        let d = document.createElement("div")
+        d.style.height = "10px"
+        setTimeout(() => d.style.height = "30px", 25)
+        return d
+      }
+    }
+    let cm = tempView("a\nb\nc\nd", [
+      EditorView.decorations.of(Decoration.set(Decoration.widget({widget, block: true, side: 1}).range(1)))
+    ])
+    await later(75)
+    let line2 = cm.viewportLineBlocks[1], dom2 = cm.contentDOM.querySelectorAll(".cm-line")[1]
+    ist(Math.abs(cm.documentTop + line2.top - (dom2 as HTMLElement).getBoundingClientRect().top), 1, "<")
   })
 })
