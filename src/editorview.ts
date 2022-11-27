@@ -174,7 +174,7 @@ export class EditorView {
     this.scrollDOM.appendChild(this.contentDOM)
 
     this.announceDOM = document.createElement("div")
-    this.announceDOM.style.cssText = "position: absolute; top: -10000px"
+    this.announceDOM.style.cssText = "position: fixed; top: -10000px"
     this.announceDOM.setAttribute("aria-live", "polite")
 
     this.dom = document.createElement("div")
