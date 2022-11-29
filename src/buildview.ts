@@ -73,6 +73,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
           else this.breakAtStart = 1
           this.flushBuffer([])
           this.curLine = null
+          this.atCursorPos = true
           length--
           continue
         } else {
