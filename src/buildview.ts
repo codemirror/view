@@ -13,6 +13,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   curLine: LineView | null = null
   breakAtStart = 0
   pendingBuffer = Buf.No
+  bufferMarks: readonly MarkDecoration[] = []
   // Set to false directly after a widget that covers the position after it
   atCursorPos = true
   openStart = -1
@@ -42,7 +43,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     return this.curLine
   }
 
-  flushBuffer(active: readonly MarkDecoration[]) {
+  flushBuffer(active = this.bufferMarks) {
     if (this.pendingBuffer) {
       this.curLine!.append(wrapMarks(new WidgetBufferView(-1), active), active.length)
       this.pendingBuffer = Buf.No
@@ -50,13 +51,13 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   }
 
   addBlockWidget(view: BlockWidgetView) {
-    this.flushBuffer([])
+    this.flushBuffer()
     this.curLine = null
     this.content.push(view)
   }
 
   finish(openEnd: number) {
-    if (!openEnd) this.flushBuffer([])
+    if (this.pendingBuffer && openEnd <= this.bufferMarks.length) this.flushBuffer()
     else this.pendingBuffer = Buf.No
     if (!this.posCovered()) this.getLine()
   }
@@ -71,7 +72,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
           if (!this.posCovered()) this.getLine()
           if (this.content.length) this.content[this.content.length - 1].breakAfter = 1
           else this.breakAtStart = 1
-          this.flushBuffer([])
+          this.flushBuffer()
           this.curLine = null
           this.atCursorPos = true
           length--
@@ -113,7 +114,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
       } else {
         let view = WidgetView.create(deco.widget || new NullWidget("span"), len, len ? 0 : deco.startSide)
         let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length && (from < to || deco.startSide > 0)
-        let cursorAfter = !view.isEditable && (from < to || deco.startSide <= 0)
+        let cursorAfter = !view.isEditable && (from < to || openStart > active.length || deco.startSide <= 0)
         let line = this.getLine()
         if (this.pendingBuffer == Buf.IfCursor && !cursorBefore) this.pendingBuffer = Buf.No
         this.flushBuffer(active)
@@ -123,7 +124,8 @@ export class ContentBuilder implements SpanIterator<Decoration> {
         }
         line.append(wrapMarks(view, active), openStart)
         this.atCursorPos = cursorAfter
-        this.pendingBuffer = !cursorAfter ? Buf.No : from < to ? Buf.Yes : Buf.IfCursor
+        this.pendingBuffer = !cursorAfter ? Buf.No : from < to || openStart > active.length ? Buf.Yes : Buf.IfCursor
+        if (this.pendingBuffer) this.bufferMarks = active.slice()
       }
     } else if (this.doc.lineAt(this.pos).from == this.pos) { // Line decoration
       this.getLine().addLineDeco(deco as LineDecoration)
