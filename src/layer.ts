@@ -201,6 +201,9 @@ interface LayerConfig {
   markers(view: EditorView): readonly LayerMarker[]
   /// If given, this is called when the layer is created.
   mount?(layer: HTMLElement, view: EditorView): void
+  /// If given, called when the layer is removed from the editor or
+  /// the entire editor is destroyed.
+  destroy?(layer: HTMLElement, view: EditorView): void
 }
 
 function sameMarker(a: LayerMarker, b: LayerMarker) {
@@ -263,6 +266,7 @@ class LayerView {
   }
 
   destroy() {
+    if (this.layer.destroy) this.layer.destroy(this.dom, this.view)
     this.dom.remove()
   }
 }
