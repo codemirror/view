@@ -227,6 +227,24 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     verticalAlign: "top",
   },
 
+  ".cm-highlightSpace:before": {
+    content: "attr(data-display)",
+    position: "absolute",
+    pointerEvents: "none",
+    color: "#888"
+  },
+
+  ".cm-highlightTab": {
+    backgroundImage: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="%23888" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10M197 4L197 16"/></svg>')`,
+    backgroundSize: "auto 100%",
+    backgroundPosition: "right 90%",
+    backgroundRepeat: "no-repeat"
+  },
+
+  ".cm-trailingSpace": {
+    backgroundColor: "#ff332255"
+  },
+
   ".cm-button": {
     verticalAlign: "middle",
     color: "inherit",

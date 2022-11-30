@@ -43,6 +43,10 @@ component that displays the editor state and allows text input.
 
 @highlightSpecialChars
 
+@highlightWhitespace
+
+@highlightTrailingWhitespace
+
 @placeholder
 
 @scrollPastEnd

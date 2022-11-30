@@ -20,6 +20,7 @@ export {showTooltip, Tooltip, TooltipView, tooltips, getTooltip, hoverTooltip, h
 export {showPanel, PanelConstructor, Panel, getPanel, panels} from "./panel"
 export {lineNumbers, highlightActiveLineGutter, gutter, gutters, GutterMarker,
         gutterLineClass, lineNumberMarkers} from "./gutter"
+export {highlightWhitespace, highlightTrailingWhitespace} from "./highlight-space"
 
 import {HeightMap, HeightOracle, MeasuredHeights, QueryType} from "./heightmap"
 import {ChangedRange} from "./extension"
