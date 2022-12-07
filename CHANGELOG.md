@@ -1,3 +1,23 @@
+## 6.7.0 (2022-12-07)
+
+### Bug fixes
+
+Make the editor notice widget height changes to automatically adjust its height information.
+
+Fix an issue where widget buffers could be incorrectly omitted after empty lines.
+
+Fix an issue in content redrawing that could cause `coordsAtPos` to return incorrect results.
+
+### New features
+
+The static `RectangleMarker.forRange` method exposes the logic used by the editor to draw rectangles covering a selection range.
+
+Layers can now provide a `destroy` function to be called when the layer is removed.
+
+The new `highlightWhitespace` extension makes spaces and tabs in the editor visible.
+
+The `highlightTrailingWhitespace` extension can be used to make trailing whitespace stand out.
+
 ## 6.6.0 (2022-11-24)
 
 ### New features
