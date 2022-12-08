@@ -57,17 +57,23 @@ export class InputState {
   }
 
   constructor(view: EditorView) {
+    let handleEvent = (handler: (view: EditorView, event: Event) => void, event: Event) => {
+      if (this.ignoreDuringComposition(event)) return
+      if (event.type == "keydown" && this.keydown(view, event as KeyboardEvent)) return
+      if (this.mustFlushObserver(event)) view.observer.forceFlush()
+      if (this.runCustomHandlers(event.type, view, event)) event.preventDefault()
+      else handler(view, event)
+    }
     for (let type in handlers) {
       let handler = handlers[type]
-      view.contentDOM.addEventListener(type, (event: Event) => {
-        if (!eventBelongsToEditor(view, event) || this.ignoreDuringComposition(event)) return
-        if (type == "keydown" && this.keydown(view, event as KeyboardEvent)) return
-        if (this.mustFlushObserver(event)) view.observer.forceFlush()
-        if (this.runCustomHandlers(type, view, event)) event.preventDefault()
-        else handler(view, event)
+      view.contentDOM.addEventListener(type, event => {
+        if (eventBelongsToEditor(view, event)) handleEvent(handler, event)
       }, handlerOptions[type])
       this.registeredEvents.push(type)
     }
+    view.scrollDOM.addEventListener("mousedown", (event: Event) => {
+      if (event.target == view.scrollDOM) handleEvent(handlers.mousedown, event)
+    })
     if (browser.chrome && browser.chrome_version == 102) { // FIXME remove at some point
       // On Chrome 102, viewport updates somehow stop wheel-based
       // scrolling. Turning off pointer events during the scroll seems
