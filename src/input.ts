@@ -6,7 +6,7 @@ import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as 
         logException, mouseSelectionStyle, PluginInstance} from "./extension"
 import browser from "./browser"
 import {groupAt} from "./cursor"
-import {getSelection, focusPreventScroll, Rect, dispatchKey} from "./dom"
+import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParent} from "./dom"
 
 // This will also be where dragging info and such goes
 export class InputState {
@@ -243,18 +243,26 @@ export interface MouseSelectionStyle {
 
 export type MakeSelectionStyle = (view: EditorView, event: MouseEvent) => MouseSelectionStyle | null
 
+function dragScrollSpeed(dist: number) {
+  return dist * 0.7 + 8
+}
+
 class MouseSelection {
   dragging: null | false | SelectionRange
   dragMove: boolean
   extend: boolean
   multiple: boolean
   lastEvent: MouseEvent
+  scrollParent: HTMLElement | null
+  scrollSpeed = {x: 0, y: 0}
+  scrolling = -1
 
   constructor(private view: EditorView,
               startEvent: MouseEvent,
               private style: MouseSelectionStyle,
               private mustSelect: boolean) {
     this.lastEvent = startEvent
+    this.scrollParent = scrollableParent(view.contentDOM)
     let doc = view.contentDOM.ownerDocument!
     doc.addEventListener("mousemove", this.move = this.move.bind(this))
     doc.addEventListener("mouseup", this.up = this.up.bind(this))
@@ -275,6 +283,15 @@ class MouseSelection {
     if (event.buttons == 0) return this.destroy()
     if (this.dragging !== false) return
     this.select(this.lastEvent = event)
+
+    let sx = 0, sy = 0
+    let rect = this.scrollParent?.getBoundingClientRect()
+      || {left: 0, top: 0, right: this.view.win.innerWidth, bottom: this.view.win.innerHeight}
+    if (event.clientX <= rect.left) sx = -dragScrollSpeed(rect.left - event.clientX)
+    else if (event.clientX >= rect.right) sx = dragScrollSpeed(event.clientX - rect.right)
+    if (event.clientY <= rect.top) sy = -dragScrollSpeed(rect.top - event.clientY)
+    else if (event.clientY >= rect.bottom) sy = dragScrollSpeed(event.clientY - rect.bottom)
+    this.setScrollSpeed(sx, sy)
   }
 
   up(event: MouseEvent) {
@@ -284,10 +301,31 @@ class MouseSelection {
   }
 
   destroy() {
+    this.setScrollSpeed(0, 0)
     let doc = this.view.contentDOM.ownerDocument!
     doc.removeEventListener("mousemove", this.move)
     doc.removeEventListener("mouseup", this.up)
     this.view.inputState.mouseSelection = null
+  }
+
+  setScrollSpeed(sx: number, sy: number) {
+    this.scrollSpeed = {x: sx, y: sy}
+    if (sx || sy) {
+      if (this.scrolling < 0) this.scrolling = setInterval(() => this.scroll(), 50)
+    } else if (this.scrolling > -1) {
+      clearInterval(this.scrolling)
+      this.scrolling = -1
+    }
+  }
+
+  scroll() {
+    if (this.scrollParent) {
+      this.scrollParent.scrollLeft += this.scrollSpeed.x
+      this.scrollParent.scrollTop += this.scrollSpeed.y
+    } else {
+      this.view.win.scrollBy(this.scrollSpeed.x, this.scrollSpeed.y)
+    }
+    if (this.dragging === false) this.select(this.lastEvent)
   }
 
   select(event: MouseEvent) {
@@ -297,7 +335,7 @@ class MouseSelection {
       this.view.dispatch({
         selection,
         userEvent: "select.pointer",
-        scrollIntoView: true
+//        scrollIntoView: true
       })
     this.mustSelect = false
   }
@@ -484,19 +522,15 @@ function getClickType(event: MouseEvent) {
 function basicMouseSelection(view: EditorView, event: MouseEvent) {
   let start = queryPos(view, event), type = getClickType(event)
   let startSel = view.state.selection
-  let last = start, lastEvent: MouseEvent | null = event
   return {
     update(update) {
       if (update.docChanged) {
         start.pos = update.changes.mapPos(start.pos)
         startSel = startSel.map(update.changes)
-        lastEvent = null
       }
     },
     get(event, extend, multiple) {
-      let cur
-      if (lastEvent && event.clientX == lastEvent.clientX && event.clientY == lastEvent.clientY) cur = last
-      else { cur = last = queryPos(view, event); lastEvent = event }
+      let cur = queryPos(view, event)
       let range = rangeForClick(view, cur.pos, cur.bias, type)
       if (start.pos != cur.pos && !extend) {
         let startRange = rangeForClick(view, start.pos, start.bias, type)

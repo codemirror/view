@@ -190,6 +190,23 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
   }
 }
 
+export function scrollableParent(dom: HTMLElement) {
+  let doc = dom.ownerDocument
+  for (let cur = dom.parentNode as HTMLElement | null; cur;) {
+    if (cur == doc.body) {
+      break
+    } else if (cur.nodeType == 1) {
+      if (cur.scrollHeight > cur.clientHeight || cur.scrollWidth > cur.clientWidth) return cur
+      cur = cur.assignedSlot || cur.parentNode as HTMLElement | null
+    } else if (cur.nodeType == 11) {
+      cur = (cur as any).host
+    } else {
+      break
+    }
+  }
+  return null
+}
+
 export interface SelectionRange {
   focusNode: Node | null, focusOffset: number,
   anchorNode: Node | null, anchorOffset: number
