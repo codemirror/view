@@ -340,8 +340,7 @@ class MouseSelection {
         selection.main.assoc != this.view.state.selection.main.assoc)
       this.view.dispatch({
         selection,
-        userEvent: "select.pointer",
-//        scrollIntoView: true
+        userEvent: "select.pointer"
       })
     this.mustSelect = false
   }
