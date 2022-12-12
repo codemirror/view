@@ -1,3 +1,11 @@
+## 6.7.1 (2022-12-12)
+
+### Bug fixes
+
+Make the editor properly scroll when moving the pointer out of it during drag selection.
+
+Fix a regression where clicking below the content element in an editor with its own height didn't focus the editor.
+
 ## 6.7.0 (2022-12-07)
 
 ### Bug fixes
