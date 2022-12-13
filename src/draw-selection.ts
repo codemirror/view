@@ -73,7 +73,7 @@ const cursorLayer = layer({
     return cursors
   },
   update(update, dom) {
-    if (update.transactions.some(tr => tr.scrollIntoView))
+    if (update.transactions.some(tr => tr.selection))
       dom.style.animationName = dom.style.animationName == "cm-blink" ? "cm-blink2" : "cm-blink"
     let confChange = configChanged(update)
     if (confChange) setBlinkRate(update.state, dom)
