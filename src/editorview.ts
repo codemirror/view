@@ -488,6 +488,7 @@ export class EditorView {
     if (this.measureScheduled < 0)
       this.measureScheduled = this.win.requestAnimationFrame(() => this.measure())
     if (request) {
+      if (this.measureRequests.indexOf(request) > -1) return
       if (request.key != null) for (let i = 0; i < this.measureRequests.length; i++) {
         if (this.measureRequests[i].key === request.key) {
           this.measureRequests[i] = request
