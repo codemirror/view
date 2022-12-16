@@ -221,6 +221,8 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
   if (scopeObj) {
     if (runFor(scopeObj[prefix + modifiers(name, event, !isChar)])) return true
     if (isChar && (event.altKey || event.metaKey || event.ctrlKey) &&
+        // Ctrl-Alt may be used for AltGr on Windows
+        !(browser.windows && event.ctrlKey && event.altKey) &&
         (baseName = base[event.keyCode]) && baseName != name) {
       if (runFor(scopeObj[prefix + modifiers(baseName, event, true)])) return true
       else if (event.shiftKey && (shiftName = shift[event.keyCode]) != name && shiftName != baseName &&
