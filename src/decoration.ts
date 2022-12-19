@@ -280,7 +280,9 @@ export class LineDecoration extends Decoration {
   }
 
   eq(other: Decoration): boolean {
-    return other instanceof LineDecoration && attrsEq(this.spec.attributes, other.spec.attributes)
+    return other instanceof LineDecoration &&
+      this.spec.class == other.spec.class &&
+      attrsEq(this.spec.attributes, other.spec.attributes)
   }
 
   range(from: number, to = from) {
