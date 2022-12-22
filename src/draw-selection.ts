@@ -54,7 +54,7 @@ export function drawSelection(config: SelectionConfig = {}): Extension {
 }
 
 function configChanged(update: ViewUpdate) {
-  return update.startState.facet(selectionConfig) != update.startState.facet(selectionConfig)
+  return update.startState.facet(selectionConfig) != update.state.facet(selectionConfig)
 }
 
 const cursorLayer = layer({
