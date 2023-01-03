@@ -226,7 +226,6 @@ function advanceCursor(cursor: RangeCursor<GutterMarker>, collect: GutterMarker[
 
 class UpdateContext {
   cursor: RangeCursor<GutterMarker>
-  localMarkers: GutterMarker[] = []
   i = 0
 
   constructor(readonly gutter: SingleGutterView, viewport: {from: number, to: number}, public height: number) {
@@ -234,9 +233,9 @@ class UpdateContext {
   }
 
   line(view: EditorView, line: BlockInfo, extraMarkers: readonly GutterMarker[]) {
-    if (this.localMarkers.length) this.localMarkers = []
-    advanceCursor(this.cursor, this.localMarkers, line.from)
-    let localMarkers = extraMarkers.length ? this.localMarkers.concat(extraMarkers) : this.localMarkers
+    let localMarkers: GutterMarker[] = []
+    advanceCursor(this.cursor, localMarkers, line.from)
+    if (extraMarkers.length) localMarkers = localMarkers.concat(extraMarkers)
     let forLine = this.gutter.config.lineMarker(view, line, localMarkers)
     if (forLine) localMarkers.unshift(forLine)
 
