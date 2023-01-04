@@ -1,3 +1,23 @@
+## 6.7.2 (2023-01-04)
+
+### Bug fixes
+
+Fix a regression where the cursor didn't restart its blink cycle when moving it with the pointer.
+
+Even without a `key` property, measure request objects that are already scheduled will not be scheduled again by `requestMeasure`.
+
+Fix an issue where keymaps incorrectly interpreted key events that used Ctrl+Alt modifiers to simulate AltGr on Windows.
+
+Fix a bug where line decorations with a different `class` property would be treated as equal.
+
+Fix a bug that caused `drawSelection` to not notice when it was reconfigured.
+
+Fix a crash in the gutter extension caused by sharing of mutable arrays.
+
+Fix a regression that caused touch selection on mobile platforms to not work in an uneditable editor.
+
+Fix a bug where DOM events on the boundary between lines could get assigned to the wrong line.
+
 ## 6.7.1 (2022-12-12)
 
 ### Bug fixes
