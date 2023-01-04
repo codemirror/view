@@ -275,7 +275,15 @@ class SingleGutterView {
     this.dom.className = "cm-gutter" + (this.config.class ? " " + this.config.class : "")
     for (let prop in config.domEventHandlers) {
       this.dom.addEventListener(prop, (event: Event) => {
-        let line = view.lineBlockAtHeight((event as MouseEvent).clientY - view.documentTop)
+        let target = event.target as HTMLElement, y
+        if (target != this.dom && this.dom.contains(target)) {
+          while (target.parentNode != this.dom) target = target.parentNode as HTMLElement
+          let rect = target.getBoundingClientRect()
+          y = (rect.top + rect.bottom) / 2
+        } else {
+          y = (event as MouseEvent).clientY
+        }
+        let line = view.lineBlockAtHeight(y - view.documentTop)
         if (config.domEventHandlers[prop](view, line, event)) event.preventDefault()
       })
     }
