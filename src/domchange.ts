@@ -67,7 +67,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       change = {from: from + diff.from, to: from + diff.toA,
                 insert: Text.of(domChange.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
     }
-  } else if (newSel && (!view.hasFocus || !view.state.facet(editable) || newSel.main.eq(sel))) {
+  } else if (newSel && (!view.hasFocus && view.state.facet(editable) || newSel.main.eq(sel))) {
     newSel = null
   }
 
