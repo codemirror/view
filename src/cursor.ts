@@ -70,7 +70,8 @@ function domPosAtCoords(parent: HTMLElement, x: number, y: number): {node: Node,
         return child.nodeType == 3 ? domPosInText(child as Text, x, y) : domPosAtCoords(child as HTMLElement, x, y)
       if (!closest || closestY > dy || closestY == dy && closestX > dx) {
         closest = child; closestRect = rect; closestX = dx; closestY = dy
-        closestOverlap = !dx || (dx > 0 ? i < rects.length - 1 : i > 0)
+        let side = dy ? (y < rect.top ? -1 : 1) : dx ? (x < rect.left ? -1 : 1) : 0
+        closestOverlap = !side || (side > 0 ? i < rects.length - 1 : i > 0)
       }
       if (dx == 0) {
         if (y > rect.bottom && (!aboveRect || aboveRect.bottom < rect.bottom)) { above = child; aboveRect = rect }
