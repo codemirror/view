@@ -1,3 +1,9 @@
+## 6.7.3 (2023-01-12)
+
+### Bug fixes
+
+Fix a bug in `posAtCoords` that could cause incorrect results for positions to the left of a wrapped line.
+
 ## 6.7.2 (2023-01-04)
 
 ### Bug fixes
