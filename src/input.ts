@@ -71,8 +71,9 @@ export class InputState {
       }, handlerOptions[type])
       this.registeredEvents.push(type)
     }
-    view.scrollDOM.addEventListener("mousedown", (event: Event) => {
-      if (event.target == view.scrollDOM) handleEvent(handlers.mousedown, event)
+    view.scrollDOM.addEventListener("mousedown", (event: MouseEvent) => {
+      if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom)
+        handleEvent(handlers.mousedown, event)
     })
     if (browser.chrome && browser.chrome_version == 102) { // FIXME remove at some point
       // On Chrome 102, viewport updates somehow stop wheel-based
