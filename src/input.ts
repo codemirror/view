@@ -278,11 +278,14 @@ class MouseSelection {
     this.multiple = view.state.facet(EditorState.allowMultipleSelections) && addsSelectionRange(view, startEvent)
     this.dragMove = dragMovesSelection(view, startEvent)
     this.dragging = isInPrimarySelection(view, startEvent) && getClickType(startEvent) == 1 ? null : false
+  }
+
+  start(event: MouseEvent) {
     // When clicking outside of the selection, immediately apply the
     // effect of starting the selection
     if (this.dragging === false) {
-      startEvent.preventDefault()
-      this.select(startEvent)
+      event.preventDefault()
+      this.select(event)
     }
   }
 
@@ -466,8 +469,9 @@ handlers.mousedown = (view, event: MouseEvent) => {
   if (!style && event.button == 0) style = basicMouseSelection(view, event)
   if (style) {
     let mustFocus = view.root.activeElement != view.contentDOM
-    if (mustFocus) view.observer.ignore(() => focusPreventScroll(view.contentDOM))
     view.inputState.startMouseSelection(new MouseSelection(view, event, style, mustFocus))
+    if (mustFocus) view.observer.ignore(() => focusPreventScroll(view.contentDOM))
+    if (view.inputState.mouseSelection) view.inputState.mouseSelection.start(event)
   }
 }
 
