@@ -31,11 +31,6 @@ export abstract class ContentView {
   abstract children: ContentView[]
   breakAfter!: number
 
-  get editorView(): EditorView {
-    if (!this.parent) throw new Error("Accessing view in orphan content view")
-    return this.parent.editorView
-  }
-
   get overrideDOMText(): Text | null { return null }
 
   get posAtStart(): number {
@@ -64,7 +59,7 @@ export abstract class ContentView {
   // given position.
   coordsAt(_pos: number, _side: number): Rect | null { return null }
 
-  sync(track?: {node: Node, written: boolean}) {
+  sync(view: EditorView, track?: {node: Node, written: boolean}) {
     if (this.dirty & Dirty.Node) {
       let parent = this.dom as HTMLElement
       let prev: Node | null = null, next
@@ -75,7 +70,7 @@ export abstract class ContentView {
             if (!contentView || !contentView.parent && contentView.canReuseDOM(child))
               child.reuseDOM(next)
           }
-          child.sync(track)
+          child.sync(view, track)
           child.dirty = Dirty.Not
         }
         next = prev ? prev.nextSibling : parent.firstChild
@@ -92,7 +87,7 @@ export abstract class ContentView {
       while (next) next = rm(next)
     } else if (this.dirty & Dirty.Child) {
       for (let child of this.children) if (child.dirty) {
-        child.sync(track)
+        child.sync(view, track)
         child.dirty = Dirty.Not
       }
     }

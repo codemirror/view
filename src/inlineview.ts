@@ -2,8 +2,9 @@ import {Text as DocText} from "@codemirror/state"
 import {ContentView, DOMPos, Dirty, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
 import {Rect, Rect0, flattenRect, textRange, clientRectsFor, clearAttributes, contains} from "./dom"
-import {CompositionWidget} from "./docview"
+import {CompositionWidget, DocView} from "./docview"
 import browser from "./browser"
+import {EditorView} from "./editorview"
 
 const MaxJoinLen = 256
 
@@ -21,7 +22,7 @@ export class TextView extends ContentView {
     this.setDOM(textDOM || document.createTextNode(this.text))
   }
 
-  sync(track?: {node: Node, written: boolean}) {
+  sync(view: EditorView, track?: {node: Node, written: boolean}) {
     if (!this.dom) this.createDOM()
     if (this.dom!.nodeValue != this.text) {
       if (track && track.node == this.dom) track.written = true
@@ -87,10 +88,10 @@ export class MarkView extends ContentView {
     }
   }
 
-  sync(track?: {node: Node, written: boolean}) {
+  sync(view: EditorView, track?: {node: Node, written: boolean}) {
     if (!this.dom) this.setDOM(this.setAttrs(document.createElement(this.mark.tagName)))
     else if (this.dirty & Dirty.Attrs) this.setAttrs(this.dom)
-    super.sync(track)
+    super.sync(view, track)
   }
 
   merge(from: number, to: number, source: ContentView | null, _hasStart: boolean, openStart: number, openEnd: number): boolean {
@@ -168,11 +169,11 @@ export class WidgetView extends ContentView {
     return result
   }
 
-  sync() {
-    if (!this.dom || !this.widget.updateDOM(this.dom)) {
+  sync(view: EditorView) {
+    if (!this.dom || !this.widget.updateDOM(this.dom, view)) {
       if (this.dom && this.prevWidget) this.prevWidget.destroy(this.dom)
       this.prevWidget = null
-      this.setDOM(this.widget.toDOM(this.editorView))
+      this.setDOM(this.widget.toDOM(view))
       this.dom!.contentEditable = "false"
     }
   }
@@ -206,7 +207,7 @@ export class WidgetView extends ContentView {
     if (this.length == 0) return DocText.empty
     let top: ContentView = this
     while (top.parent) top = top.parent
-    let view = (top as any).editorView, text: DocText | undefined = view && view.state.doc, start = this.posAtStart
+    let {view} = top as DocView, text: DocText | undefined = view && view.state.doc, start = this.posAtStart
     return text ? text.slice(start, start + this.length) : DocText.empty
   }
 

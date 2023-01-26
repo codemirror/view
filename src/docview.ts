@@ -43,8 +43,6 @@ export class DocView extends ContentView {
   // ourselves
   lastUpdate = Date.now()
 
-  get editorView() { return this.view }
-
   get length() { return this.view.state.doc.length }
 
   constructor(readonly view: EditorView) {
@@ -117,7 +115,7 @@ export class DocView extends ContentView {
       // selection from the one it displays (issue #218). This tries
       // to detect that situation.
       let track = browser.chrome || browser.ios ? {node: observer.selectionRange.focusNode!, written: false} : undefined
-      this.sync(track)
+      this.sync(this.view, track)
       this.dirty = Dirty.Not
       if (track && (track.written || observer.selectionRange.focusNode != track.node)) this.forceSelection = true
       this.dom.style.height = ""

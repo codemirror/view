@@ -5,6 +5,7 @@ import {clientRectsFor, Rect, clearAttributes} from "./dom"
 import {LineDecoration, WidgetType, BlockType} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
 import browser from "./browser"
+import {EditorView} from "./editorview"
 import {Text} from "@codemirror/state"
 
 export interface BlockView extends ContentView {
@@ -90,7 +91,7 @@ export class LineView extends ContentView implements BlockView {
     }
   }
 
-  sync(track?: {node: Node, written: boolean}) {
+  sync(view: EditorView, track?: {node: Node, written: boolean}) {
     if (!this.dom) {
       this.setDOM(document.createElement("div"))
       this.dom!.className = "cm-line"
@@ -105,7 +106,7 @@ export class LineView extends ContentView implements BlockView {
       this.dom!.classList.add("cm-line")
       this.prevAttrs = undefined
     }
-    super.sync(track)
+    super.sync(view, track)
     let last = this.dom!.lastChild
     while (last && ContentView.get(last) instanceof MarkView)
       last = last.lastChild
@@ -186,11 +187,11 @@ export class BlockWidgetView extends ContentView implements BlockView {
 
   get children() { return noChildren }
 
-  sync() {
-    if (!this.dom || !this.widget.updateDOM(this.dom)) {
+  sync(view: EditorView) {
+    if (!this.dom || !this.widget.updateDOM(this.dom, view)) {
       if (this.dom && this.prevWidget) this.prevWidget.destroy(this.dom)
       this.prevWidget = null
-      this.setDOM(this.widget.toDOM(this.editorView))
+      this.setDOM(this.widget.toDOM(view))
       this.dom!.contentEditable = "false"
     }
   }

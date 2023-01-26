@@ -105,7 +105,7 @@ export abstract class WidgetType {
   /// true to indicate that it could update, false to indicate it
   /// couldn't (in which case the widget will be redrawn). The default
   /// implementation just returns false.
-  updateDOM(dom: HTMLElement): boolean { return false }
+  updateDOM(dom: HTMLElement, view: EditorView): boolean { return false }
 
   /// @internal
   compare(other: WidgetType): boolean {
