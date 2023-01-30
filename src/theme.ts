@@ -128,6 +128,9 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "&dark .cm-cursor": {
     borderLeftColor: "#444"
   },
+  ".cm-dropCursor": {
+    position: "absolute"
+  },
 
   "&.cm-focused .cm-cursor": {
     display: "block"
