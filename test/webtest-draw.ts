@@ -286,13 +286,14 @@ describe("EditorView drawing", () => {
       toDOM() {
         let d = document.createElement("div")
         d.style.height = "10px"
-        setTimeout(() => d.style.height = "30px", 25)
+        setTimeout(() => d.style.height = "30px", 5)
         return d
       }
     }
     let cm = tempView("a\nb\nc\nd", [
       EditorView.decorations.of(Decoration.set(Decoration.widget({widget, block: true, side: 1}).range(1)))
     ])
+    cm.measure()
     await later(75)
     let line2 = cm.viewportLineBlocks[1], dom2 = cm.contentDOM.querySelectorAll(".cm-line")[1]
     ist(Math.abs(cm.documentTop + line2.top - (dom2 as HTMLElement).getBoundingClientRect().top), 1, "<")
