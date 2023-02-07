@@ -1,3 +1,17 @@
+## 6.8.0 (2023-02-07)
+
+### Bug fixes
+
+Fix a regression that caused clicking on the scrollbar to move the selection.
+
+Fix an issue where focus or blur event handlers that dispatched editor transactions could corrupt the mouse selection state.
+
+Fix a CSS regression that prevented the drop cursor from being positioned properly.
+
+### New features
+
+`WidgetType.updateDOM` is now passed the editor view object.
+
 ## 6.7.3 (2023-01-12)
 
 ### Bug fixes
