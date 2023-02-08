@@ -1,3 +1,9 @@
+## 6.8.1 (2023-02-08)
+
+### Bug fixes
+
+Fix an issue where tooltips that have their height reduced have their height flicker when scrolling or otherwise interacting with the editor.
+
 ## 6.8.0 (2023-02-07)
 
 ### Bug fixes
