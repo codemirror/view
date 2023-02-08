@@ -116,6 +116,8 @@ const tooltipConfig = Facet.define<Partial<TooltipConfig>, TooltipConfig>({
   })
 })
 
+const knownHeight = new WeakMap<TooltipView, number>()
+
 const tooltipPlugin = ViewPlugin.fromClass(class {
   manager: TooltipViewManager
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
@@ -250,7 +252,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       }
       let arrow: HTMLElement | null = tooltip.arrow ? tView.dom.querySelector(".cm-tooltip-arrow") : null
       let arrowHeight = arrow ? Arrow.Size : 0
-      let width = size.right - size.left, height = size.bottom - size.top
+      let width = size.right - size.left, height = knownHeight.get(tView) ?? size.bottom - size.top
       let offset = tView.offset || noOffset, ltr = this.view.textDirection == Direction.LTR
       let left = size.width > space.right - space.left ? (ltr ? space.left : space.right - size.width)
         : ltr ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, space.right - width)
@@ -264,6 +266,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let spaceVert = (above ? pos.top - space.top : space.bottom - pos.bottom) - arrowHeight
       if (spaceVert < height && tView.resize !== false) {
         if (spaceVert < this.view.defaultLineHeight) { dom.style.top = Outside; continue }
+        knownHeight.set(tView, height)
         dom.style.height = (height = spaceVert) + "px"
       } else if (dom.style.height) {
         dom.style.height = ""
