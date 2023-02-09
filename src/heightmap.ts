@@ -18,7 +18,7 @@ export class HeightOracle {
   heightForGap(from: number, to: number): number {
     let lines = this.doc.lineAt(to).number - this.doc.lineAt(from).number + 1
     if (this.lineWrapping)
-      lines += Math.ceil(((to - from) - (lines * this.lineLength * 0.5)) / this.lineLength)
+      lines += Math.max(0, Math.ceil(((to - from) - (lines * this.lineLength * 0.5)) / this.lineLength))
     return this.lineHeight * lines
   }
 
