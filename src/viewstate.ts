@@ -174,12 +174,13 @@ export class ViewState {
     this.viewports = viewports.sort((a, b) => a.from - b.from)
 
     this.scaler = this.heightMap.height <= VP.MaxDOMHeight ? IdScaler :
-      new BigScaler(this.heightOracle.doc, this.heightMap, this.viewports)
+      new BigScaler(this.heightOracle, this.heightMap, this.viewports)
   }
 
   updateViewportLines() {
     this.viewportLines = []
-    this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.state.doc, 0, 0, block => {
+    this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.heightOracle.setDoc(this.state.doc),
+                               0, 0, block => {
       this.viewportLines.push(this.scaler.scale == 1 ? block : scaleBlock(block, this.scaler))
     })
   }
@@ -317,23 +318,24 @@ export class ViewState {
     // bottom, depending on the bias (the change in viewport position
     // since the last update). It'll hold a number between 0 and 1
     let marginTop = 0.5 - Math.max(-0.5, Math.min(0.5, bias / VP.Margin / 2))
-    let map = this.heightMap, doc = this.state.doc, {visibleTop, visibleBottom} = this
-    let viewport = new Viewport(map.lineAt(visibleTop - marginTop * VP.Margin, QueryType.ByHeight, doc, 0, 0).from,
-                                map.lineAt(visibleBottom + (1 - marginTop) * VP.Margin, QueryType.ByHeight, doc, 0, 0).to)
+    let map = this.heightMap, oracle = this.heightOracle
+    let {visibleTop, visibleBottom} = this
+    let viewport = new Viewport(map.lineAt(visibleTop - marginTop * VP.Margin, QueryType.ByHeight, oracle, 0, 0).from,
+                                map.lineAt(visibleBottom + (1 - marginTop) * VP.Margin, QueryType.ByHeight, oracle, 0, 0).to)
     // If scrollTarget is given, make sure the viewport includes that position
     if (scrollTarget) {
       let {head} = scrollTarget.range
       if (head < viewport.from || head > viewport.to) {
         let viewHeight = Math.min(this.editorHeight, this.pixelViewport.bottom - this.pixelViewport.top)
-        let block = map.lineAt(head, QueryType.ByPos, doc, 0, 0), topPos
+        let block = map.lineAt(head, QueryType.ByPos, oracle, 0, 0), topPos
         if (scrollTarget.y == "center")
           topPos = (block.top + block.bottom) / 2 - viewHeight / 2
         else if (scrollTarget.y == "start" || scrollTarget.y == "nearest" && head < viewport.from)
           topPos = block.top
         else
           topPos = block.bottom - viewHeight
-        viewport = new Viewport(map.lineAt(topPos - VP.Margin / 2, QueryType.ByHeight, doc, 0, 0).from,
-                                map.lineAt(topPos + viewHeight + VP.Margin / 2, QueryType.ByHeight, doc, 0, 0).to)
+        viewport = new Viewport(map.lineAt(topPos - VP.Margin / 2, QueryType.ByHeight, oracle, 0, 0).from,
+                                map.lineAt(topPos + viewHeight + VP.Margin / 2, QueryType.ByHeight, oracle, 0, 0).to)
       }
     }
     return viewport
@@ -341,16 +343,16 @@ export class ViewState {
 
   mapViewport(viewport: Viewport, changes: ChangeDesc) {
     let from = changes.mapPos(viewport.from, -1), to = changes.mapPos(viewport.to, 1)
-    return new Viewport(this.heightMap.lineAt(from, QueryType.ByPos, this.state.doc, 0, 0).from,
-                        this.heightMap.lineAt(to, QueryType.ByPos, this.state.doc, 0, 0).to)
+    return new Viewport(this.heightMap.lineAt(from, QueryType.ByPos, this.heightOracle, 0, 0).from,
+                        this.heightMap.lineAt(to, QueryType.ByPos, this.heightOracle, 0, 0).to)
   }
 
   // Checks if a given viewport covers the visible part of the
   // document and not too much beyond that.
   viewportIsAppropriate({from, to}: Viewport, bias = 0) {
     if (!this.inView) return true
-    let {top} = this.heightMap.lineAt(from, QueryType.ByPos, this.state.doc, 0, 0)
-    let {bottom} = this.heightMap.lineAt(to, QueryType.ByPos, this.state.doc, 0, 0)
+    let {top} = this.heightMap.lineAt(from, QueryType.ByPos, this.heightOracle, 0, 0)
+    let {bottom} = this.heightMap.lineAt(to, QueryType.ByPos, this.heightOracle, 0, 0)
     let {visibleTop, visibleBottom} = this
     return (from == 0 || top <= visibleTop - Math.max(VP.MinCoverMargin, Math.min(-bias, VP.MaxCoverMargin))) &&
       (to == this.state.doc.length ||
@@ -480,15 +482,15 @@ export class ViewState {
 
   lineBlockAt(pos: number): BlockInfo {
     return (pos >= this.viewport.from && pos <= this.viewport.to && this.viewportLines.find(b => b.from <= pos && b.to >= pos)) ||
-      scaleBlock(this.heightMap.lineAt(pos, QueryType.ByPos, this.state.doc, 0, 0), this.scaler)
+      scaleBlock(this.heightMap.lineAt(pos, QueryType.ByPos, this.heightOracle, 0, 0), this.scaler)
   }
 
   lineBlockAtHeight(height: number): BlockInfo {
-    return scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height), QueryType.ByHeight, this.state.doc, 0, 0), this.scaler)
+    return scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height), QueryType.ByHeight, this.heightOracle, 0, 0), this.scaler)
   }
 
   elementAtHeight(height: number): BlockInfo {
-    return scaleBlock(this.heightMap.blockAt(this.scaler.fromDOM(height), this.state.doc, 0, 0), this.scaler)
+    return scaleBlock(this.heightMap.blockAt(this.scaler.fromDOM(height), this.heightOracle, 0, 0), this.scaler)
   }
 
   get docHeight() {
@@ -570,11 +572,11 @@ class BigScaler implements YScaler {
   scale: number
   viewports: {from: number, to: number, top: number, bottom: number, domTop: number, domBottom: number}[]
 
-  constructor(doc: Text, heightMap: HeightMap, viewports: readonly Viewport[]) {
+  constructor(oracle: HeightOracle, heightMap: HeightMap, viewports: readonly Viewport[]) {
     let vpHeight = 0, base = 0, domBase = 0
     this.viewports = viewports.map(({from, to}) => {
-      let top = heightMap.lineAt(from, QueryType.ByPos, doc, 0, 0).top
-      let bottom = heightMap.lineAt(to, QueryType.ByPos, doc, 0, 0).bottom
+      let top = heightMap.lineAt(from, QueryType.ByPos, oracle, 0, 0).top
+      let bottom = heightMap.lineAt(to, QueryType.ByPos, oracle, 0, 0).bottom
       vpHeight += bottom - top
       return {from, to, top, bottom, domTop: 0, domBottom: 0}
     })
