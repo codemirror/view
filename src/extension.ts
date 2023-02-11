@@ -26,6 +26,8 @@ export const updateListener = Facet.define<(update: ViewUpdate) => void>()
 
 export const inputHandler = Facet.define<(view: EditorView, from: number, to: number, text: string) => boolean>()
 
+export const focusChangeEffect = Facet.define<(state: EditorState, focusing: boolean) => StateEffect<any> | null>()
+
 export const perLineTextDirection = Facet.define<boolean, boolean>({
   combine: values => values.some(x => x)
 })

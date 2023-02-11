@@ -3,7 +3,7 @@ import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
 import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior,
-        logException, mouseSelectionStyle, PluginInstance} from "./extension"
+        logException, mouseSelectionStyle, PluginInstance, focusChangeEffect} from "./extension"
 import browser from "./browser"
 import {groupAt} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParent} from "./dom"
@@ -700,7 +700,15 @@ handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
 
 function updateForFocusChange(view: EditorView) {
   setTimeout(() => {
-    if (view.hasFocus != view.inputState.notifiedFocused) view.update([])
+    if (view.hasFocus != view.inputState.notifiedFocused) {
+      let effects = [], focus = !view.inputState.notifiedFocused
+      for (let getEffect of view.state.facet(focusChangeEffect)) {
+        let effect = getEffect(view.state, focus)
+        if (effect) effects.push(effect)
+      }
+      if (effects.length) view.dispatch({effects})
+      else view.update([])
+    }
   }, 10)
 }
 

@@ -14,7 +14,7 @@ import {ViewUpdate, styleModule,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, atomicRanges,
-        scrollMargins, MeasureRequest, editable, inputHandler, perLineTextDirection,
+        scrollMargins, MeasureRequest, editable, inputHandler, focusChangeEffect, perLineTextDirection,
         scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
@@ -405,6 +405,7 @@ export class EditorView {
           } else {
             let diff = this.viewState.lineBlockAt(refBlock.from).top - refBlock.top
             if (diff > 1 || diff < -1) {
+              console.log("XXX", diff)
               this.scrollDOM.scrollTop += diff
               scrolled = true
             }
@@ -799,6 +800,10 @@ export class EditorView {
   /// content. When one returns true, no further input handlers are
   /// called and the default behavior is prevented.
   static inputHandler = inputHandler
+
+  /// This facet can be used to provide functions that create effects
+  /// to be dispatched when the editor's focus state changes.
+  static focusChangeEffect = focusChangeEffect
 
   /// By default, the editor assumes all its content has the same
   /// [text direction](#view.Direction). Configure this with a `true`
