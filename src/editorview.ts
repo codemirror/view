@@ -405,7 +405,6 @@ export class EditorView {
           } else {
             let diff = this.viewState.lineBlockAt(refBlock.from).top - refBlock.top
             if (diff > 1 || diff < -1) {
-              console.log("XXX", diff)
               this.scrollDOM.scrollTop += diff
               scrolled = true
             }
