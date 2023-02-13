@@ -226,8 +226,9 @@ export class ViewState {
     this.defaultTextDirection = style.direction == "rtl" ? Direction.RTL : Direction.LTR
 
     let refresh = this.heightOracle.mustRefreshForWrapping(whiteSpace)
-    let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != dom.clientHeight
-    this.contentDOMHeight = dom.clientHeight
+    let domRect = dom.getBoundingClientRect()
+    let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != domRect.height
+    this.contentDOMHeight = domRect.height
     this.mustMeasureContent = false
     let result = 0, bias = 0
     // Vertical padding
@@ -254,9 +255,9 @@ export class ViewState {
     }
     if (!this.inView && !this.scrollTarget) return 0
 
-    let contentWidth = dom.clientWidth
+    let contentWidth = domRect.width
     if (this.contentDOMWidth != contentWidth || this.editorHeight != view.scrollDOM.clientHeight) {
-      this.contentDOMWidth = contentWidth
+      this.contentDOMWidth = domRect.width
       this.editorHeight = view.scrollDOM.clientHeight
       result |= UpdateFlag.Geometry
     }
