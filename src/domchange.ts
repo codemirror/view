@@ -87,7 +87,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
     }
   } else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
-             /^\. ?$/.test(change.insert.toString())) {
+             /^\. ?$/.test(change.insert.toString()) && view.contentDOM.getAttribute("autocorrect") == "off") {
     // Detect insert-period-on-double-space Mac and Android behavior,
     // and transform it into a regular space insert.
     if (newSel && change.insert.length == 2) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)
