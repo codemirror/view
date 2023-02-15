@@ -1,3 +1,17 @@
+## 6.9.0 (2023-02-15)
+
+### Bug fixes
+
+Fix an issue where inaccurate estimated vertical positions could cause the viewport to not converge in line-wrapped editors.
+
+Don't suppress double-space to period conversion when autocorrect is enabled.
+
+Make sure the measuring code notices when the scaling of the editor is changed, and does a full measure in that case.
+
+### New features
+
+The new `EditorView.focusChangeEffect` facet can be used to dispatch a state effect when the editor is focused or blurred.
+
 ## 6.8.1 (2023-02-08)
 
 ### Bug fixes
