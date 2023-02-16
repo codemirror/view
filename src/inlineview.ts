@@ -229,6 +229,8 @@ export class WidgetView extends ContentView {
 
   get isEditable() { return false }
 
+  get isWidget() { return true }
+
   destroy() {
     super.destroy()
     if (this.dom) this.widget.destroy(this.dom)

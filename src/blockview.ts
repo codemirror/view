@@ -218,6 +218,10 @@ export class BlockWidgetView extends ContentView implements BlockView {
   ignoreMutation(): boolean { return true }
   ignoreEvent(event: Event): boolean { return this.widget.ignoreEvent(event) }
 
+  get isEditable() { return false }
+
+  get isWidget() { return true }
+
   destroy() {
     super.destroy()
     if (this.dom) this.widget.destroy(this.dom)

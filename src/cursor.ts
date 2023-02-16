@@ -123,10 +123,10 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
   return {node, offset: closestOffset > -1 ? closestOffset : generalSide > 0 ? node.nodeValue!.length : 0}
 }
 
-export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, precise: boolean, bias: -1 | 1 = -1): number | null {
+export function posAtCoords(view: EditorView, coords: {x: number, y: number}, precise: boolean, bias: -1 | 1 = -1): number | null {
   let content = view.contentDOM.getBoundingClientRect(), docTop = content.top + view.viewState.paddingTop
   let block, {docHeight} = view.viewState
-  let yOffset = y - docTop
+  let {x, y} = coords, yOffset = y - docTop
   if (yOffset < 0) return 0
   if (yOffset > docHeight) return view.state.doc.length
 
@@ -191,7 +191,15 @@ export function posAtCoords(view: EditorView, {x, y}: {x: number, y: number}, pr
     if (!line) return yOffset > block.top + block.height / 2 ? block.to : block.from
     ;({node, offset} = domPosAtCoords(line.dom!, x, y))
   }
-  return view.docView.posFromDOM(node, offset)
+  let nearest = view.docView.nearest(node)
+  if (!nearest) return null
+  if (nearest.isWidget) {
+    let rect = (nearest.dom as HTMLElement).getBoundingClientRect()
+    return coords.y < rect.top || coords.y <= rect.bottom && coords.x <= (rect.left + rect.right) / 2
+      ? nearest.posAtStart : nearest.posAtEnd
+  } else {
+    return nearest.localPosFromDOM(node, offset) + nearest.posAtStart
+  }
 }
 
 function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockInfo, x: number, y: number) {

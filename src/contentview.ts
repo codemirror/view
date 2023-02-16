@@ -221,6 +221,8 @@ export abstract class ContentView {
 
   get isEditable() { return true }
 
+  get isWidget() { return false }
+
   merge(from: number, to: number, source: ContentView | null, hasStart: boolean, openStart: number, openEnd: number): boolean {
     return false
   }
