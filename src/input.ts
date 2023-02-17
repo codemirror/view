@@ -1,4 +1,4 @@
-import {EditorSelection, EditorState, SelectionRange} from "@codemirror/state"
+import {EditorSelection, EditorState, SelectionRange, Annotation} from "@codemirror/state"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
@@ -698,15 +698,23 @@ handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
     })
 }
 
+export const isFocusChange = Annotation.define<boolean>()
+
+export function focusChangeTransaction(state: EditorState, focus: boolean) {
+  let effects = []
+  for (let getEffect of state.facet(focusChangeEffect)) {
+    let effect = getEffect(state, focus)
+    if (effect) effects.push(effect)
+  }
+  return effects ? state.update({effects, annotations: isFocusChange.of(true)}) : null
+}
+
 function updateForFocusChange(view: EditorView) {
   setTimeout(() => {
-    if (view.hasFocus != view.inputState.notifiedFocused) {
-      let effects = [], focus = !view.inputState.notifiedFocused
-      for (let getEffect of view.state.facet(focusChangeEffect)) {
-        let effect = getEffect(view.state, focus)
-        if (effect) effects.push(effect)
-      }
-      if (effects.length) view.dispatch({effects})
+    let focus = view.hasFocus
+    if (focus != view.inputState.notifiedFocused) {
+      let tr = focusChangeTransaction(view.state, focus)
+      if (tr) view.dispatch(tr)
       else view.update([])
     }
   }, 10)

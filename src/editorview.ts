@@ -4,7 +4,7 @@ import {StyleModule, StyleSpec} from "style-mod"
 
 import {DocView} from "./docview"
 import {ContentView} from "./contentview"
-import {InputState} from "./input"
+import {InputState, focusChangeTransaction, isFocusChange} from "./input"
 import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy, dispatchKey} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
@@ -21,7 +21,7 @@ import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
 import browser from "./browser"
 import {computeOrder, trivialOrder, BidiSpan, Direction} from "./bidi"
-import {applyDOMChange} from "./domchange"
+import {applyDOMChange, DOMChange} from "./domchange"
 
 /// The type of object given to the [`EditorView`](#view.EditorView)
 /// constructor.
@@ -238,9 +238,22 @@ export class EditorView {
       return
     }
 
+    let focus = this.hasFocus, focusFlag = 0, dispatchFocus: Transaction | null = null
+    if (transactions.some(tr => tr.annotation(isFocusChange))) {
+      this.inputState.notifiedFocused = focus
+      // If a focus-change transaction is being dispatched, set this update flag.
+      focusFlag = UpdateFlag.Focus
+    } else if (focus != this.inputState.notifiedFocused) {
+      this.inputState.notifiedFocused = focus
+      // Schedule a separate focus transaction if necessary, otherwise
+      // add a flag to this update
+      dispatchFocus = focusChangeTransaction(state, focus)
+      if (!dispatchFocus) focusFlag = UpdateFlag.Focus
+    }
+
     // If there was a pending DOM change, eagerly read it and try to
     // apply it after the given transactions.
-    let pendingKey = this.observer.delayedAndroidKey, domChange = null
+    let pendingKey = this.observer.delayedAndroidKey, domChange: DOMChange | null = null
     if (pendingKey) {
       this.observer.clearDelayedAndroidKey()
       domChange = this.observer.readChange()
@@ -257,6 +270,8 @@ export class EditorView {
       return this.setState(state)
 
     update = ViewUpdate.create(this, state, transactions)
+    update.flags |= focusFlag
+
     let scrollTarget = this.viewState.scrollTarget
     try {
       this.updateState = UpdateState.Updating
@@ -288,10 +303,13 @@ export class EditorView {
       this.requestMeasure()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
 
-    if (domChange) {
-      if (!applyDOMChange(this, domChange) && pendingKey!.force)
-        dispatchKey(this.contentDOM, pendingKey!.key, pendingKey!.keyCode)
-    }
+    if (dispatchFocus || domChange) Promise.resolve().then(() => {
+      if (dispatchFocus && this.state == dispatchFocus.startState) this.dispatch(dispatchFocus)
+      if (domChange) {
+        if (!applyDOMChange(this, domChange) && pendingKey!.force)
+          dispatchKey(this.contentDOM, pendingKey!.key, pendingKey!.keyCode)
+      }
+    })
   }
 
   /// Reset the view to the given state. (This will cause the entire

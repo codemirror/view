@@ -300,11 +300,6 @@ export class ViewUpdate {
     let changedRanges: ChangedRange[] = []
     this.changes.iterChangedRanges((fromA, toA, fromB, toB) => changedRanges.push(new ChangedRange(fromA, toA, fromB, toB)))
     this.changedRanges = changedRanges
-    let focus = view.hasFocus
-    if (focus != view.inputState.notifiedFocused) {
-      view.inputState.notifiedFocused = focus
-      this.flags |= UpdateFlag.Focus
-    }
   }
 
   /// @internal
