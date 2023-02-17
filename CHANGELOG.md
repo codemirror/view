@@ -1,3 +1,11 @@
+## 6.9.1 (2023-02-17)
+
+### Bug fixes
+
+Improve the way `posAtCoords` picks the side of a widget to return by comparing the coordinates the center of the widget.
+
+Fix an issue where transactions created for the `focusChangeEffect` facet were sometimes not dispatched.
+
 ## 6.9.0 (2023-02-15)
 
 ### Bug fixes
