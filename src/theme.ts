@@ -85,6 +85,9 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   },
 
   ".cm-layer": {
+    position: "absolute",
+    left: 0,
+    top: 0,
     contain: "size style",
     "& > *": {
       position: "absolute"
