@@ -193,7 +193,7 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
   }
   let nearest = view.docView.nearest(node)
   if (!nearest) return null
-  if (nearest.isWidget) {
+  if (nearest.isWidget && nearest.dom?.nodeType == 1) {
     let rect = (nearest.dom as HTMLElement).getBoundingClientRect()
     return coords.y < rect.top || coords.y <= rect.bottom && coords.x <= (rect.left + rect.right) / 2
       ? nearest.posAtStart : nearest.posAtEnd
