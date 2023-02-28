@@ -105,9 +105,10 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
 
   let ltr = view.textDirection == Direction.LTR
   let content = view.contentDOM, contentRect = content.getBoundingClientRect(), base = getBase(view)
-  let lineStyle = window.getComputedStyle(content.firstChild as HTMLElement)
-  let leftSide = contentRect.left + parseInt(lineStyle.paddingLeft) + Math.min(0, parseInt(lineStyle.textIndent))
-  let rightSide = contentRect.right - parseInt(lineStyle.paddingRight)
+  let lineElt = content.querySelector(".cm-line"), lineStyle = lineElt && window.getComputedStyle(lineElt)
+  let leftSide = contentRect.left +
+    (lineStyle ? parseInt(lineStyle.paddingLeft) + Math.min(0, parseInt(lineStyle.textIndent)) : 0)
+  let rightSide = contentRect.right - (lineStyle ? parseInt(lineStyle.paddingRight) : 0)
 
   let startBlock = blockAt(view, from), endBlock = blockAt(view, to)
   let visualStart: {from: number, to: number} | null = startBlock.type == BlockType.Text ? startBlock : null
