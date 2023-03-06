@@ -369,7 +369,7 @@ export class EditorView {
   /// @internal
   measure(flush = true) {
     if (this.destroyed) return
-    if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
+    if (this.measureScheduled > -1) this.win.cancelAnimationFrame(this.measureScheduled)
     this.measureScheduled = 0 // Prevent requestMeasure calls from scheduling another animation frame
 
     if (flush) this.observer.forceFlush()
@@ -761,7 +761,7 @@ export class EditorView {
     this.inputState.destroy()
     this.dom.remove()
     this.observer.destroy()
-    if (this.measureScheduled > -1) cancelAnimationFrame(this.measureScheduled)
+    if (this.measureScheduled > -1) this.win.cancelAnimationFrame(this.measureScheduled)
     this.destroyed = true
   }
 
