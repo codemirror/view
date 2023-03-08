@@ -1,3 +1,13 @@
+## 6.9.2 (2023-03-08)
+
+### Bug fixes
+
+Work around a Firefox CSS bug that caused cursors to stop blinking in a scrolled editor.
+
+Fix an issue in `drawSelection` where the selection extended into the editor's padding.
+
+Fix pasting of links copied from iOS share sheet.
+
 ## 6.9.1 (2023-02-17)
 
 ### Bug fixes
