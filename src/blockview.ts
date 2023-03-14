@@ -20,6 +20,7 @@ export class LineView extends ContentView implements BlockView {
   prevAttrs: Attrs | null | undefined = undefined
   attrs: Attrs | null = null
   breakAfter = 0
+  parent!: DocView | null
 
   // Consumes source
   merge(from: number, to: number, source: BlockView | null, hasStart: boolean, openStart: number, openEnd: number): boolean {
@@ -119,23 +120,35 @@ export class LineView extends ContentView implements BlockView {
     }
   }
 
-  measureTextSize(): {lineHeight: number, charWidth: number} | null {
+  measureTextSize(): {lineHeight: number, charWidth: number, textHeight: number} | null {
     if (this.children.length == 0 || this.length > 20) return null
-    let totalWidth = 0
+    let totalWidth = 0, textHeight!: number
     for (let child of this.children) {
       if (!(child instanceof TextView) || /[^ -~]/.test(child.text)) return null
       let rects = clientRectsFor(child.dom!)
       if (rects.length != 1) return null
       totalWidth += rects[0].width
+      textHeight = rects[0].height
     }
     return !totalWidth ? null : {
       lineHeight: this.dom!.getBoundingClientRect().height,
-      charWidth: totalWidth / this.length
+      charWidth: totalWidth / this.length,
+      textHeight
     }
   }
 
   coordsAt(pos: number, side: number): Rect | null {
-    return coordsInChildren(this, pos, side)
+    let rect = coordsInChildren(this, pos, side)
+    // Correct rectangle height for empty lines when the returned
+    // height is larger than the text height.
+    if (!this.children.length && rect && this.parent) {
+      let {heightOracle} = this.parent.view.viewState, height = rect.bottom - rect.top
+      if (Math.abs(height - heightOracle.lineHeight) < 2 && heightOracle.textHeight < height) {
+        let dist = (height - heightOracle.textHeight) / 2
+        return {top: rect.top + dist, bottom: rect.bottom - dist, left: rect.left, right: rect.left}
+      }
+    }
+    return rect
   }
 
   become(_other: ContentView) { return false }

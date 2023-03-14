@@ -7,8 +7,9 @@ const wrappingWhiteSpace = ["pre-wrap", "normal", "pre-line", "break-spaces"]
 export class HeightOracle {
   doc: Text = Text.empty
   heightSamples: {[key: number]: boolean} = {}
-  lineHeight: number = 14
+  lineHeight: number = 14 // The height of an entire line (line-height)
   charWidth: number = 7
+  textHeight: number = 14 // The height of the actual font (font-size)
   lineLength: number = 30
   // Used to track, during updateHeight, if any actual heights changed
   heightChanged: boolean = false
@@ -48,13 +49,14 @@ export class HeightOracle {
     return newHeight
   }
 
-  refresh(whiteSpace: string, lineHeight: number, charWidth: number,
+  refresh(whiteSpace: string, lineHeight: number, charWidth: number, textHeight: number,
           lineLength: number, knownHeights: number[]): boolean {
     let lineWrapping = wrappingWhiteSpace.indexOf(whiteSpace) > -1
     let changed = Math.round(lineHeight) != Math.round(this.lineHeight) || this.lineWrapping != lineWrapping
     this.lineWrapping = lineWrapping
     this.lineHeight = lineHeight
     this.charWidth = charWidth
+    this.textHeight = textHeight
     this.lineLength = lineLength
     if (changed) {
       this.heightSamples = {}

@@ -320,7 +320,7 @@ export class DocView extends ContentView {
     return getComputedStyle(this.children[i].dom!).direction == "rtl" ? Direction.RTL : Direction.LTR
   }
 
-  measureTextSize(): {lineHeight: number, charWidth: number} {
+  measureTextSize(): {lineHeight: number, charWidth: number, textHeight: number} {
     for (let child of this.children) {
       if (child instanceof LineView) {
         let measure = child.measureTextSize()
@@ -328,7 +328,7 @@ export class DocView extends ContentView {
       }
     }
     // If no workable line exists, force a layout of a measurable element
-    let dummy = document.createElement("div"), lineHeight!: number, charWidth!: number
+    let dummy = document.createElement("div"), lineHeight!: number, charWidth!: number, textHeight!: number
     dummy.className = "cm-line"
     dummy.style.width = "99999px"
     dummy.textContent = "abc def ghi jkl mno pqr stu"
@@ -337,9 +337,10 @@ export class DocView extends ContentView {
       let rect = clientRectsFor(dummy.firstChild!)[0]
       lineHeight = dummy.getBoundingClientRect().height
       charWidth = rect ? rect.width / 27 : 7
+      textHeight = rect ? rect.height : lineHeight
       dummy.remove()
     })
-    return {lineHeight, charWidth}
+    return {lineHeight, charWidth, textHeight}
   }
 
   childCursor(pos: number = this.length): ChildCursor {
