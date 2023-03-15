@@ -72,8 +72,16 @@ export class InputState {
       this.registeredEvents.push(type)
     }
     view.scrollDOM.addEventListener("mousedown", (event: MouseEvent) => {
-      if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom)
+      if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom) {
         handleEvent(handlers.mousedown, event)
+        if (!event.defaultPrevented && event.button == 2) {
+          // Make sure the content covers the entire scroller height, in order
+          // to catch a native context menu click below it
+          let start = view.contentDOM.style.minHeight
+          view.contentDOM.style.minHeight = "100%"
+          setTimeout(() => view.contentDOM.style.minHeight = start, 200)
+        }
+      }
     })
     if (browser.chrome && browser.chrome_version == 102) { // FIXME remove at some point
       // On Chrome 102, viewport updates somehow stop wheel-based
