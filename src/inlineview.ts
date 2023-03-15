@@ -173,7 +173,16 @@ export class WidgetView extends ContentView {
     if (!this.dom || !this.widget.updateDOM(this.dom, view)) {
       if (this.dom && this.prevWidget) this.prevWidget.destroy(this.dom)
       this.prevWidget = null
-      this.setDOM(this.widget.toDOM(view))
+      let wrap = document.createElement('span');
+      wrap.className = 'cm-widget'
+      let imgLeft = document.createElement('img');
+      imgLeft.className = 'cm-widgetBuffer'
+      let imgRight = document.createElement('img');
+      imgRight.className = 'cm-widgetBuffer'
+      wrap.append(imgLeft)
+      wrap.append(this.widget.toDOM(view));
+      wrap.append(imgRight)
+      this.setDOM(wrap);
       this.dom!.contentEditable = "false"
     }
   }
@@ -364,7 +373,7 @@ export class WidgetBufferView extends ContentView {
   }
 }
 
-TextView.prototype.children = WidgetView.prototype.children = WidgetBufferView.prototype.children = noChildren
+TextView.prototype.children = WidgetView.prototype.children = noChildren
 
 function inlineSiblingRect(view: ContentView, side: -1 | 1) {
   let parent = view.parent, index = parent ? parent.children.indexOf(view) : -1

@@ -64,6 +64,10 @@ export class RectangleMarker implements LayerMarker {
   /// way) for non-empty ones.
   static forRange(view: EditorView, className: string, range: SelectionRange): readonly RectangleMarker[] {
     if (range.empty) {
+      let side = range.assoc;
+      if (side === 0) {
+        side = range.head === 0 ? 1 : -1;
+      }
       let pos = view.coordsAtPos(range.head, range.assoc || 1)
       if (!pos) return []
       let base = getBase(view)
