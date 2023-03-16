@@ -69,6 +69,8 @@ interface ReplaceDecorationSpec {
   inclusiveEnd?: boolean
   /// Whether this is a block-level decoration. Defaults to false.
   block?: boolean
+  /// Whether disable img buffer to target curosr position. Defaults to false. 
+  noBuffer?: boolean
   /// Other properties are allowed.
   [other: string]: any
 }

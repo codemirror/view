@@ -116,16 +116,20 @@ export class ContentBuilder implements SpanIterator<Decoration> {
         let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length && (from < to || deco.startSide > 0)
         let cursorAfter = !view.isEditable && (from < to || openStart > active.length || deco.startSide <= 0)
         let line = this.getLine()
-        if (this.pendingBuffer == Buf.IfCursor && !cursorBefore) this.pendingBuffer = Buf.No
-        this.flushBuffer(active)
-        if (cursorBefore) {
-          line.append(wrapMarks(new WidgetBufferView(1), active), openStart)
-          openStart = active.length + Math.max(0, openStart - active.length)
+        if (!deco.spec.noBuffer) {
+          if (this.pendingBuffer == Buf.IfCursor && !cursorBefore) this.pendingBuffer = Buf.No
+          this.flushBuffer(active)
+          if (cursorBefore) {
+            line.append(wrapMarks(new WidgetBufferView(1), active), openStart)
+            openStart = active.length + Math.max(0, openStart - active.length)
+          }
         }
         line.append(wrapMarks(view, active), openStart)
         this.atCursorPos = cursorAfter
-        this.pendingBuffer = !cursorAfter ? Buf.No : from < to || openStart > active.length ? Buf.Yes : Buf.IfCursor
-        if (this.pendingBuffer) this.bufferMarks = active.slice()
+        if (!deco.spec.noBuffer) {
+          this.pendingBuffer = !cursorAfter ? Buf.No : from < to || openStart > active.length ? Buf.Yes : Buf.IfCursor
+          if (this.pendingBuffer) this.bufferMarks = active.slice()
+        }
       }
     } else if (this.doc.lineAt(this.pos).from == this.pos) { // Line decoration
       this.getLine().addLineDeco(deco as LineDecoration)
