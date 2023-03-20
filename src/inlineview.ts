@@ -344,7 +344,7 @@ export class WidgetBufferView extends ContentView {
 
   getSide() { return this.side }
 
-  domAtPos(pos: number) { return DOMPos.before(this.dom!) }
+  domAtPos(pos: number) { return this.side > 0 ? DOMPos.before(this.dom!) : DOMPos.after(this.dom!) }
 
   localPosFromDOM() { return 0 }
 

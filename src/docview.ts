@@ -505,19 +505,26 @@ export class CompositionWidget extends WidgetType {
   get customView() { return CompositionView }
 }
 
-function nearbyTextNode(node: Node, offset: number, side: number): Text | null {
-  for (;;) {
+function nearbyTextNode(startNode: Node, startOffset: number, side: number): Text | null {
+  if (side <= 0) for (let node = startNode, offset = startOffset;;) {
     if (node.nodeType == 3) return node as Text
-    if (node.nodeType == 1 && offset > 0 && side <= 0) {
+    if (node.nodeType == 1 && offset > 0) {
       node = node.childNodes[offset - 1]
       offset = maxOffset(node)
-    } else if (node.nodeType == 1 && offset < node.childNodes.length && side >= 0) {
+    } else {
+      break
+    }
+  }
+  if (side >= 0) for (let node = startNode, offset = startOffset;;) {
+    if (node.nodeType == 3) return node as Text
+    if (node.nodeType == 1 && offset < node.childNodes.length && side >= 0) {
       node = node.childNodes[offset]
       offset = 0
     } else {
-      return null
+      break
     }
   }
+  return null
 }
 
 const enum NextTo { Before = 1, After = 2 }
