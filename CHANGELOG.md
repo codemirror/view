@@ -1,3 +1,15 @@
+## 6.9.3 (2023-03-21)
+
+### Bug fixes
+
+Work around a Firefox issue that caused `coordsAtPos` to return rectangles with the full line height on empty lines.
+
+Opening a context menu by clicking below the content element but inside the editor now properly shows the browser's menu for editable elements.
+
+Fix an issue that broke composition (especially of Chinese IME) after widget decorations.
+
+Fix an issue that would cause the cursor to jump around during compositions inside nested mark decorations.
+
 ## 6.9.2 (2023-03-08)
 
 ### Bug fixes
