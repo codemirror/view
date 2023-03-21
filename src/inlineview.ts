@@ -302,8 +302,9 @@ function scanCompositionTree<T>(pos: number, side: number, view: ContentView, te
 
 function posFromDOMInCompositionTree(node: Node, offset: number, view: ContentView, text: Text): number {
   if (view instanceof MarkView) {
+    let pos = 0
     for (let child of view.children) {
-      let pos = 0, hasComp = contains(child.dom!, text)
+      let hasComp = contains(child.dom!, text)
       if (contains(child.dom!, node))
         return pos + (hasComp ? posFromDOMInCompositionTree(node, offset, child, text) : child.localPosFromDOM(node, offset))
       pos += hasComp ? text.nodeValue!.length : child.length
