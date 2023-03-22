@@ -229,6 +229,8 @@ const EmacsyPendingKeys = "dthko"
 // Key codes for modifier keys
 export const modifierCodes = [16, 17, 18, 20, 91, 92, 224, 225]
 
+const dragScrollMargin = 6
+
 /// Interface that objects registered with
 /// [`EditorView.mouseSelectionStyle`](#view.EditorView^mouseSelectionStyle)
 /// must conform to.
@@ -259,7 +261,7 @@ export interface MouseSelectionStyle {
 export type MakeSelectionStyle = (view: EditorView, event: MouseEvent) => MouseSelectionStyle | null
 
 function dragScrollSpeed(dist: number) {
-  return dist * 0.7 + 8
+  return Math.max(0, dist) * 0.7 + 8
 }
 
 class MouseSelection {
@@ -305,10 +307,10 @@ class MouseSelection {
     let sx = 0, sy = 0
     let rect = this.scrollParent?.getBoundingClientRect()
       || {left: 0, top: 0, right: this.view.win.innerWidth, bottom: this.view.win.innerHeight}
-    if (event.clientX <= rect.left) sx = -dragScrollSpeed(rect.left - event.clientX)
-    else if (event.clientX >= rect.right) sx = dragScrollSpeed(event.clientX - rect.right)
-    if (event.clientY <= rect.top) sy = -dragScrollSpeed(rect.top - event.clientY)
-    else if (event.clientY >= rect.bottom) sy = dragScrollSpeed(event.clientY - rect.bottom)
+    if (event.clientX <= rect.left + dragScrollMargin) sx = -dragScrollSpeed(rect.left - event.clientX)
+    else if (event.clientX >= rect.right - dragScrollMargin) sx = dragScrollSpeed(event.clientX - rect.right)
+    if (event.clientY <= rect.top + dragScrollMargin) sy = -dragScrollSpeed(rect.top - event.clientY)
+    else if (event.clientY >= rect.bottom - dragScrollMargin) sy = dragScrollSpeed(event.clientY - rect.bottom)
     this.setScrollSpeed(sx, sy)
   }
 
