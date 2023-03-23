@@ -154,7 +154,7 @@ export class DocView extends ContentView {
 
     // Always reset on Firefox when next to an uneditable node to
     // avoid invisible cursor bugs (#111)
-    if (browser.gecko && main.empty && betweenUneditable(anchor)) {
+    if (browser.gecko && main.empty && !this.compositionDeco.size && betweenUneditable(anchor)) {
       let dummy = document.createTextNode("")
       this.view.observer.ignore(() => anchor.node.insertBefore(dummy, anchor.node.childNodes[anchor.offset] || null))
       anchor = head = new DOMPos(dummy, 0)

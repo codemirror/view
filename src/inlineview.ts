@@ -212,7 +212,9 @@ export class WidgetView extends ContentView {
   }
 
   domAtPos(pos: number) {
-    return pos == 0 ? DOMPos.before(this.dom!) : DOMPos.after(this.dom!, pos == this.length)
+    return (this.length ? pos == 0 : this.side > 0)
+      ? DOMPos.before(this.dom!)
+      : DOMPos.after(this.dom!, pos == this.length)
   }
 
   domBoundsAround() { return null }
