@@ -169,7 +169,9 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       }
     }
     let userEvent = "input.type"
-    if (view.composing) {
+    if (view.composing ||
+        view.inputState.compositionPendingChange && view.inputState.compositionEndedAt > Date.now() - 50) {
+      view.inputState.compositionPendingChange = false
       userEvent += ".compose"
       if (view.inputState.compositionFirstChange) {
         userEvent += ".start"

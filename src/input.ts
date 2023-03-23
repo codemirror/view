@@ -45,7 +45,15 @@ export class InputState {
   // first, false means first has already been marked for this
   // composition)
   compositionFirstChange: boolean | null = null
+  // End time of the previous composition
   compositionEndedAt = 0
+  // Used in a kludge to detect when an Enter keypress should be
+  // considered part of the composition on Safari, which fires events
+  // in the wrong order
+  compositionPendingKey = false
+  // Used to categorize changes as part of a composition, even when
+  // the mutation events fire shortly after the compositionend event
+  compositionPendingChange = false
 
   mouseSelection: MouseSelection | null = null
 
@@ -192,8 +200,8 @@ export class InputState {
     // compositionend and keydown events are sometimes emitted in the
     // wrong order. The key event should still be ignored, even when
     // it happens after the compositionend event.
-    if (browser.safari && !browser.ios && Date.now() - this.compositionEndedAt < 100) {
-      this.compositionEndedAt = 0
+    if (browser.safari && !browser.ios && this.compositionPendingKey && Date.now() - this.compositionEndedAt < 100) {
+      this.compositionPendingKey = false
       return true
     }
     return false
@@ -757,6 +765,8 @@ handlers.compositionstart = handlers.compositionupdate = view => {
 handlers.compositionend = view => {
   view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
+  view.inputState.compositionPendingKey = true
+  view.inputState.compositionPendingChange = view.observer.pendingRecords().length > 0
   view.inputState.compositionFirstChange = null
   if (browser.chrome && browser.android) view.observer.flushSoon()
   setTimeout(() => {

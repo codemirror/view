@@ -322,9 +322,13 @@ export class DOMObserver {
     this.flush()
   }
 
+  pendingRecords() {
+    for (let mut of this.observer.takeRecords()) this.queue.push(mut)
+    return this.queue
+  }
+
   processRecords() {
-    let records = this.queue
-    for (let mut of this.observer.takeRecords()) records.push(mut)
+    let records = this.pendingRecords()
     if (records.length) this.queue = []
 
     let from = -1, to = -1, typeOver = false
