@@ -567,7 +567,7 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
       }
       if (extend)
         return startSel.replaceRange(startSel.main.extend(range.from, range.to))
-      else if (multiple && startSel.ranges.length > 1 && startSel.ranges.some(r => r.eq(range)))
+      else if (multiple && startSel.ranges.length > 1 && startSel.ranges.some(r => r.from <= range.from && range.to <= r.to))
         return removeRange(startSel, range)
       else if (multiple)
         return startSel.addRange(range)
@@ -579,7 +579,7 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
 
 function removeRange(sel: EditorSelection, range: SelectionRange) {
   for (let i = 0;; i++) {
-    if (sel.ranges[i].eq(range))
+    if (sel.ranges[i].from <= range.from && range.to <= sel.ranges[i].to)
       return EditorSelection.create(sel.ranges.slice(0, i).concat(sel.ranges.slice(i + 1)),
                                     sel.mainIndex == i ? 0 : sel.mainIndex - (sel.mainIndex > i ? 1 : 0))
   }
