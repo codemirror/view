@@ -558,7 +558,7 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
       }
     },
     get(event, extend, multiple) {
-      let cur = queryPos(view, event)
+      let cur = queryPos(view, event), removed
       let range = rangeForClick(view, cur.pos, cur.bias, type)
       if (start.pos != cur.pos && !extend) {
         let startRange = rangeForClick(view, start.pos, start.bias, type)
@@ -567,8 +567,8 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
       }
       if (extend)
         return startSel.replaceRange(startSel.main.extend(range.from, range.to))
-      else if (multiple && startSel.ranges.length > 1 && startSel.ranges.some(r => r.eq(range)))
-        return removeRange(startSel, range)
+      else if (multiple && type == 1 && startSel.ranges.length > 1 && (removed = removeRangeAround(startSel, cur.pos)))
+        return removed
       else if (multiple)
         return startSel.addRange(range)
       else
@@ -577,12 +577,14 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
   } as MouseSelectionStyle
 }
 
-function removeRange(sel: EditorSelection, range: SelectionRange) {
-  for (let i = 0;; i++) {
-    if (sel.ranges[i].eq(range))
+function removeRangeAround(sel: EditorSelection, pos: number) {
+  for (let i = 0; i < sel.ranges.length; i++) {
+    let {from, to} = sel.ranges[i]
+    if (from <= pos && to >= pos)
       return EditorSelection.create(sel.ranges.slice(0, i).concat(sel.ranges.slice(i + 1)),
                                     sel.mainIndex == i ? 0 : sel.mainIndex - (sel.mainIndex > i ? 1 : 0))
   }
+  return null
 }
 
 handlers.dragstart = (view, event: DragEvent) => {
