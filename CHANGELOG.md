@@ -1,3 +1,21 @@
+## 6.9.4 (2023-04-11)
+
+### Bug fixes
+
+Make the editor scroll while dragging a selection near its sides, even if the cursor isn't outside the scrollable element.
+
+Fix a bug that interrupted composition after widgets in some circumstances on Firefox.
+
+Make sure the last change in a composition has its user event set to `input.type.compose`, even if the `compositionend` event fires before the changes are applied.
+
+Make it possible to remove additional selection ranges by clicking on them with ctrl/cmd held, even if they aren't cursors.
+
+Keep widget buffers between widgets and compositions, since removing them confuses IME on macOS Firefox.
+
+Fix a bug where, for DOM changes that put the selection in the middle of the changed range, the editor incorrectly set its selection state.
+
+Fix a bug where `coordsAtPos` could return a coordinates before the line break when querying a line-wrapped position with a positive `side`.
+
 ## 6.9.3 (2023-03-21)
 
 ### Bug fixes
