@@ -135,8 +135,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
         before + change.insert.sliceString(0, undefined, view.state.lineBreak) + after))
     } else {
       let changes = startState.changes(change)
-      let mainSel = newSel && !startState.selection.main.eq(newSel.main) && newSel.main.to <= changes.newLength
-        ? newSel.main : undefined
+      let mainSel = newSel && newSel.main.to <= changes.newLength ? newSel.main : undefined
       // Try to apply a composition change to all cursors
       if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
           change.to <= sel.to && change.to >= sel.to - 10) {
