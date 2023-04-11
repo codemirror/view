@@ -223,6 +223,8 @@ export abstract class ContentView {
 
   get isWidget() { return false }
 
+  get isHidden() { return false }
+
   merge(from: number, to: number, source: ContentView | null, hasStart: boolean, openStart: number, openEnd: number): boolean {
     return false
   }

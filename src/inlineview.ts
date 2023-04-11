@@ -233,6 +233,8 @@ export class WidgetView extends ContentView {
 
   get isWidget() { return true }
 
+  get isHidden() { return this.widget.isHidden }
+
   destroy() {
     super.destroy()
     if (this.dom) this.widget.destroy(this.dom)
@@ -365,6 +367,8 @@ export class WidgetBufferView extends ContentView {
   get overrideDOMText() {
     return DocText.empty
   }
+
+  get isHidden() { return true }
 }
 
 TextView.prototype.children = WidgetView.prototype.children = WidgetBufferView.prototype.children = noChildren
@@ -432,7 +436,8 @@ export function coordsInChildren(view: ContentView, pos: number, side: number): 
       if (end >= pos) {
         if (child.children.length) {
           scan(child, pos - off)
-        } else if (!after && (end > pos || off == end && child.getSide() > 0)) {
+        } else if ((!after || after instanceof WidgetBufferView && side > 0) &&
+                   (end > pos || off == end && child.getSide() > 0)) {
           after = child
           afterPos = pos - off
         } else if (off < pos || (off == end && child.getSide() < 0)) {

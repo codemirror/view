@@ -166,4 +166,5 @@ class NullWidget extends WidgetType {
   eq(other: NullWidget) { return other.tag == this.tag }
   toDOM() { return document.createElement(this.tag) }
   updateDOM(elt: HTMLElement) { return elt.nodeName.toLowerCase() == this.tag }
+  get isHidden() { return true }
 }

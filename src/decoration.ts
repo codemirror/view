@@ -126,6 +126,9 @@ export abstract class WidgetType {
   /// @internal
   get customView(): null | typeof WidgetView { return null }
 
+  /// @internal
+  get isHidden() { return false }
+
   /// This is called when the an instance of the widget is removed
   /// from the editor view.
   destroy(dom: HTMLElement) {}
