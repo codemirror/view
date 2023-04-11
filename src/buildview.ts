@@ -113,10 +113,11 @@ export class ContentBuilder implements SpanIterator<Decoration> {
         this.addBlockWidget(new BlockWidgetView(deco.widget || new NullWidget("div"), len, type))
       } else {
         let view = WidgetView.create(deco.widget || new NullWidget("span"), len, len ? 0 : deco.startSide)
-        let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length && (from < to || deco.startSide > 0)
+        let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length &&
+          (from < to || deco.startSide > 0)
         let cursorAfter = !view.isEditable && (from < to || openStart > active.length || deco.startSide <= 0)
         let line = this.getLine()
-        if (this.pendingBuffer == Buf.IfCursor && !cursorBefore) this.pendingBuffer = Buf.No
+        if (this.pendingBuffer == Buf.IfCursor && !cursorBefore && !view.isEditable) this.pendingBuffer = Buf.No
         this.flushBuffer(active)
         if (cursorBefore) {
           line.append(wrapMarks(new WidgetBufferView(1), active), openStart)
