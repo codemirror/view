@@ -191,7 +191,7 @@ export class WidgetView extends ContentView {
   become(other: ContentView): boolean {
     if (other.length == this.length && other instanceof WidgetView && other.side == this.side) {
       if (this.widget.constructor == other.widget.constructor) {
-        if (!this.widget.eq(other.widget)) this.markDirty(true)
+        if (!this.widget.compare(other.widget)) this.markDirty(true)
         if (this.dom && !this.prevWidget) this.prevWidget = this.widget
         this.widget = other.widget
         return true
