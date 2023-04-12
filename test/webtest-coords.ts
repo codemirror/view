@@ -31,7 +31,7 @@ describe("EditorView coords", () => {
       let coords = cm.coordsAtPos(i)!
       if (prev) ist(prev.top < coords.top - 5 || prev.left < coords.left)
       prev = coords
-      ist(cm.posAtCoords({x: coords.left, y: coords.top}), i)
+      ist(cm.posAtCoords({x: coords.left, y: coords.top + 1}), i)
     }
   })
 
