@@ -247,8 +247,8 @@ export class CompositionView extends WidgetView {
   domAtPos(pos: number) {
     let {topView, text} = this.widget
     if (!topView) return new DOMPos(text, Math.min(pos, text.nodeValue!.length))
-    return scanCompositionTree(pos, 0, topView, text, (v, p) => v.domAtPos(p),
-                               p => new DOMPos(text, Math.min(p, text.nodeValue!.length)))
+    return scanCompositionTree(pos, 0, topView, text, this.length - topView.length, (v, p) => v.domAtPos(p),
+                               (text, p) => new DOMPos(text, Math.min(p, text.nodeValue!.length)))
   }
 
   sync() { this.setDOM(this.widget.toDOM()) }
@@ -256,7 +256,7 @@ export class CompositionView extends WidgetView {
   localPosFromDOM(node: Node, offset: number): number {
     let {topView, text} = this.widget
     if (!topView) return Math.min(offset, this.length)
-    return posFromDOMInCompositionTree(node, offset, topView, text)
+    return posFromDOMInCompositionTree(node, offset, topView, text, this.length - topView.length)
   }
 
   ignoreMutation(): boolean { return false }
@@ -266,8 +266,9 @@ export class CompositionView extends WidgetView {
   coordsAt(pos: number, side: number) {
     let {topView, text} = this.widget
     if (!topView) return textCoords(text, pos, side)
-    return scanCompositionTree(pos, side, topView, text, (v, pos, side) => v.coordsAt(pos, side),
-                               (pos, side) => textCoords(text, pos, side))
+    return scanCompositionTree(pos, side, topView, text, this.length - topView.length,
+                               (v, pos, side) => v.coordsAt(pos, side),
+                               (text, pos, side) => textCoords(text, pos, side))
   }
 
   destroy() {
@@ -283,40 +284,86 @@ export class CompositionView extends WidgetView {
 // Uses the old structure of a chunk of content view frozen for
 // composition to try and find a reasonable DOM location for the given
 // offset.
-function scanCompositionTree<T>(pos: number, side: number, view: ContentView, text: Text,
+function scanCompositionTree<T>(pos: number, side: number, view: ContentView, text: Text, dLen: number,
                                 enterView: (view: ContentView, pos: number, side: number) => T,
-                                fromText: (pos: number, side: number) => T): T {
+                                fromText: (text: Text, pos: number, side: number) => T): T {
   if (view instanceof MarkView) {
     for (let child = view.dom!.firstChild; child; child = child.nextSibling) {
-      let desc = ContentView.get(child)!
-      if (!desc) return fromText(pos, side)
-      let hasComp = contains(child, text)
-      let len = desc.length + (hasComp ? text.nodeValue!.length : 0)
-      if (pos < len || pos == len && desc.getSide() <= 0)
-        return hasComp ? scanCompositionTree(pos, side, desc, text, enterView, fromText) : enterView(desc, pos, side)
-      pos -= len
+      let desc = ContentView.get(child)
+      if (!desc) {
+        let inner = scanCompositionNode(pos, side, child, fromText)
+        if (typeof inner != "number") return inner
+        pos = inner
+      } else {
+        let hasComp = contains(child, text)
+        let len = desc.length + (hasComp ? dLen : 0)
+        if (pos < len || pos == len && desc.getSide() <= 0)
+          return hasComp ? scanCompositionTree(pos, side, desc, text, dLen, enterView, fromText) : enterView(desc, pos, side)
+        pos -= len
+      }
     }
     return enterView(view, view.length, -1)
   } else if (view.dom == text) {
-    return fromText(pos, side)
+    return fromText(text, pos, side)
   } else {
     return enterView(view, pos, side)
   }
 }
 
-function posFromDOMInCompositionTree(node: Node, offset: number, view: ContentView, text: Text): number {
+function scanCompositionNode<T>(pos: number, side: number, node: Node,
+                                fromText: (text: Text, pos: number, side: number) => T): T | number {
+  if (node.nodeType == 3) {
+    let len = node.nodeValue!.length
+    if (pos <= len) return fromText(node as Text, pos, side)
+    pos -= len
+  } else if (node.nodeType == 1 && (node as HTMLElement).contentEditable != "false") {
+    for (let child = node.firstChild; child; child = child.nextSibling) {
+      let inner = scanCompositionNode(pos, side, child, fromText)
+      if (typeof inner != "number") return inner
+      pos = inner
+    }
+  }
+  return pos
+}
+
+function posFromDOMInCompositionTree(node: Node, offset: number, view: ContentView, text: Text, dLen: number): number {
   if (view instanceof MarkView) {
     let pos = 0
-    for (let child of view.children) {
-      let hasComp = contains(child.dom!, text)
-      if (contains(child.dom!, node))
-        return pos + (hasComp ? posFromDOMInCompositionTree(node, offset, child, text) : child.localPosFromDOM(node, offset))
-      pos += hasComp ? text.nodeValue!.length : child.length
+    for (let child = view.dom!.firstChild; child; child = child.nextSibling) {
+      let childView = ContentView.get(child)
+      if (childView) {
+        let hasComp = contains(child, text) 
+        if (contains(child, node))
+          return pos + (hasComp ? posFromDOMInCompositionTree(node, offset, childView, text, dLen) 
+                                : childView.localPosFromDOM(node, offset))
+        pos += childView.length + (hasComp ? dLen : 0)
+      } else {
+        let inner = posFromDOMInOpaqueNode(node, offset, child)
+        if (inner.result != null) return pos + inner.result
+        pos += inner.size!
+      }
     }
   } else if (view.dom == text) {
     return Math.min(offset, text.nodeValue!.length)
   }
   return view.localPosFromDOM(node, offset)
+}
+
+function posFromDOMInOpaqueNode(node: Node, offset: number, target: Node): {result?: number, size?: number} {
+  if (target.nodeType == 3) {
+    return node == target ? {result: offset} : {size: target.nodeValue!.length}
+  } else if (target.nodeType == 1 && (target as HTMLElement).contentEditable != "false") {
+    let pos = 0
+    for (let child = target.firstChild, i = 0;; child = child.nextSibling, i++) {
+      if (node == target && i == offset) return {result: pos}
+      if (!child) return {size: pos}
+      let inner = posFromDOMInOpaqueNode(node, offset, child)
+      if (inner.result != null) return {result: offset + inner.result}
+      pos += inner.size!
+    }
+  } else {
+    return target.contains(node) ? {result: 0} : {size: 0}
+  }
 }
 
 // These are drawn around uneditable widgets to avoid a number of

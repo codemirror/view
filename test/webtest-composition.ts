@@ -1,6 +1,6 @@
 import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
 import {EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType} from "@codemirror/view"
-import {EditorState, EditorSelection} from "@codemirror/state"
+import {EditorState, EditorSelection, StateField} from "@codemirror/state"
 import ist from "ist"
 
 function event(cm: EditorView, type: string) {
@@ -303,5 +303,32 @@ describe("Composition", () => {
       n => up(n, "Y", 4),
     ])
     ist(cm.state.doc.toString(), "oneXYtwo")
+  })
+
+  it("can handle IME merging spans", () => {
+    let field = StateField.define<DecorationSet>({
+      create: () => Decoration.set([
+        Decoration.mark({class: "a"}).range(0, 1),
+        Decoration.mark({class: "b"}).range(1, 6),
+      ]),
+      update(deco, u) { return deco.map(u.changes) },
+      provide: f => EditorView.decorations.from(f)
+    })
+    let cm = requireFocus(tempView("(hello)", [field]))
+    cm.dispatch({selection: {anchor: 1, head: 6}})
+    compose(cm, () => up(cm.domAtPos(2).node as Text, "a"), [
+      n => {
+        let sA = cm.contentDOM.querySelector(".a")!, sB = cm.contentDOM.querySelector(".b")!
+        sB.remove()
+        ;(sA as HTMLElement).innerText = ""
+        sA.appendChild(document.createTextNode("("))
+        sA.appendChild(n)
+        n.nodeValue = "a b"
+        document.getSelection()!.collapse(n, 1)
+        document.getSelection()!.extend(n, 3)
+      },
+      n => up(n, "阿波", 0, 3)
+    ])
+    ist(cm.state.doc.toString(), "(阿波)")
   })
 })
