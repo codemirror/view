@@ -484,6 +484,10 @@ class HoverTooltipHost implements TooltipView {
   update(update: ViewUpdate) {
     this.manager.update(update)
   }
+
+  destroy() {
+    for (let t of this.manager.tooltipViews) t.destroy?.()
+  }
 }
 
 const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
