@@ -291,7 +291,8 @@ class HeightMapGap extends HeightMap {
     if (oracle.lineWrapping) {
       let totalPerLine = Math.min(this.height, oracle.lineHeight * lines)
       perLine = totalPerLine / lines
-      perChar = (this.height - totalPerLine) / (this.length - lines - 1)
+      if (this.height !== totalPerLine)
+        perChar = (this.height - totalPerLine) / (this.length - lines - 1)
     } else {
       perLine = this.height / lines
     }
