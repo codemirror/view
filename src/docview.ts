@@ -143,7 +143,10 @@ export class DocView extends ContentView {
   // Sync the DOM selection to this.state.selection
   updateSelection(mustRead = false, fromPointer = false) {
     if (mustRead || !this.view.observer.selectionRange.focusNode) this.view.observer.readSelectionRange()
-    if (!(fromPointer || this.mayControlSelection())) return
+    let activeElt = this.view.root.activeElement, focused = activeElt == this.dom
+    let selectionNotFocus = !focused &&
+      hasSelection(this.dom, this.view.observer.selectionRange) && !(activeElt && this.dom.contains(activeElt))
+    if (!(focused || fromPointer || selectionNotFocus)) return
     let force = this.forceSelection
     this.forceSelection = false
 
@@ -210,6 +213,10 @@ export class DocView extends ContentView {
           rawSel.removeAllRanges()
           rawSel.addRange(range)
         }
+        if (selectionNotFocus && this.view.root.activeElement == this.dom) {
+          this.dom.blur()
+          if (activeElt) (activeElt as HTMLElement).focus()
+        }
       })
       this.view.observer.setSelectionRange(anchor, head)
     }
@@ -239,12 +246,6 @@ export class DocView extends ContentView {
     let newRange = view.observer.selectionRange
     if (view.docView.posFromDOM(newRange.anchorNode!, newRange.anchorOffset) != cursor.from)
       sel.collapse(anchorNode, anchorOffset)
-  }
-
-  mayControlSelection() {
-    let active = this.view.root.activeElement
-    return active == this.dom ||
-      hasSelection(this.dom, this.view.observer.selectionRange) && !(active && this.dom.contains(active))
   }
 
   nearest(dom: Node): ContentView | null {
