@@ -1,3 +1,17 @@
+## 6.9.5 (2023-04-17)
+
+### Bug fixes
+
+Avoid disrupting the composition in specific cases where Safari invasively changes the DOM structure in the middle of a composition.
+
+Fix a bug that prevented `destroy` being called on hover tooltips.
+
+Fix a bug where the editor could take focus when content changes required it to restore the DOM selection.
+
+Fix height layout corruption caused by a division by zero.
+
+Make sure styles targeting the editor's focus status are specific enough to not cause them to apply to editors nested inside another focused editor. This will require themes to adjust their selection background styles to match the new specificity.
+
 ## 6.9.4 (2023-04-11)
 
 ### Bug fixes
