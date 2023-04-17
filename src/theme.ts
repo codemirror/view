@@ -100,17 +100,17 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "&dark .cm-selectionBackground": {
     background: "#222"
   },
-  "&light.cm-focused .cm-selectionBackground": {
+  "&light.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
     background: "#d7d4f0"
   },
-  "&dark.cm-focused .cm-selectionBackground": {
+  "&dark.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
     background: "#233"
   },
 
   ".cm-cursorLayer": {
     pointerEvents: "none"
   },
-  "&.cm-focused .cm-cursorLayer": {
+  "&.cm-focused > .cm-scroller > .cm-cursorLayer": {
     animation: "steps(1) cm-blink 1.2s infinite"
   },
 
@@ -135,7 +135,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     position: "absolute"
   },
 
-  "&.cm-focused .cm-cursor": {
+  "&.cm-focused > .cm-scroller > .cm-cursorLayer .cm-cursor": {
     display: "block"
   },
 
