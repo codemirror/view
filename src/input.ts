@@ -157,6 +157,7 @@ export class InputState {
     this.lastKeyTime = Date.now()
 
     if (event.keyCode == 9 && Date.now() < this.lastEscPress + 2000) return true
+    if (event.keyCode != 27 && modifierCodes.indexOf(event.keyCode) < 0) view.inputState.lastEscPress = 0
 
     // Chrome for Android usually doesn't fire proper key events, but
     // occasionally does, usually surrounded by a bunch of complicated
@@ -462,7 +463,6 @@ function doPaste(view: EditorView, input: string) {
 handlers.keydown = (view, event: KeyboardEvent) => {
   view.inputState.setSelectionOrigin("select")
   if (event.keyCode == 27) view.inputState.lastEscPress = Date.now()
-  else if (modifierCodes.indexOf(event.keyCode) < 0) view.inputState.lastEscPress = 0
 }
 
 handlers.touchstart = (view, e) => {
