@@ -770,12 +770,21 @@ handlers.compositionend = view => {
   view.inputState.compositionPendingKey = true
   view.inputState.compositionPendingChange = view.observer.pendingRecords().length > 0
   view.inputState.compositionFirstChange = null
-  if (browser.chrome && browser.android) view.observer.flushSoon()
-  setTimeout(() => {
-    // Force the composition state to be cleared if it hasn't already been
-    if (view.inputState.composing < 0 && view.docView.compositionDeco.size)
-      view.update([])
-  }, 50)
+  if (browser.chrome && browser.android) {
+    // Delay flushing for a bit on Android because it'll often fire a
+    // bunch of contradictory changes in a row at end of compositon
+    view.observer.flushSoon()
+  } else if (view.inputState.compositionPendingChange) {
+    // If we found pending records, schedule a flush.
+    Promise.resolve().then(() => view.observer.flush())
+  } else {
+    // Otherwise, make sure that, if no changes come in soon, the
+    // composition view is cleared.
+    setTimeout(() => {
+      if (view.inputState.composing < 0 && view.docView.compositionDeco.size)
+        view.update([])
+    }, 50)
+  }
 }
 
 handlers.contextmenu = view => {
