@@ -189,13 +189,13 @@ export class WidgetView extends ContentView {
   }
 
   become(other: ContentView): boolean {
-    if (other.length == this.length && other instanceof WidgetView && other.side == this.side) {
-      if (this.widget.constructor == other.widget.constructor) {
-        if (!this.widget.compare(other.widget)) this.markDirty(true)
-        if (this.dom && !this.prevWidget) this.prevWidget = this.widget
-        this.widget = other.widget
-        return true
-      }
+    if (other instanceof WidgetView && other.side == this.side &&
+        this.widget.constructor == other.widget.constructor) {
+      if (!this.widget.compare(other.widget)) this.markDirty(true)
+      if (this.dom && !this.prevWidget) this.prevWidget = this.widget
+      this.widget = other.widget
+      this.length = other.length
+      return true
     }
     return false
   }
