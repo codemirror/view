@@ -1,3 +1,13 @@
+## 6.9.6 (2023-04-21)
+
+### Bug fixes
+
+Fix an issue where, when escape was pressed followed by a key that the editor handled, followed by tab, the tab would still move focus.
+
+Fix an issue where, in some circumstances, the editor would ignore text changes at the end of a composition.
+
+Allow inline widgets to be updated to a different length via `updateDOM`.
+
 ## 6.9.5 (2023-04-17)
 
 ### Bug fixes
