@@ -149,8 +149,9 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
       // coordinates on the proper side of block widgets, since
       // normalizing the side there, though appropriate for most
       // coordsAtPos queries, would break selection drawing.
-      let fromCoords = view.coordsAtPos(from, (from == line.to ? -2 : 2) as any)!
-      let toCoords = view.coordsAtPos(to, (to == line.from ? 2 : -2) as any)!
+      let fromCoords = view.coordsAtPos(from, (from == line.to ? -2 : 2) as any)
+      let toCoords = view.coordsAtPos(to, (to == line.from ? 2 : -2) as any)
+      if (!fromCoords || !toCoords) return
       top = Math.min(fromCoords.top, toCoords.top, top)
       bottom = Math.max(fromCoords.bottom, toCoords.bottom, bottom)
       if (dir == Direction.LTR)
