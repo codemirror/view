@@ -109,7 +109,7 @@ export class DOMObserver {
           if (this.intersecting != this.view.inView)
             this.onScrollChanged(document.createEvent("Event"))
         }
-      }, {})
+      }, {threshold: [0, .001]})
       this.intersection.observe(this.dom)
       this.gapIntersection = new IntersectionObserver(entries => {
         if (entries.length > 0 && entries[entries.length - 1].intersectionRatio > 0)
