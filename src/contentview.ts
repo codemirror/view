@@ -57,7 +57,7 @@ export abstract class ContentView {
   // Will return a rectangle directly before (when side < 0), after
   // (side > 0) or directly on (when the browser supports it) the
   // given position.
-  coordsAt(_pos: number, _side: number): Rect | null { return null }
+  abstract coordsAt(_pos: number, _side: number): Rect | null
 
   sync(view: EditorView, track?: {node: Node, written: boolean}) {
     if (this.dirty & Dirty.Node) {

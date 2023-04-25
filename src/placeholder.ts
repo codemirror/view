@@ -2,6 +2,7 @@ import {Extension} from "@codemirror/state"
 import {ViewPlugin} from "./extension"
 import {Decoration, DecorationSet, WidgetType} from "./decoration"
 import {EditorView} from "./editorview"
+import {clientRectsFor, flattenRect} from "./dom"
 
 class Placeholder extends WidgetType {
   constructor(readonly content: string | HTMLElement) { super() }
@@ -16,6 +17,11 @@ class Placeholder extends WidgetType {
     else
       wrap.setAttribute("aria-hidden", "true")
     return wrap
+  }
+
+  coordsAt(dom: HTMLElement) {
+    let rects = dom.firstChild ? clientRectsFor(dom.firstChild) : []
+    return rects.length ? flattenRect(rects[0], window.getComputedStyle(dom).direction != "rtl") : null
   }
 
   ignoreEvent() { return false }

@@ -1,7 +1,7 @@
 import {Text as DocText} from "@codemirror/state"
 import {ContentView, DOMPos, Dirty, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
-import {Rect, Rect0, flattenRect, textRange, clientRectsFor, clearAttributes, contains} from "./dom"
+import {Rect, flattenRect, textRange, clientRectsFor, clearAttributes, contains} from "./dom"
 import {CompositionWidget, DocView} from "./docview"
 import browser from "./browser"
 import {EditorView} from "./editorview"
@@ -59,7 +59,7 @@ export class TextView extends ContentView {
     return {from: offset, to: offset + this.length, startDOM: this.dom, endDOM: this.dom!.nextSibling}
   }
 
-  coordsAt(pos: number, side: number): Rect {
+  coordsAt(pos: number, side: number): Rect | null {
     return textCoords(this.dom!, pos, side)
   }
 }
@@ -130,7 +130,7 @@ export class MarkView extends ContentView {
   }
 }
 
-function textCoords(text: Text, pos: number, side: number): Rect {
+function textCoords(text: Text, pos: number, side: number): Rect | null {
   let length = text.nodeValue!.length
   if (pos > length) pos = length
   let from = pos, to = pos, flatten = 0
@@ -143,7 +143,7 @@ function textCoords(text: Text, pos: number, side: number): Rect {
     if (side < 0) from--; else if (to < length) to++
   }
   let rects = textRange(text, from, to).getClientRects()
-  if (!rects.length) return Rect0
+  if (!rects.length) return null
   let rect = rects[(flatten ? flatten < 0 : side >= 0) ? 0 : rects.length - 1]
   if (browser.safari && !flatten && rect.width == 0) rect = Array.prototype.find.call(rects, r => r.width) || rect
   return flatten ? flattenRect(rect!, flatten < 0) : rect || null
@@ -220,8 +220,10 @@ export class WidgetView extends ContentView {
   domBoundsAround() { return null }
 
   coordsAt(pos: number, side: number): Rect | null {
+    let custom = this.widget.coordsAt(this.dom!, pos, side)
+    if (custom) return custom
     let rects = this.dom!.getClientRects(), rect: Rect | null = null
-    if (!rects.length) return Rect0
+    if (!rects.length) return null
     for (let i = pos > 0 ? rects.length - 1 : 0;; i += (pos > 0 ? -1 : 1)) {
       rect = rects[i]
       if (pos > 0 ? i == 0 : i == rects.length - 1 || rect.top < rect.bottom) break
@@ -403,12 +405,7 @@ export class WidgetBufferView extends ContentView {
   domBoundsAround() { return null }
 
   coordsAt(pos: number): Rect | null {
-    let imgRect = this.dom!.getBoundingClientRect()
-    // Since the <img> height doesn't correspond to text height, try
-    // to borrow the height from some sibling node.
-    let siblingRect = inlineSiblingRect(this, this.side > 0 ? -1 : 1)
-    return siblingRect && siblingRect.top < imgRect.bottom && siblingRect.bottom > imgRect.top
-      ? {left: imgRect.left, right: imgRect.right, top: siblingRect.top, bottom: siblingRect.bottom} : imgRect
+    return this.dom!.getBoundingClientRect()
   }
 
   get overrideDOMText() {
@@ -419,28 +416,6 @@ export class WidgetBufferView extends ContentView {
 }
 
 TextView.prototype.children = WidgetView.prototype.children = WidgetBufferView.prototype.children = noChildren
-
-function inlineSiblingRect(view: ContentView, side: -1 | 1) {
-  let parent = view.parent, index = parent ? parent.children.indexOf(view) : -1
-  while (parent && index >= 0) {
-    if (side < 0 ? index > 0 : index < parent.children.length) {
-      let next = parent.children[index + side]
-      if (next instanceof TextView) {
-        let nextRect = next.coordsAt(side < 0 ? next.length : 0, side)
-        if (nextRect) return nextRect
-      }
-      index += side
-    } else if (parent instanceof MarkView && parent.parent) {
-      index = parent.parent.children.indexOf(parent) + (side < 0 ? 0 : 1)
-      parent = parent.parent
-    } else {
-      let last = parent.dom!.lastChild as HTMLElement
-      if (last && last.nodeName == "BR") return last.getClientRects()[0]
-      break
-    }
-  }
-  return undefined
-}
 
 export function inlineDOMAtPos(parent: ContentView, pos: number) {
   let dom = parent.dom!, {children} = parent, i = 0
@@ -483,11 +458,11 @@ export function coordsInChildren(view: ContentView, pos: number, side: number): 
       if (end >= pos) {
         if (child.children.length) {
           scan(child, pos - off)
-        } else if ((!after || after instanceof WidgetBufferView && side > 0) &&
+        } else if ((!after || after.isHidden && side > 0) &&
                    (end > pos || off == end && child.getSide() > 0)) {
           after = child
           afterPos = pos - off
-        } else if (off < pos || (off == end && child.getSide() < 0)) {
+        } else if (off < pos || (off == end && child.getSide() < 0) && !child.isHidden) {
           before = child
           beforePos = pos - off
         }

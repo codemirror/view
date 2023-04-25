@@ -2,6 +2,7 @@ import {MapMode, RangeValue, Range, RangeSet} from "@codemirror/state"
 import {WidgetView} from "./inlineview"
 import {attrsEq, Attrs} from "./attributes"
 import {EditorView} from "./editorview"
+import {Rect} from "./dom"
 
 interface MarkDecorationSpec {
   /// Whether the mark covers its start and end position or not. This
@@ -122,6 +123,13 @@ export abstract class WidgetType {
   /// should be ignored by the editor. The default is to ignore all
   /// events.
   ignoreEvent(event: Event): boolean { return true }
+
+  /// Override the way screen coordinates for positions at/in the
+  /// widget are found. `pos` will be the offset into the widget, and
+  /// `side` the side of the position that is being queried—less than
+  /// zero for before, greater than zero for after, and zero for
+  /// directly at that position.
+  coordsAt(dom: HTMLElement, pos: number, side: number): Rect | null { return null }
 
   /// @internal
   get customView(): null | typeof WidgetView { return null }

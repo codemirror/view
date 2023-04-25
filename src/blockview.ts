@@ -235,6 +235,10 @@ export class BlockWidgetView extends ContentView implements BlockView {
 
   get isWidget() { return true }
 
+  coordsAt(pos: number, side: number) {
+    return this.widget.coordsAt(this.dom!, pos, side)
+  }
+
   destroy() {
     super.destroy()
     if (this.dom) this.widget.destroy(this.dom)
