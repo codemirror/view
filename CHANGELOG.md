@@ -1,3 +1,19 @@
+## 6.10.0 (2023-04-25)
+
+### Bug fixes
+
+Fix a crash in `drawSelection` when a measured position falls on a position that doesn't have corresponding screen coordinates.
+
+Work around unhelpful interaction observer behavior that could cause the editor to not notice it was visible.
+
+Give the cursor next to a line-wrapped placeholder a single-line height.
+
+Make sure drop events below the editable element in a fixed-height editor get handled properly.
+
+### New features
+
+Widget decorations can now define custom `coordsAtPos` methods to control the way the editor computes screen positions at or in the widget.
+
 ## 6.9.6 (2023-04-21)
 
 ### Bug fixes
