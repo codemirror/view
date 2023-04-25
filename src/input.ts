@@ -91,6 +91,10 @@ export class InputState {
         }
       }
     })
+    view.scrollDOM.addEventListener("drop", (event: DragEvent) => {
+      if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom)
+        handleEvent(handlers.drop, event)
+    })
     if (browser.chrome && browser.chrome_version == 102) { // FIXME remove at some point
       // On Chrome 102, viewport updates somehow stop wheel-based
       // scrolling. Turning off pointer events during the scroll seems
