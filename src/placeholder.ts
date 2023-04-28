@@ -21,7 +21,13 @@ class Placeholder extends WidgetType {
 
   coordsAt(dom: HTMLElement) {
     let rects = dom.firstChild ? clientRectsFor(dom.firstChild) : []
-    return rects.length ? flattenRect(rects[0], window.getComputedStyle(dom).direction != "rtl") : null
+    if (!rects.length) return null
+    let style = window.getComputedStyle(dom.parentNode as HTMLElement)
+    let rect = flattenRect(rects[0], style.direction != "rtl")
+    let lineHeight = parseInt(style.lineHeight)
+    if (rect.bottom - rect.top > lineHeight * 1.5)
+      return {left: rect.left, right: rect.right, top: rect.top, bottom: rect.top + lineHeight}
+    return rect
   }
 
   ignoreEvent() { return false }
