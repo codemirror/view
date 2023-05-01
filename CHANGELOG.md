@@ -1,3 +1,9 @@
+## 6.10.1 (2023-05-01)
+
+### Bug fixes
+
+Limit cursor height in front of custom placeholder DOM elements.
+
 ## 6.10.0 (2023-04-25)
 
 ### Bug fixes
