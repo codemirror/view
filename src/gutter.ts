@@ -2,7 +2,7 @@ import {combineConfig, MapMode, Facet, Extension, EditorState,
         RangeValue, RangeSet, RangeCursor} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate} from "./extension"
-import {BlockType} from "./decoration"
+import {BlockType, WidgetType} from "./decoration"
 import {BlockInfo} from "./heightmap"
 import {Direction} from "./bidi"
 
@@ -56,8 +56,10 @@ interface GutterConfig {
   markers?: (view: EditorView) => (RangeSet<GutterMarker> | readonly RangeSet<GutterMarker>[])
   /// Can be used to optionally add a single marker to every line.
   lineMarker?: (view: EditorView, line: BlockInfo, otherMarkers: readonly GutterMarker[]) => GutterMarker | null
-  /// If line markers depend on additional state, and should be
-  /// updated when that changes, pass a predicate here that checks
+  /// Associate markers with block widgets in the document.
+  widgetMarker?: (view: EditorView, widget: WidgetType, block: BlockInfo) => GutterMarker | null
+  /// If line or widget markers depend on additional state, and should
+  /// be updated when that changes, pass a predicate here that checks
   /// whether a given view update might change the line markers.
   lineMarkerChange?: null | ((update: ViewUpdate) => boolean)
   /// Add a hidden spacer element that gives the gutter its base
@@ -75,6 +77,7 @@ const defaults = {
   elementStyle: "",
   markers: () => RangeSet.empty,
   lineMarker: () => null,
+  widgetMarker: () => null,
   lineMarkerChange: null,
   initialSpacer: null,
   updateSpacer: null,
@@ -158,17 +161,22 @@ const gutterView = ViewPlugin.fromClass(class {
     let classSet: GutterMarker[] = []
     let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport, -this.view.documentPadding.top))
     for (let line of this.view.viewportLineBlocks) {
-      let text: BlockInfo | undefined
-      if (Array.isArray(line.type)) {
-        for (let b of line.type) if (b.type == BlockType.Text) { text = b; break }
-      } else {
-        text = line.type == BlockType.Text ? line : undefined
-      }
-      if (!text) continue
-
       if (classSet.length) classSet = []
-      advanceCursor(lineClasses, classSet, line.from)
-      for (let cx of contexts) cx.line(this.view, text, classSet)
+      if (Array.isArray(line.type)) {
+        let first = true
+        for (let b of line.type) {
+          if (b.type == BlockType.Text && first) {
+            advanceCursor(lineClasses, classSet, b.from)
+            for (let cx of contexts) cx.line(this.view, b, classSet)
+            first = false
+          } else if (b.widget) {
+            for (let cx of contexts) cx.widget(this.view, b)
+          }
+        }
+      } else if (line.type == BlockType.Text) {
+        advanceCursor(lineClasses, classSet, line.from)
+        for (let cx of contexts) cx.line(this.view, line, classSet)
+      }
     }
     for (let cx of contexts) cx.finish()
     if (detach) this.view.scrollDOM.insertBefore(this.dom, after)
@@ -232,6 +240,19 @@ class UpdateContext {
     this.cursor = RangeSet.iter(gutter.markers, viewport.from)
   }
 
+  addElement(view: EditorView, block: BlockInfo, markers: readonly GutterMarker[]) {
+    let {gutter} = this, above = block.top - this.height
+    if (this.i == gutter.elements.length) {
+      let newElt = new GutterElement(view, block.height, above, markers)
+      gutter.elements.push(newElt)
+      gutter.dom.appendChild(newElt.dom)
+    } else {
+      gutter.elements[this.i].update(view, block.height, above, markers)
+    }
+    this.height = block.bottom
+    this.i++
+  }
+
   line(view: EditorView, line: BlockInfo, extraMarkers: readonly GutterMarker[]) {
     let localMarkers: GutterMarker[] = []
     advanceCursor(this.cursor, localMarkers, line.from)
@@ -241,17 +262,12 @@ class UpdateContext {
 
     let gutter = this.gutter
     if (localMarkers.length == 0 && !gutter.config.renderEmptyElements) return
+    this.addElement(view, line, localMarkers)
+  }
 
-    let above = line.top - this.height
-    if (this.i == gutter.elements.length) {
-      let newElt = new GutterElement(view, line.height, above, localMarkers)
-      gutter.elements.push(newElt)
-      gutter.dom.appendChild(newElt.dom)
-    } else {
-      gutter.elements[this.i].update(view, line.height, above, localMarkers)
-    }
-    this.height = line.bottom
-    this.i++
+  widget(view: EditorView, block: BlockInfo) {
+    let marker = this.gutter.config.widgetMarker(view, block.widget!, block)
+    if (marker) this.addElement(view, block, [marker])
   }
 
   finish() {
@@ -421,6 +437,7 @@ const lineNumberGutter = activeGutters.compute([lineNumberConfig], state => ({
     if (others.some(m => m.toDOM)) return null
     return new NumberMarker(formatNumber(view, view.state.doc.lineAt(line.from).number))
   },
+  widgetMarker: () => null,
   lineMarkerChange: update => update.startState.facet(lineNumberConfig) != update.state.facet(lineNumberConfig),
   initialSpacer(view: EditorView) {
     return new NumberMarker(formatNumber(view, maxLineNumber(view.state.doc.lines)))

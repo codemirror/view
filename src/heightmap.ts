@@ -1,5 +1,5 @@
 import {Text, ChangeSet, RangeSet, SpanIterator} from "@codemirror/state"
-import {DecorationSet, PointDecoration, Decoration, BlockType, addRange} from "./decoration"
+import {DecorationSet, PointDecoration, Decoration, BlockType, addRange, WidgetType} from "./decoration"
 import {ChangedRange} from "./extension"
 
 const wrappingWhiteSpace = ["pre-wrap", "normal", "pre-line", "break-spaces"]
@@ -93,10 +93,23 @@ export class BlockInfo {
     readonly top: number,
     /// Its height.
     readonly height: number,
-    /// The type of element this is. When querying lines, this may be
-    /// an array of all the blocks that make up the line.
-    readonly type: BlockType | readonly BlockInfo[]
+    /// @internal
+    readonly children: readonly BlockInfo[] | null,
+    /// @internal
+    readonly deco: PointDecoration | null
   ) {}
+
+  /// The type of element this is. When querying lines, this may be
+  /// an array of all the blocks that make up the line.
+  get type(): BlockType | readonly BlockInfo[] {
+    return this.children ?? this.deco?.type ?? BlockType.Text
+  }
+
+  /// If this is a widget block, this will return the widget
+  /// associated with it.
+  get widget(): WidgetType | null {
+    return this.deco && this.deco.widget
+  }
 
   /// The end of the element as a document position.
   get to() { return this.from + this.length }
@@ -105,10 +118,9 @@ export class BlockInfo {
 
   /// @internal
   join(other: BlockInfo) {
-    let detail = (Array.isArray(this.type) ? this.type : [this])
-      .concat(Array.isArray(other.type) ? other.type : [other])
+    let children = (this.children || [this]).concat(other.children || [other])
     return new BlockInfo(this.from, this.length + other.length,
-                         this.top, this.height + other.height, detail)
+                         this.top, this.height + other.height, children, null)
   }
 }
 
@@ -222,10 +234,10 @@ export abstract class HeightMap {
 HeightMap.prototype.size = 1
 
 class HeightMapBlock extends HeightMap {
-  constructor(length: number, height: number, readonly type: BlockType) { super(length, height) }
+  constructor(length: number, height: number, readonly deco: PointDecoration | null) { super(length, height) }
 
   blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number) {
-    return new BlockInfo(offset, this.length, top, this.height, this.type)
+    return new BlockInfo(offset, this.length, top, this.height, null, this.deco)
   }
 
   lineAt(_value: number, _type: QueryType, oracle: HeightOracle, top: number, offset: number) {
@@ -250,7 +262,7 @@ class HeightMapText extends HeightMapBlock {
   public collapsed = 0 // Amount of collapsed content in the line
   public widgetHeight = 0 // Maximum inline widget height
 
-  constructor(length: number, height: number) { super(length, height, BlockType.Text) }
+  constructor(length: number, height: number) { super(length, height, null) }
 
   replace(_from: number, _to: number, nodes: (HeightMap | null)[]): HeightMap {
     let node = nodes[0]
@@ -305,11 +317,11 @@ class HeightMapGap extends HeightMap {
       let guess = offset + Math.round(Math.max(0, Math.min(1, (height - top) / this.height)) * this.length)
       let line = oracle.doc.lineAt(guess), lineHeight = perLine + line.length * perChar
       let lineTop = Math.max(top, height - lineHeight / 2)
-      return new BlockInfo(line.from, line.length, lineTop, lineHeight, BlockType.Text)
+      return new BlockInfo(line.from, line.length, lineTop, lineHeight, null, null)
     } else {
       let line = Math.max(0, Math.min(lastLine - firstLine, Math.floor((height - top) / perLine)))
       let {from, length} = oracle.doc.line(firstLine + line)
-      return new BlockInfo(from, length, top + perLine * line, perLine, BlockType.Text)
+      return new BlockInfo(from, length, top + perLine * line, perLine, null, null)
     }
   }
 
@@ -317,14 +329,14 @@ class HeightMapGap extends HeightMap {
     if (type == QueryType.ByHeight) return this.blockAt(value, oracle, top, offset)
     if (type == QueryType.ByPosNoHeight) {
       let {from, to} = oracle.doc.lineAt(value)
-      return new BlockInfo(from, to - from, 0, 0, BlockType.Text)
+      return new BlockInfo(from, to - from, 0, 0, null, null)
     }
     let {firstLine, perLine, perChar} = this.heightMetrics(oracle, offset)
     let line = oracle.doc.lineAt(value), lineHeight = perLine + line.length * perChar
     let linesAbove = line.number - firstLine
     let lineTop = top + perLine * linesAbove + perChar * (line.from - offset - linesAbove)
     return new BlockInfo(line.from, line.length, Math.max(top, Math.min(lineTop, top + this.height - lineHeight)),
-                         lineHeight, BlockType.Text)
+                         lineHeight, null, null)
   }
 
   forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, f: (line: BlockInfo) => void) {
@@ -337,7 +349,7 @@ class HeightMapGap extends HeightMap {
         lineTop += perLine * linesAbove + perChar * (from - offset - linesAbove)
       }
       let lineHeight = perLine + perChar * line.length
-      f(new BlockInfo(line.from, line.length, lineTop, lineHeight, BlockType.Text))
+      f(new BlockInfo(line.from, line.length, lineTop, lineHeight, null, null))
       lineTop += lineHeight
       pos = line.to + 1
     }
@@ -561,7 +573,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
       if (height < 0) height = this.oracle.lineHeight
       let len = to - from
       if (deco.block) {
-        this.addBlock(new HeightMapBlock(len, height, deco.type))
+        this.addBlock(new HeightMapBlock(len, height, deco))
       } else if (len || height >= relevantWidgetHeight) {
         this.addLineDeco(height, len)
       }
@@ -603,10 +615,11 @@ class NodeBuilder implements SpanIterator<Decoration> {
 
   addBlock(block: HeightMapBlock) {
     this.enterLine()
-    if (block.type == BlockType.WidgetAfter && !this.isCovered) this.ensureLine()
+    let type = block.deco?.type
+    if (type == BlockType.WidgetAfter && !this.isCovered) this.ensureLine()
     this.nodes.push(block)
     this.writtenTo = this.pos = this.pos + block.length
-    if (block.type != BlockType.WidgetBefore) this.covering = block
+    if (type != BlockType.WidgetBefore) this.covering = block
   }
 
   addLineDeco(height: number, length: number) {
