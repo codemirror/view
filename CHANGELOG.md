@@ -1,3 +1,9 @@
+## 6.11.0 (2023-05-03)
+
+### New features
+
+Gutters now support a `widgetMarker` option that can be used to add markers next to block widgets.
+
 ## 6.10.1 (2023-05-01)
 
 ### Bug fixes
