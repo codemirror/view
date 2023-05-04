@@ -503,7 +503,7 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
   }
 })
 
-const enum Hover { Time = 300, MaxDist = 6, ExitDelay = 250 }
+const enum Hover { Time = 300, MaxDist = 6, ExitDelay = 100 }
 
 class HoverPlugin {
   lastMove: {x: number, y: number, target: HTMLElement, time: number}
@@ -572,6 +572,7 @@ class HoverPlugin {
   }
 
   mousemove(event: MouseEvent) {
+    clearTimeout(this.hoverExitTimeout)
     this.lastMove = {x: event.clientX, y: event.clientY, target: event.target as HTMLElement, time: Date.now()}
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime)
     let tooltip = this.active
@@ -579,14 +580,9 @@ class HoverPlugin {
       let {pos} = tooltip || this.pending!, end = tooltip?.end ?? pos
       if ((pos == end ? this.view.posAtCoords(this.lastMove) != pos
            : !isOverRange(this.view, pos, end, event.clientX, event.clientY, Hover.MaxDist))) {
-        clearTimeout(this.hoverExitTimeout)
         this.hoverExitTimeout = setTimeout(() => this.view.dispatch({effects: this.setHover.of(null)}), this.hoverExitDelay)
         this.pending = null
-      } else {
-        clearTimeout(this.hoverExitTimeout)
       }
-    } else {
-      clearTimeout(this.hoverExitTimeout)
     }
   }
 
@@ -651,7 +647,7 @@ export function hoverTooltip(
     /// milliseconds. Defaults to 300ms.
     hoverTime?: number,
     /// Delay added after mouse moves out of hovered content
-    /// milliseconds. Defaults to 250ms.
+    /// milliseconds. Defaults to 100ms.
     hoverExitDelay?: number
   } = {}
 ): Extension {
@@ -683,7 +679,7 @@ export function hoverTooltip(
 
   return [
     hoverState,
-    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, options.hoverTime || Hover.Time, options.hoverExitDelay || Hover.ExitDelay)),
+    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, options.hoverTime || Hover.Time, options.hoverExitDelay ?? Hover.ExitDelay)),
     showHoverTooltipHost
   ]
 }
