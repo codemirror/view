@@ -646,7 +646,7 @@ export function hoverTooltip(
     /// Hover time after which the tooltip should appear, in
     /// milliseconds. Defaults to 300ms.
     hoverTime?: number,
-    /// Delay added after mouse moves out of hovered content
+    /// Delay added after mouse moves out of hovered content, in
     /// milliseconds. Defaults to 100ms.
     hoverExitDelay?: number
   } = {}
