@@ -503,11 +503,12 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
   }
 })
 
-const enum Hover { Time = 300, MaxDist = 6 }
+const enum Hover { Time = 300, MaxDist = 6, ExitDelay = 100 }
 
 class HoverPlugin {
   lastMove: {x: number, y: number, target: HTMLElement, time: number}
   hoverTimeout = -1
+  hoverExitTimeout = -1
   restartTimeout = -1
   pending: {pos: number} | null = null
 
@@ -515,7 +516,8 @@ class HoverPlugin {
               readonly source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
               readonly field: StateField<Tooltip | null>,
               readonly setHover: StateEffectType<Tooltip | null>,
-              readonly hoverTime: number) {
+              readonly hoverTime: number,
+              readonly hoverExitDelay: number) {
     this.lastMove = {x: 0, y: 0, target: view.dom, time: 0}
     this.checkHover = this.checkHover.bind(this)
     view.dom.addEventListener("mouseleave", this.mouseleave = this.mouseleave.bind(this))
@@ -570,6 +572,7 @@ class HoverPlugin {
   }
 
   mousemove(event: MouseEvent) {
+    clearTimeout(this.hoverExitTimeout)
     this.lastMove = {x: event.clientX, y: event.clientY, target: event.target as HTMLElement, time: Date.now()}
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime)
     let tooltip = this.active
@@ -577,7 +580,7 @@ class HoverPlugin {
       let {pos} = tooltip || this.pending!, end = tooltip?.end ?? pos
       if ((pos == end ? this.view.posAtCoords(this.lastMove) != pos
            : !isOverRange(this.view, pos, end, event.clientX, event.clientY, Hover.MaxDist))) {
-        this.view.dispatch({effects: this.setHover.of(null)})
+        this.hoverExitTimeout = setTimeout(() => this.view.dispatch({effects: this.setHover.of(null)}), this.hoverExitDelay)
         this.pending = null
       }
     }
@@ -585,6 +588,7 @@ class HoverPlugin {
 
   mouseleave(e: MouseEvent) {
     clearTimeout(this.hoverTimeout)
+    clearTimeout(this.hoverExitTimeout)
     this.hoverTimeout = -1
     if (this.active && !isInTooltip(e.relatedTarget as HTMLElement))
       this.view.dispatch({effects: this.setHover.of(null)})
@@ -592,6 +596,7 @@ class HoverPlugin {
 
   destroy() {
     clearTimeout(this.hoverTimeout)
+    clearTimeout(this.hoverExitTimeout)
     this.view.dom.removeEventListener("mouseleave", this.mouseleave)
     this.view.dom.removeEventListener("mousemove", this.mousemove)
   }
@@ -640,7 +645,10 @@ export function hoverTooltip(
     hideOnChange?: boolean | "touch",
     /// Hover time after which the tooltip should appear, in
     /// milliseconds. Defaults to 300ms.
-    hoverTime?: number
+    hoverTime?: number,
+    /// Delay added after mouse moves out of hovered content, in
+    /// milliseconds. Defaults to 100ms.
+    hoverExitDelay?: number
   } = {}
 ): Extension {
   let setHover = StateEffect.define<Tooltip | null>()
@@ -671,7 +679,7 @@ export function hoverTooltip(
 
   return [
     hoverState,
-    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, options.hoverTime || Hover.Time)),
+    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, options.hoverTime || Hover.Time, options.hoverExitDelay ?? Hover.ExitDelay)),
     showHoverTooltipHost
   ]
 }
