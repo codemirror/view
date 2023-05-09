@@ -1,3 +1,8 @@
+## 6.11.1 (2023-05-09)
+
+### Bug fixes
+
+Don't preserve the DOM around a composition that spans multiple lines.
 ## 6.11.0 (2023-05-03)
 
 ### New features
