@@ -149,7 +149,7 @@ additional cursors.
 Note that, being outside of the regular DOM order, such elements are
 invisible to screen readers. Make sure to also
 [provide](#view.EditorView^announce) any important information they
-convey in an accesible way.
+convey in an accessible way.
 
 @layer
 
