@@ -87,10 +87,10 @@ export function rectangularSelection(options?: {
 }
 
 const keys: {[key: string]: [number, (event: KeyboardEvent | MouseEvent) => boolean]} = {
-  Alt: [18, e => e.altKey],
-  Control: [17, e => e.ctrlKey],
-  Shift: [16, e => e.shiftKey],
-  Meta: [91, e => e.metaKey]
+  Alt: [18, e => !!e.altKey],
+  Control: [17, e => !!e.ctrlKey],
+  Shift: [16, e => !!e.shiftKey],
+  Meta: [91, e => !!e.metaKey]
 }
 
 const showCrosshair = {style: "cursor: crosshair"}
