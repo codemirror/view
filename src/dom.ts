@@ -222,7 +222,10 @@ export class DOMSelectionState implements SelectionRange {
   }
 
   setRange(range: SelectionRange) {
-    this.set(range.anchorNode, range.anchorOffset, range.focusNode, range.focusOffset)
+    let {anchorNode, focusNode} = range
+    // Clip offsets to node size to avoid crashes when Safari reports bogus offsets (#1152)
+    this.set(anchorNode, Math.min(range.anchorOffset, anchorNode ? maxOffset(anchorNode) : 0),
+             focusNode, Math.min(range.focusOffset, focusNode ? maxOffset(focusNode) : 0))
   }
 
   set(anchorNode: Node | null, anchorOffset: number, focusNode: Node | null, focusOffset: number) {
@@ -295,6 +298,8 @@ export function clearAttributes(node: HTMLElement) {
 export function atElementStart(doc: HTMLElement, selection: SelectionRange) {
   let node = selection.focusNode, offset = selection.focusOffset
   if (!node || selection.anchorNode != node || selection.anchorOffset != offset) return false
+  // Safari can report bogus offsets (#1152)
+  offset = Math.min(offset, maxOffset(node))
   for (;;) {
     if (offset) {
       if (node.nodeType != 1) return false
