@@ -284,7 +284,10 @@ export class DOMObserver {
         let key = this.delayedAndroidKey
         if (key) {
           this.clearDelayedAndroidKey()
-          if (!this.flush() && key.force)
+          this.view.inputState.lastKeyCode = key.keyCode
+          this.view.inputState.lastKeyTime = Date.now()
+          let flushed = this.flush()
+          if (!flushed && key.force)
             dispatchKey(this.dom, key.key, key.keyCode)
         }
       }

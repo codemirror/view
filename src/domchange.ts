@@ -45,13 +45,13 @@ export class DOMChange {
 export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean {
   let change: undefined | {from: number, to: number, insert: Text}
   let {newSel} = domChange, sel = view.state.selection.main
+  let lastKey = view.inputState.lastKeyTime > Date.now() - 100 ? view.inputState.lastKeyCode : -1
   if (domChange.bounds) {
     let {from, to} = domChange.bounds
     let preferredPos = sel.from, preferredSide = null
     // Prefer anchoring to end when Backspace is pressed (or, on
     // Android, when something was deleted)
-    if (view.inputState.lastKeyCode === 8 && view.inputState.lastKeyTime > Date.now() - 100 ||
-      browser.android && domChange.text.length < to - from) {
+    if (lastKey === 8 || browser.android && domChange.text.length < to - from) {
       preferredPos = sel.to
       preferredSide = "end"
     }
@@ -60,7 +60,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
     if (diff) {
       // Chrome inserts two newlines when pressing shift-enter at the
       // end of a line. DomChange drops one of those.
-      if (browser.chrome && view.inputState.lastKeyCode == 13 &&
+      if (browser.chrome && lastKey == 13 &&
         diff.toB == diff.from + 2 && domChange.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
         diff.toB--
 
@@ -114,7 +114,8 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
         ((change.from == sel.from && change.to == sel.to &&
           change.insert.length == 1 && change.insert.lines == 2 &&
           dispatchKey(view.contentDOM, "Enter", 13)) ||
-         (change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 &&
+         ((change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 ||
+           lastKey == 8 && change.insert.length < change.to - change.from) &&
           dispatchKey(view.contentDOM, "Backspace", 8)) ||
          (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
           dispatchKey(view.contentDOM, "Delete", 46))))
