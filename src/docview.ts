@@ -8,7 +8,7 @@ import {Decoration, DecorationSet, WidgetType, BlockType, addRange} from "./deco
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet,
-        ChangedRange, ScrollTarget, scrollMargins} from "./extension"
+        ChangedRange, ScrollTarget, getScrollMargins} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 import {DOMReader, LineBreakPlaceholder} from "./domreader"
@@ -395,17 +395,10 @@ export class DocView extends ContentView {
       rect = {left: Math.min(rect.left, other.left), top: Math.min(rect.top, other.top),
               right: Math.max(rect.right, other.right), bottom: Math.max(rect.bottom, other.bottom)}
 
-    let mLeft = 0, mRight = 0, mTop = 0, mBottom = 0
-    for (let margins of this.view.state.facet(scrollMargins).map(f => f(this.view))) if (margins) {
-      let {left, right, top, bottom} = margins
-      if (left != null) mLeft = Math.max(mLeft, left)
-      if (right != null) mRight = Math.max(mRight, right)
-      if (top != null) mTop = Math.max(mTop, top)
-      if (bottom != null) mBottom = Math.max(mBottom, bottom)
-    }
+    let margins = getScrollMargins(this.view)
     let targetRect = {
-      left: rect.left - mLeft, top: rect.top - mTop,
-      right: rect.right + mRight, bottom: rect.bottom + mBottom
+      left: rect.left - margins.left, top: rect.top - margins.top,
+      right: rect.right + margins.right, bottom: rect.bottom + margins.bottom
     }
     scrollRectIntoView(this.view.scrollDOM, targetRect, range.head < range.anchor ? -1 : 1,
                        target.x, target.y, target.xMargin, target.yMargin,

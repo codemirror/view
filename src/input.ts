@@ -3,7 +3,7 @@ import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
 import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior,
-        logException, mouseSelectionStyle, PluginInstance, focusChangeEffect} from "./extension"
+        logException, mouseSelectionStyle, PluginInstance, focusChangeEffect, getScrollMargins} from "./extension"
 import browser from "./browser"
 import {groupAt} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParent} from "./dom"
@@ -320,10 +320,16 @@ class MouseSelection {
     let sx = 0, sy = 0
     let rect = this.scrollParent?.getBoundingClientRect()
       || {left: 0, top: 0, right: this.view.win.innerWidth, bottom: this.view.win.innerHeight}
-    if (event.clientX <= rect.left + dragScrollMargin) sx = -dragScrollSpeed(rect.left - event.clientX)
-    else if (event.clientX >= rect.right - dragScrollMargin) sx = dragScrollSpeed(event.clientX - rect.right)
-    if (event.clientY <= rect.top + dragScrollMargin) sy = -dragScrollSpeed(rect.top - event.clientY)
-    else if (event.clientY >= rect.bottom - dragScrollMargin) sy = dragScrollSpeed(event.clientY - rect.bottom)
+    let margins = getScrollMargins(this.view)
+
+    if (event.clientX - margins.left <= rect.left + dragScrollMargin)
+      sx = -dragScrollSpeed(rect.left - event.clientX)
+    else if (event.clientX + margins.right >= rect.right - dragScrollMargin)
+      sx = dragScrollSpeed(event.clientX - rect.right)
+    if (event.clientY - margins.top <= rect.top + dragScrollMargin)
+      sy = -dragScrollSpeed(rect.top - event.clientY)
+    else if (event.clientY + margins.bottom >= rect.bottom - dragScrollMargin)
+      sy = dragScrollSpeed(event.clientY - rect.bottom)
     this.setScrollSpeed(sx, sy)
   }
 
