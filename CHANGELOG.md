@@ -1,3 +1,15 @@
+## 6.11.2 (2023-05-13)
+
+### Bug fixes
+
+Fix a bug where the `crosshairCursor` extension could, when non-native key events were fired, trigger disruptive and needless view updates.
+
+Fix an Android issue where backspacing at the front of a line with widget decorations could replace those decorations with their text content.
+
+Respect scroll margins when scrolling the target of drag-selection into view.
+
+Validate selection offsets reported by the browser, to work around Safari giving us invalid values in some cases.
+
 ## 6.11.1 (2023-05-09)
 
 ### Bug fixes
