@@ -1,4 +1,5 @@
-import {EditorState, EditorSelection, SelectionRange, CharCategory, findColumn, findClusterBreak} from "@codemirror/state"
+import {EditorState, EditorSelection, SelectionRange, RangeSet,
+        CharCategory, findColumn, findClusterBreak} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
 import {LineView} from "./blockview"
@@ -311,18 +312,23 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
   }
 }
 
-export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: SelectionRange) {
-  let atoms = view.state.facet(atomicRanges).map(f => f(view))
+export function skipAtomicRanges(atoms: readonly RangeSet<any>[], pos: number, bias: -1 | 0 | 1) {
   for (;;) {
-    let moved = false
+    let moved = 0
     for (let set of atoms) {
-      set.between(pos.from - 1, pos.from + 1, (from, to, value) => {
-        if (pos.from > from && pos.from < to) {
-          pos = oldPos.head > pos.from ? EditorSelection.cursor(from, 1) : EditorSelection.cursor(to, -1)
-          moved = true
+      set.between(pos - 1, pos + 1, (from, to, value) => {
+        if (pos > from && pos < to) {
+          let side = moved || bias || (pos - from < to - pos ? -1 : 1)
+          pos = side < 0 ? from : to
+          moved = side
         }
       })
     }
     if (!moved) return pos
   }
+}
+
+export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: SelectionRange) {
+  let newPos = skipAtomicRanges(view.state.facet(atomicRanges).map(f => f(view)), pos.from, oldPos.head > pos.from ? -1 : 1)
+  return newPos == pos.from ? pos : EditorSelection.cursor(newPos, newPos < pos.from ? 1 : -1)
 }

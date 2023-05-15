@@ -1,11 +1,11 @@
-import {EditorSelection, EditorState, SelectionRange, Annotation} from "@codemirror/state"
+import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation} from "@codemirror/state"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
-import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior,
+import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior, atomicRanges,
         logException, mouseSelectionStyle, PluginInstance, focusChangeEffect, getScrollMargins} from "./extension"
 import browser from "./browser"
-import {groupAt} from "./cursor"
+import {groupAt, skipAtomicRanges} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParent} from "./dom"
 
 // This will also be where dragging info and such goes
@@ -286,6 +286,7 @@ class MouseSelection {
   scrollParent: HTMLElement | null
   scrollSpeed = {x: 0, y: 0}
   scrolling = -1
+  atoms: readonly RangeSet<any>[]
 
   constructor(private view: EditorView,
               startEvent: MouseEvent,
@@ -293,6 +294,7 @@ class MouseSelection {
               private mustSelect: boolean) {
     this.lastEvent = startEvent
     this.scrollParent = scrollableParent(view.contentDOM)
+    this.atoms = view.state.facet(atomicRanges).map(f => f(view))
     let doc = view.contentDOM.ownerDocument!
     doc.addEventListener("mousemove", this.move = this.move.bind(this))
     doc.addEventListener("mouseup", this.up = this.up.bind(this))
@@ -367,10 +369,31 @@ class MouseSelection {
     if (this.dragging === false) this.select(this.lastEvent)
   }
 
+  skipAtoms(sel: EditorSelection) {
+    let ranges = null
+    for (let i = 0; i < sel.ranges.length; i++) {
+      let range = sel.ranges[i], updated = null
+      if (range.empty) {
+        let pos = skipAtomicRanges(this.atoms, range.from, 0)
+        if (pos != range.from) updated = EditorSelection.cursor(pos, -1)
+      } else {
+        let from = skipAtomicRanges(this.atoms, range.from, -1)
+        let to = skipAtomicRanges(this.atoms, range.to, 1)
+        if (from != range.from || to != range.to)
+          updated = EditorSelection.range(range.from == range.anchor ? from : to, range.from == range.head ? from : to)
+      }
+      if (updated) {
+        if (!ranges) ranges = sel.ranges.slice()
+        ranges[i] = updated
+      }
+    }
+    return ranges ? EditorSelection.create(ranges, sel.mainIndex) : sel
+  }
+
   select(event: MouseEvent) {
-    let selection = this.style.get(event, this.extend, this.multiple)
-    if (this.mustSelect || !selection.eq(this.view.state.selection) ||
-        selection.main.assoc != this.view.state.selection.main.assoc)
+    let {view} = this, selection = this.skipAtoms(this.style.get(event, this.extend, this.multiple))
+    if (this.mustSelect || !selection.eq(view.state.selection) ||
+        selection.main.assoc != view.state.selection.main.assoc)
       this.view.dispatch({
         selection,
         userEvent: "select.pointer"
