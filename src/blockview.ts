@@ -216,12 +216,13 @@ export class BlockWidgetView extends ContentView implements BlockView {
   domBoundsAround() { return null }
 
   become(other: ContentView) {
-    if (other instanceof BlockWidgetView && other.type == this.type &&
+    if (other instanceof BlockWidgetView &&
         other.widget.constructor == this.widget.constructor) {
       if (!other.widget.compare(this.widget)) this.markDirty(true)
       if (this.dom && !this.prevWidget) this.prevWidget = this.widget
       this.widget = other.widget
       this.length = other.length
+      this.type = other.type
       this.breakAfter = other.breakAfter
       return true
     }
