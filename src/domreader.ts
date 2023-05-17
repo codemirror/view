@@ -8,6 +8,7 @@ export class DOMReader {
   lineSeparator: string | undefined
 
   constructor(private points: DOMPoint[], state: EditorState) {
+    console.log("make reader")
     this.lineSeparator = state.facet(EditorState.lineSeparator)
   }
 
@@ -24,13 +25,14 @@ export class DOMReader {
     let parent = start.parentNode!
     for (let cur = start;;) {
       this.findPointBefore(parent, cur)
+      let oldLen = this.text.length
       this.readNode(cur)
       let next: Node | null = cur.nextSibling
       if (next == end) break
       let view = ContentView.get(cur), nextView = ContentView.get(next!)
       if (view && nextView ? view.breakAfter :
           (view ? view.breakAfter : isBlockElement(cur)) ||
-          (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore)))
+          (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore) && this.text.length > oldLen))
         this.lineBreak()
       cur = next!
     }

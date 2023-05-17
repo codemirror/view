@@ -221,4 +221,16 @@ describe("DOM changes", () => {
     ist(cm.state.sliceDoc(), "ab\r\nc")
     ist(cm.state.selection.main.head, 3)
   })
+
+  it("doesn't insert a newline after a block widget", () => {
+    let widget = new class extends WidgetType {
+      toDOM() { return document.createElement("div") }
+    }
+    let cm = tempView("\n\n", [EditorView.decorations.of(Decoration.set(Decoration.widget({widget, block: true}).range(0)))])
+    let newLine = document.createElement("div")
+    newLine.innerHTML = "<br>"
+    cm.contentDOM.insertBefore(newLine, cm.contentDOM.childNodes[1])
+    flush(cm)
+    ist(cm.state.sliceDoc(), "\n\n\n")
+  })
 })
