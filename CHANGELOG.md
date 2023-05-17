@@ -1,3 +1,13 @@
+## 6.11.3 (2023-05-17)
+
+### Bug fixes
+
+Make sure pointer selection respects `EditorView.atomicRanges`.
+
+Preserve DOM widgets when their decoration type changes but they otherwise stay in the same place.
+
+Fix a bug in `drawSelection` that could lead to invisible or incorrect selections for a blank line below a block widget.
+
 ## 6.11.2 (2023-05-13)
 
 ### Bug fixes
