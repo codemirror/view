@@ -123,7 +123,7 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
     let top = visualStart ? drawForLine(range.from, null, visualStart) : drawForWidget(startBlock, false)
     let bottom = visualEnd ? drawForLine(null, range.to, visualEnd) : drawForWidget(endBlock, true)
     let between = []
-    if ((visualStart || startBlock).to < (visualEnd || endBlock).from - 1)
+    if ((visualStart || startBlock).to < (visualEnd || endBlock).from - (visualStart && visualEnd ? 1 : 0))
       between.push(piece(leftSide, top.bottom, rightSide, bottom.top))
     else if (top.bottom < bottom.top && view.elementAtHeight((top.bottom + bottom.top) / 2).type == BlockType.Text)
       top.bottom = bottom.top = (top.bottom + bottom.top) / 2
