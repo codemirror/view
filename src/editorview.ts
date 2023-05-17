@@ -46,7 +46,7 @@ export interface EditorViewConfig extends EditorStateConfig {
   /// is the way updates get routed to the view. Your implementation,
   /// if provided, should probably call the view's [`update`
   /// method](#view.EditorView.update).
-  dispatch?: (tr: Transaction) => void
+  dispatch?: (tr: Transaction, view: EditorView) => void
 }
 
 export const enum UpdateState {
@@ -107,7 +107,7 @@ export class EditorView {
   /// composition there.
   get compositionStarted() { return this.inputState.composing >= 0 }
   
-  private _dispatch: (tr: Transaction) => void
+  private _dispatch: (tr: Transaction, view: EditorView) => void
 
   private _root: DocumentOrShadowRoot
 
@@ -212,8 +212,9 @@ export class EditorView {
   dispatch(tr: Transaction): void
   dispatch(...specs: TransactionSpec[]): void
   dispatch(...input: (Transaction | TransactionSpec)[]) {
-    this._dispatch(input.length == 1 && input[0] instanceof Transaction ? input[0]
-                   : this.state.update(...input as TransactionSpec[]))
+    let tr = input.length == 1 && input[0] instanceof Transaction ? input[0]
+      : this.state.update(...input as TransactionSpec[])
+    this._dispatch(tr, this)
   }
 
   /// Update the view for the given array of transactions. This will
