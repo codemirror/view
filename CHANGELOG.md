@@ -1,3 +1,13 @@
+## 6.12.0 (2023-05-18)
+
+### Bug fixes
+
+Remove an accidentally included `console.log`.
+
+### New features
+
+`EditorViewConfig.dispatch` is now passed the view object as a second argument.
+
 ## 6.11.3 (2023-05-17)
 
 ### Bug fixes
