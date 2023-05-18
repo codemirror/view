@@ -8,7 +8,6 @@ export class DOMReader {
   lineSeparator: string | undefined
 
   constructor(private points: DOMPoint[], state: EditorState) {
-    console.log("make reader")
     this.lineSeparator = state.facet(EditorState.lineSeparator)
   }
 
