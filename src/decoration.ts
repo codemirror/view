@@ -39,7 +39,12 @@ interface WidgetDecorationSpec {
   /// cursor is on the same position. Otherwise, it'll be drawn before
   /// it. When multiple widgets sit at the same position, their `side`
   /// values will determine their ordering—those with a lower value
-  /// come first. Defaults to 0.
+  /// come first. Defaults to 0. May not be more than 10000 or less
+  /// than -10000.
+  ///
+  /// Block widgets are always drawn before inline widgets when side
+  /// is non-positive, and after them when side is positive,
+  /// regardless of the value of `side`.
   side?: number
   /// Determines whether this is a block widgets, which will be drawn
   /// between lines, or an inline widget (the default) which is drawn
@@ -214,7 +219,7 @@ export abstract class Decoration extends RangeValue {
   /// Create a widget decoration, which displays a DOM element at the
   /// given position.
   static widget(spec: WidgetDecorationSpec): Decoration {
-    let side = spec.side || 0, block = !!spec.block
+    let side = Math.max(-10000, Math.min(10000, spec.side || 0)), block = !!spec.block
     side += block ? (side > 0 ? Side.BlockAfter : Side.BlockBefore) : (side > 0 ? Side.InlineAfter : Side.InlineBefore)
     return new PointDecoration(spec, side, side, block, spec.widget || null, false)
   }
