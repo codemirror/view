@@ -1,6 +1,6 @@
 import {tempView} from "@codemirror/buildhelper/lib/tempview"
-import {EditorSelection, Prec} from "@codemirror/state"
-import {EditorView, ViewPlugin, Decoration, WidgetType} from "@codemirror/view"
+import {EditorSelection, Prec, StateField} from "@codemirror/state"
+import {EditorView, ViewPlugin, Decoration, DecorationSet, WidgetType} from "@codemirror/view"
 import ist from "ist"
 
 function domText(view: EditorView) {
@@ -237,6 +237,50 @@ describe("EditorView drawing", () => {
     ist(node.nodeValue!.length, 2e4, "<")
     ist(node.nodeValue!.indexOf("!"), -1, ">")
     ist(cm.scrollDOM.scrollWidth, cm.defaultCharacterWidth * 1.6e4, ">")
+  })
+
+  const bigText = Decoration.line({attributes: {style: "font-size: 300%"}})
+
+  it("stabilizes the scroll position in the middle", () => {
+    let cm = tempView("\n".repeat(400), [scroll(100), EditorView.decorations.of(Decoration.set(
+      Array.from(new Array(10), (_, i) => bigText.range(100 + i))))])
+    cm.scrollDOM.scrollTop = cm.lineBlockAt(300).top
+    cm.measure()
+    ist(Math.abs(cm.lineBlockAt(300).top - cm.scrollDOM.scrollTop), 2, "<")
+  })
+
+  it("stabilizes the scroll position at the end", () => {
+    let cm = tempView("\n".repeat(400), [scroll(100), EditorView.decorations.of(Decoration.set(
+      Array.from(new Array(10), (_, i) => bigText.range(100 + i))))])
+    cm.scrollDOM.scrollTop = 1e9
+    cm.measure()
+    ist(Math.abs(cm.scrollDOM.scrollHeight - cm.scrollDOM.clientHeight - cm.scrollDOM.scrollTop), 2, "<")
+  })
+
+  it("doesn't overcompensate scroll position for poorly estimated height", () => {
+    let deco = () => {
+      let widget = new class extends WidgetType {
+        get estimatedHeight() { return 1 }
+        toDOM() {
+          let elt = document.createElement("div")
+          elt.style.height = "100px"
+          return elt
+        }
+      }
+      return Decoration.set(Decoration.widget({widget, block: true}).range(200))
+    }
+
+    let cm = tempView("\n".repeat(400), [scroll(100), StateField.define<DecorationSet>({
+      create: deco,
+      update: deco,
+      provide: f => EditorView.decorations.from(f)
+    })])
+    cm.dispatch({effects: EditorView.scrollIntoView(205, {y: "start"})})
+    cm.measure()
+    let prev = cm.scrollDOM.scrollTop
+    cm.dispatch({selection: {anchor: 205}})
+    cm.measure()
+    ist(prev, cm.scrollDOM.scrollTop)
   })
 
   it("hides parts of long lines that are vertically out of view", () => {

@@ -376,13 +376,23 @@ export class EditorView {
     if (flush) this.observer.forceFlush()
 
     let updated: ViewUpdate | null = null
-    let {scrollHeight, scrollTop, clientHeight} = this.scrollDOM
-    let refHeight = scrollTop > scrollHeight - clientHeight - 4 ? scrollHeight : scrollTop
+    let sDOM = this.scrollDOM, {scrollAnchorPos, scrollAnchorHeight} = this.viewState
+    this.viewState.scrollAnchorHeight = -1
+    if (scrollAnchorHeight < 0 || sDOM.scrollTop != this.viewState.scrollTop) {
+      if (sDOM.scrollTop > sDOM.scrollHeight - sDOM.clientHeight - 4) {
+        scrollAnchorPos = -1
+        scrollAnchorHeight = this.viewState.heightMap.height
+      } else {
+        let block = this.viewState.lineBlockAtHeight(sDOM.scrollTop)
+        scrollAnchorPos = block.from
+        scrollAnchorHeight = block.top
+      }
+    }
+
     try {
       for (let i = 0;; i++) {
         this.updateState = UpdateState.Measuring
         let oldViewport = this.viewport
-        let refBlock = this.viewState.lineBlockAtHeight(refHeight)
         let changed = this.viewState.measure(this)
         if (!changed && !this.measureRequests.length && this.viewState.scrollTarget == null) break
         if (i > 5) {
@@ -421,10 +431,12 @@ export class EditorView {
             this.docView.scrollIntoView(this.viewState.scrollTarget)
             this.viewState.scrollTarget = null
             scrolled = true
-          } else {
-            let diff = this.viewState.lineBlockAt(refBlock.from).top - refBlock.top
+          } else if (scrollAnchorHeight > -1) {
+            let newAnchorHeight = scrollAnchorPos < 0 ? this.viewState.heightMap.height :
+              this.viewState.lineBlockAt(scrollAnchorPos).top
+            let diff = newAnchorHeight - scrollAnchorHeight
             if (diff > 1 || diff < -1) {
-              this.scrollDOM.scrollTop += diff
+              sDOM.scrollTop += diff
               scrolled = true
             }
           }
@@ -432,6 +444,7 @@ export class EditorView {
         if (redrawn) this.docView.updateSelection(true)
         if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to &&
             !scrolled && this.measureRequests.length == 0) break
+        scrollAnchorHeight = -1
       }
     } finally {
       this.updateState = UpdateState.Idle

@@ -111,6 +111,14 @@ export class ViewState {
   contentDOMHeight = 0
   editorHeight = 0
   editorWidth = 0
+  scrollTop = 0
+  scrolledToBottom = true
+  // The vertical position (document-relative) to which to anchor the
+  // scroll position. -1 means anchor to the end of the document.
+  scrollAnchorPos = 0
+  // The height at the anchor position. Set by the DOM update phase.
+  // -1 means no height available.
+  scrollAnchorHeight = -1
 
   heightOracle: HeightOracle
   heightMap: HeightMap
@@ -194,9 +202,17 @@ export class ViewState {
     let heightChanges = ChangedRange.extendWithRanges(contentChanges, heightRelevantDecoChanges(
       prevDeco, this.stateDeco, update ? update.changes : ChangeSet.empty(this.state.doc.length)))
     let prevHeight = this.heightMap.height
+    let scrollAnchor = this.scrolledToBottom ? null : this.lineBlockAtHeight(this.scrollTop)
     this.heightMap = this.heightMap.applyChanges(this.stateDeco, update.startState.doc,
                                                  this.heightOracle.setDoc(this.state.doc), heightChanges)
     if (this.heightMap.height != prevHeight) update.flags |= UpdateFlag.Height
+    if (scrollAnchor) {
+      this.scrollAnchorPos = update.changes.mapPos(scrollAnchor.from, -1)
+      this.scrollAnchorHeight = scrollAnchor.top
+    } else {
+      this.scrollAnchorPos = -1
+      this.scrollAnchorHeight = this.heightMap.height
+    }
 
     let viewport = heightChanges.length ? this.mapViewport(this.viewport, update.changes) : this.viewport
     if (scrollTarget && (scrollTarget.range.head < viewport.from || scrollTarget.range.head > viewport.to) ||
@@ -243,6 +259,11 @@ export class ViewState {
       this.editorWidth = view.scrollDOM.clientWidth
       result |= UpdateFlag.Geometry
     }
+    if (this.scrollTop != view.scrollDOM.scrollTop) {
+      this.scrollAnchorHeight = -1
+      this.scrollTop = view.scrollDOM.scrollTop
+    }
+    this.scrolledToBottom = this.scrollTop > view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight - 4
 
     // Pixel viewport
     let pixelViewport = (this.printing ? fullPixelRange : visiblePixelRange)(dom, this.paddingTop)

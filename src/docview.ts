@@ -54,10 +54,7 @@ export class DocView extends ContentView {
     this.updateInner([new ChangedRange(0, 0, 0, view.state.doc.length)], 0)
   }
 
-  // Update the document view to a given state. scrollIntoView can be
-  // used as a hint to compute a new viewport that includes that
-  // position, if we know the editor is going to scroll that position
-  // into view.
+  // Update the document view to a given state.
   update(update: ViewUpdate) {
     let changedRanges = update.changedRanges
     if (this.minWidth > 0 && changedRanges.length) {
