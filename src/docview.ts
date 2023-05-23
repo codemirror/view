@@ -462,8 +462,10 @@ function computeCompositionDeco(view: EditorView, changes: ChangeSet): Decoratio
   let {from, to, node, text: textNode} = surrounding
 
   let newFrom = changes.mapPos(from, 1), newTo = Math.max(newFrom, changes.mapPos(to, -1))
-  let {state} = view, text = node.nodeType == 3 ? node.nodeValue! :
-    new DOMReader([], state).readRange(node.firstChild, null).text
+  let {state} = view, reader = new DOMReader([], state)
+  if (node.nodeType == 3) reader.readTextNode(node as Text)
+  else reader.readRange(node.firstChild, null)
+  let {text} = reader
   if (text.indexOf(LineBreakPlaceholder) > -1) return Decoration.none // Don't try to preserve multi-line compositions
 
   if (newTo - newFrom < text.length) {
