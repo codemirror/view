@@ -4,6 +4,7 @@ import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 import {BlockType} from "./decoration"
 import {BlockInfo} from "./heightmap"
+import {blockAt} from "./cursor"
 
 /// Markers shown in a [layer](#view.layer) must conform to this
 /// interface. They are created in a measuring phase, and have to
@@ -87,14 +88,6 @@ function wrappedLine(view: EditorView, pos: number, inside: {from: number, to: n
           type: BlockType.Text}
 }
 
-function blockAt(view: EditorView, pos: number): BlockInfo {
-  let line = view.lineBlockAt(pos)
-  if (Array.isArray(line.type)) for (let l of line.type) {
-    if (l.to > pos || l.to == pos && (l.to == line.to || l.type == BlockType.Text)) return l
-  }
-  return line as any
-}
-
 // Added to range rectangle's vertical extent to prevent rounding
 // errors from introducing gaps in the rendered content.
 const enum C { Epsilon = 0.01 }
@@ -113,17 +106,18 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
   let startBlock = blockAt(view, from), endBlock = blockAt(view, to)
   let visualStart: {from: number, to: number} | null = startBlock.type == BlockType.Text ? startBlock : null
   let visualEnd: {from: number, to: number} | null = endBlock.type == BlockType.Text ? endBlock : null
-  if (view.lineWrapping) {
-    if (visualStart) visualStart = wrappedLine(view, from, visualStart)
-    if (visualEnd) visualEnd = wrappedLine(view, to, visualEnd)
-  }
+  if (visualStart && (view.lineWrapping || startBlock.widgetLineBreaks))
+    visualStart = wrappedLine(view, from, visualStart)
+  if (visualEnd && (view.lineWrapping || endBlock.widgetLineBreaks))
+    visualEnd = wrappedLine(view, to, visualEnd)
   if (visualStart && visualEnd && visualStart.from == visualEnd.from) {
     return pieces(drawForLine(range.from, range.to, visualStart))
   } else {
     let top = visualStart ? drawForLine(range.from, null, visualStart) : drawForWidget(startBlock, false)
     let bottom = visualEnd ? drawForLine(null, range.to, visualEnd) : drawForWidget(endBlock, true)
     let between = []
-    if ((visualStart || startBlock).to < (visualEnd || endBlock).from - (visualStart && visualEnd ? 1 : 0))
+    if ((visualStart || startBlock).to < (visualEnd || endBlock).from - (visualStart && visualEnd ? 1 : 0) ||
+        startBlock.widgetLineBreaks > 1 && top.bottom + view.defaultLineHeight / 2 < bottom.top)
       between.push(piece(leftSide, top.bottom, rightSide, bottom.top))
     else if (top.bottom < bottom.top && view.elementAtHeight((top.bottom + bottom.top) / 2).type == BlockType.Text)
       top.bottom = bottom.top = (top.bottom + bottom.top) / 2

@@ -224,11 +224,12 @@ export class WidgetView extends ContentView {
     if (custom) return custom
     let rects = this.dom!.getClientRects(), rect: Rect | null = null
     if (!rects.length) return null
-    for (let i = pos > 0 ? rects.length - 1 : 0;; i += (pos > 0 ? -1 : 1)) {
+    let fromBack = this.side ? this.side < 0 : pos > 0
+    for (let i = fromBack ? rects.length - 1 : 0;; i += (fromBack ? -1 : 1)) {
       rect = rects[i]
       if (pos > 0 ? i == 0 : i == rects.length - 1 || rect.top < rect.bottom) break
     }
-    return this.length ? rect : flattenRect(rect, this.side > 0)
+    return this.length ? rect : flattenRect(rect, !fromBack)
   }
 
   get isEditable() { return false }

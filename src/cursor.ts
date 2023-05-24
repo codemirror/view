@@ -239,9 +239,17 @@ function isSuspiciousChromeCaretResult(node: Node, offset: number, x: number) {
   return x - rect.left > 5
 }
 
+export function blockAt(view: EditorView, pos: number): BlockInfo {
+  let line = view.lineBlockAt(pos)
+  if (Array.isArray(line.type)) for (let l of line.type) {
+    if (l.to > pos || l.to == pos && (l.to == line.to || l.type == BlockType.Text)) return l
+  }
+  return line
+}
+
 export function moveToLineBoundary(view: EditorView, start: SelectionRange, forward: boolean, includeWrap: boolean) {
-  let line = view.state.doc.lineAt(start.head)
-  let coords = !includeWrap || !view.lineWrapping ? null
+  let line = blockAt(view, start.head)
+  let coords = !includeWrap || line.type != BlockType.Text || !(view.lineWrapping || line.widgetLineBreaks) ? null
     : view.coordsAtPos(start.assoc < 0 && start.head > line.from ? start.head - 1 : start.head)
   if (coords) {
     let editorRect = view.dom.getBoundingClientRect()
@@ -250,9 +258,7 @@ export function moveToLineBoundary(view: EditorView, start: SelectionRange, forw
                                 y: (coords.top + coords.bottom) / 2})
     if (pos != null) return EditorSelection.cursor(pos, forward ? -1 : 1)
   }
-  let lineView = LineView.find(view.docView, start.head)
-  let end = lineView ? (forward ? lineView.posAtEnd : lineView.posAtStart) : (forward ? line.to : line.from)
-  return EditorSelection.cursor(end, forward ? -1 : 1)
+  return EditorSelection.cursor(forward ? line.to : line.from, forward ? -1 : 1)
 }
 
 export function moveByChar(view: EditorView, start: SelectionRange, forward: boolean,

@@ -124,6 +124,12 @@ export abstract class WidgetType {
   /// returns -1.
   get estimatedHeight(): number { return -1 }
 
+  /// For inline widgets that are displayed inline (as opposed to
+  /// `inline-block`) and introduce line breaks (through `<br>` tags
+  /// or textual newlines), this must indicate the amount of line
+  /// breaks they introduce. Defaults to 0.
+  get lineBreaks(): number { return 0 }
+
   /// Can be used to configure which kinds of events inside the widget
   /// should be ignored by the editor. The default is to ignore all
   /// events.
@@ -326,7 +332,9 @@ export class PointDecoration extends Decoration {
       : this.startSide <= 0 ? BlockType.WidgetBefore : BlockType.WidgetAfter
   }
 
-  get heightRelevant() { return this.block || !!this.widget && this.widget.estimatedHeight >= 5 }
+  get heightRelevant() {
+    return this.block || !!this.widget && (this.widget.estimatedHeight >= 5 || this.widget.lineBreaks > 0)
+  }
 
   eq(other: Decoration): boolean {
     return other instanceof PointDecoration &&

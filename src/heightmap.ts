@@ -93,22 +93,18 @@ export class BlockInfo {
     readonly top: number,
     /// Its height.
     readonly height: number,
-    /// @internal
-    readonly children: readonly BlockInfo[] | null,
-    /// @internal
-    readonly deco: PointDecoration | null
+    /// @internal Weird packed field that holds an array of children
+    /// for composite blocks, a decoration for block widgets, and a
+    /// number indicating the amount of widget-create line breaks for
+    /// text blocks.
+    readonly _content: readonly BlockInfo[] | PointDecoration | number
   ) {}
 
   /// The type of element this is. When querying lines, this may be
   /// an array of all the blocks that make up the line.
   get type(): BlockType | readonly BlockInfo[] {
-    return this.children ?? this.deco?.type ?? BlockType.Text
-  }
-
-  /// If this is a widget block, this will return the widget
-  /// associated with it.
-  get widget(): WidgetType | null {
-    return this.deco && this.deco.widget
+    return typeof this._content == "number" ? BlockType.Text :
+      Array.isArray(this._content) ? this._content : (this._content as PointDecoration).type
   }
 
   /// The end of the element as a document position.
@@ -116,11 +112,24 @@ export class BlockInfo {
   /// The bottom position of the element.
   get bottom() { return this.top + this.height }
 
+  /// If this is a widget block, this will return the widget
+  /// associated with it.
+  get widget(): WidgetType | null {
+    return this._content instanceof PointDecoration ? this._content.widget : null
+  }
+
+  /// If this is a textblock, this holds the number of line breaks
+  /// that appear in widgets inside the block.
+  get widgetLineBreaks(): number {
+    return typeof this._content == "number" ? this._content : 0
+  }
+
   /// @internal
   join(other: BlockInfo) {
-    let children = (this.children || [this]).concat(other.children || [other])
+    let content = (Array.isArray(this._content) ? this._content : [this])
+                    .concat(Array.isArray(other._content) ? other._content : [other])
     return new BlockInfo(this.from, this.length + other.length,
-                         this.top, this.height + other.height, children, null)
+                         this.top, this.height + other.height, content)
   }
 }
 
@@ -237,7 +246,7 @@ class HeightMapBlock extends HeightMap {
   constructor(length: number, height: number, readonly deco: PointDecoration | null) { super(length, height) }
 
   blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number) {
-    return new BlockInfo(offset, this.length, top, this.height, null, this.deco)
+    return new BlockInfo(offset, this.length, top, this.height, this.deco || 0)
   }
 
   lineAt(_value: number, _type: QueryType, oracle: HeightOracle, top: number, offset: number) {
@@ -261,8 +270,13 @@ class HeightMapBlock extends HeightMap {
 class HeightMapText extends HeightMapBlock {
   public collapsed = 0 // Amount of collapsed content in the line
   public widgetHeight = 0 // Maximum inline widget height
+  public breaks = 0 // Number of widget-introduced line breaks on the line
 
   constructor(length: number, height: number) { super(length, height, null) }
+
+  blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number) {
+    return new BlockInfo(offset, this.length, top, this.height, this.breaks)
+  }
 
   replace(_from: number, _to: number, nodes: (HeightMap | null)[]): HeightMap {
     let node = nodes[0]
@@ -281,7 +295,8 @@ class HeightMapText extends HeightMapBlock {
     if (measured && measured.from <= offset && measured.more)
       this.setHeight(oracle, measured.heights[measured.index++])
     else if (force || this.outdated)
-      this.setHeight(oracle, Math.max(this.widgetHeight, oracle.heightForLine(this.length - this.collapsed)))
+      this.setHeight(oracle, Math.max(this.widgetHeight, oracle.heightForLine(this.length - this.collapsed)) +
+        this.breaks * oracle.lineHeight)
     this.outdated = false
     return this
   }
@@ -317,11 +332,11 @@ class HeightMapGap extends HeightMap {
       let guess = offset + Math.round(Math.max(0, Math.min(1, (height - top) / this.height)) * this.length)
       let line = oracle.doc.lineAt(guess), lineHeight = perLine + line.length * perChar
       let lineTop = Math.max(top, height - lineHeight / 2)
-      return new BlockInfo(line.from, line.length, lineTop, lineHeight, null, null)
+      return new BlockInfo(line.from, line.length, lineTop, lineHeight, 0)
     } else {
       let line = Math.max(0, Math.min(lastLine - firstLine, Math.floor((height - top) / perLine)))
       let {from, length} = oracle.doc.line(firstLine + line)
-      return new BlockInfo(from, length, top + perLine * line, perLine, null, null)
+      return new BlockInfo(from, length, top + perLine * line, perLine, 0)
     }
   }
 
@@ -329,14 +344,14 @@ class HeightMapGap extends HeightMap {
     if (type == QueryType.ByHeight) return this.blockAt(value, oracle, top, offset)
     if (type == QueryType.ByPosNoHeight) {
       let {from, to} = oracle.doc.lineAt(value)
-      return new BlockInfo(from, to - from, 0, 0, null, null)
+      return new BlockInfo(from, to - from, 0, 0, 0)
     }
     let {firstLine, perLine, perChar} = this.heightMetrics(oracle, offset)
     let line = oracle.doc.lineAt(value), lineHeight = perLine + line.length * perChar
     let linesAbove = line.number - firstLine
     let lineTop = top + perLine * linesAbove + perChar * (line.from - offset - linesAbove)
     return new BlockInfo(line.from, line.length, Math.max(top, Math.min(lineTop, top + this.height - lineHeight)),
-                         lineHeight, null, null)
+                         lineHeight, 0)
   }
 
   forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, f: (line: BlockInfo) => void) {
@@ -349,7 +364,7 @@ class HeightMapGap extends HeightMap {
         lineTop += perLine * linesAbove + perChar * (from - offset - linesAbove)
       }
       let lineHeight = perLine + perChar * line.length
-      f(new BlockInfo(line.from, line.length, lineTop, lineHeight, null, null))
+      f(new BlockInfo(line.from, line.length, lineTop, lineHeight, 0))
       lineTop += lineHeight
       pos = line.to + 1
     }
@@ -570,12 +585,13 @@ class NodeBuilder implements SpanIterator<Decoration> {
   point(from: number, to: number, deco: PointDecoration) {
     if (from < to || deco.heightRelevant) {
       let height = deco.widget ? deco.widget.estimatedHeight : 0
+      let breaks = deco.widget ? deco.widget.lineBreaks : 0
       if (height < 0) height = this.oracle.lineHeight
       let len = to - from
       if (deco.block) {
         this.addBlock(new HeightMapBlock(len, height, deco))
-      } else if (len || height >= relevantWidgetHeight) {
-        this.addLineDeco(height, len)
+      } else if (len || breaks || height >= relevantWidgetHeight) {
+        this.addLineDeco(height, breaks, len)
       }
     } else if (to > from) {
       this.span(from, to)
@@ -622,11 +638,12 @@ class NodeBuilder implements SpanIterator<Decoration> {
     if (type != BlockType.WidgetBefore) this.covering = block
   }
 
-  addLineDeco(height: number, length: number) {
+  addLineDeco(height: number, breaks: number, length: number) {
     let line = this.ensureLine()
     line.length += length
     line.collapsed += length
     line.widgetHeight = Math.max(line.widgetHeight, height)
+    line.breaks += breaks
     this.writtenTo = this.pos = this.pos + length
   }
 

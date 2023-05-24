@@ -634,6 +634,5 @@ function scaleBlock(block: BlockInfo, scaler: YScaler): BlockInfo {
   if (scaler.scale == 1) return block
   let bTop = scaler.toDOM(block.top), bBottom = scaler.toDOM(block.bottom)
   return new BlockInfo(block.from, block.length, bTop, bBottom - bTop,
-                       block.children && block.children.map(b => scaleBlock(b, scaler)),
-                       block.deco)
+                       Array.isArray(block._content) ? block._content.map(b => scaleBlock(b, scaler)) : block._content)
 }
