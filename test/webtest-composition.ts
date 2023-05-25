@@ -1,4 +1,4 @@
-import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
+import {tempView, requireFocus} from "./tempview.js"
 import {EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType} from "@codemirror/view"
 import {EditorState, EditorSelection, StateField} from "@codemirror/state"
 import ist from "ist"

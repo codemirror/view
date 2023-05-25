@@ -1,7 +1,7 @@
 import ist from "ist"
 import {Direction, EditorView, Decoration} from "@codemirror/view"
 import {StateEffect} from "@codemirror/state"
-import {tempView} from "@codemirror/buildhelper/lib/tempview"
+import {tempView} from "./tempview.js"
 
 describe("EditorView text direction", () => {
   it("notices the text direction", () => {

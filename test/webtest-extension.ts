@@ -1,4 +1,4 @@
-import {tempView} from "@codemirror/buildhelper/lib/tempview"
+import {tempView} from "./tempview.js"
 import {Text, EditorState, Compartment} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
 import ist from "ist"

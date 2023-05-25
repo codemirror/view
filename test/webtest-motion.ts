@@ -1,4 +1,4 @@
-import {tempView, requireFocus} from "@codemirror/buildhelper/lib/tempview"
+import {tempView, requireFocus} from "./tempview.js"
 import ist from "ist"
 
 function setDOMSel(node: Node, offset: number) {
