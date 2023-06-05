@@ -1,3 +1,17 @@
+## 6.13.0 (2023-06-05)
+
+### Bug fixes
+
+Forbid widget decoration side values bigger than 10000, to prevent them from breaking range ordering invariants.
+
+Fix a bug where differences between widgets' estimated and actual heights could cause the editor to inappropriately move the scroll position.
+
+Avoid another situation in which composition that inserts line breaks could corrupt the editor DOM.
+
+### New features
+
+Inline widgets may now introduce line breaks, if they report this through the `WidgetType.lineBreaks` property.
+
 ## 6.12.0 (2023-05-18)
 
 ### Bug fixes
