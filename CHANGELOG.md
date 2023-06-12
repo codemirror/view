@@ -1,3 +1,11 @@
+## 6.13.1 (2023-06-12)
+
+### Bug fixes
+
+Fix a bug where the cursor would in some circumstances be drawn on the wrong side of an inline widget.
+
+Fix an issue where `scrollPastEnd` could cause the scroll position of editors that weren't in view to be changed unnecessarily.
+
 ## 6.13.0 (2023-06-05)
 
 ### Bug fixes
