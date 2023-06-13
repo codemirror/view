@@ -376,14 +376,15 @@ export class EditorView {
     if (flush) this.observer.forceFlush()
 
     let updated: ViewUpdate | null = null
-    let sDOM = this.scrollDOM, {scrollAnchorPos, scrollAnchorHeight} = this.viewState
+    let sDOM = this.scrollDOM, {scrollTop} = sDOM
+    let {scrollAnchorPos, scrollAnchorHeight} = this.viewState
     this.viewState.scrollAnchorHeight = -1
-    if (scrollAnchorHeight < 0 || sDOM.scrollTop != this.viewState.scrollTop) {
-      if (sDOM.scrollTop > sDOM.scrollHeight - sDOM.clientHeight - 4) {
+    if (scrollAnchorHeight < 0 || scrollTop != this.viewState.scrollTop) {
+      if (scrollTop > sDOM.scrollHeight - sDOM.clientHeight - 4) {
         scrollAnchorPos = -1
         scrollAnchorHeight = this.viewState.heightMap.height
       } else {
-        let block = this.viewState.lineBlockAtHeight(sDOM.scrollTop)
+        let block = this.viewState.lineBlockAtHeight(scrollTop)
         scrollAnchorPos = block.from
         scrollAnchorHeight = block.top
       }
@@ -436,7 +437,7 @@ export class EditorView {
               this.viewState.lineBlockAt(scrollAnchorPos).top
             let diff = newAnchorHeight - scrollAnchorHeight
             if (diff > 1 || diff < -1) {
-              sDOM.scrollTop += diff
+              sDOM.scrollTop = scrollTop + diff
               scrolled = true
             }
           }
