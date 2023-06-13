@@ -1,3 +1,9 @@
+## 6.13.2 (2023-06-13)
+
+### Bug fixes
+
+Fix an issue in scroll position stabilization for changes above the visible, where Chrome already does this natively and we ended up compensating twice.
+
 ## 6.13.1 (2023-06-12)
 
 ### Bug fixes
