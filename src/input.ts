@@ -279,7 +279,6 @@ function dragScrollSpeed(dist: number) {
 
 class MouseSelection {
   dragging: null | false | SelectionRange
-  dragMove: boolean
   extend: boolean
   multiple: boolean
   lastEvent: MouseEvent
@@ -301,7 +300,6 @@ class MouseSelection {
 
     this.extend = startEvent.shiftKey
     this.multiple = view.state.facet(EditorState.allowMultipleSelections) && addsSelectionRange(view, startEvent)
-    this.dragMove = dragMovesSelection(view, startEvent)
     this.dragging = isInPrimarySelection(view, startEvent) && getClickType(startEvent) == 1 ? null : false
   }
 
@@ -637,7 +635,7 @@ function dropText(view: EditorView, event: DragEvent, text: string, direct: bool
   event.preventDefault()
 
   let {mouseSelection} = view.inputState
-  let del = direct && mouseSelection && mouseSelection.dragging && mouseSelection.dragMove ?
+  let del = direct && mouseSelection && mouseSelection.dragging && dragMovesSelection(view, event) ?
     {from: mouseSelection.dragging.from, to: mouseSelection.dragging.to} : null
   let ins = {from: dropPos, insert: text}
   let changes = view.state.changes(del ? [del, ins] : ins)
