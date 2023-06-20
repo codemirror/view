@@ -132,7 +132,7 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
   if (yOffset > docHeight) return view.state.doc.length
 
   // Scan for a text block near the queried y position
-  for (let halfLine = view.defaultLineHeight / 2, bounced = false;;) {
+  for (let halfLine = view.viewState.heightOracle.textHeight / 2, bounced = false;;) {
     block = view.elementAtHeight(yOffset)
     if (block.type == BlockType.Text) break
     for (;;) {
@@ -206,7 +206,8 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
 function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockInfo, x: number, y: number) {
   let into = Math.round((x - contentRect.left) * view.defaultCharacterWidth)
   if (view.lineWrapping && block.height > view.defaultLineHeight * 1.5) {
-    let line = Math.floor((y - block.top) / view.defaultLineHeight)
+    let textHeight = view.viewState.heightOracle.textHeight
+    let line = Math.floor((y - block.top - (view.defaultLineHeight - textHeight) * 0.5) / textHeight)
     into += line * view.viewState.heightOracle.lineLength
   }
   let content = view.state.sliceDoc(block.from, block.to)
@@ -309,7 +310,7 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
     startY = (dir < 0 ? line.top : line.bottom) + docTop
   }
   let resolvedGoal = rect.left + goal
-  let dist = distance ?? (view.defaultLineHeight >> 1)
+  let dist = distance ?? (view.viewState.heightOracle.textHeight >> 1)
   for (let extra = 0;; extra += 10) {
     let curY = startY + (dist + extra) * dir
     let pos = posAtCoords(view, {x: resolvedGoal, y: curY}, false, dir)!
