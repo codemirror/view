@@ -365,6 +365,34 @@ describe("EditorView decoration", () => {
       ]})
       ist(destroyed.sort().join(), "A")
     })
+
+    it("can show inline and block widgets next to each other after a position", () => {
+      let cm = tempView("xy", [decos(Decoration.set([
+        w(1, new WordWidget("A"), 1),
+        Decoration.widget({widget: new BlockWidget("B"), block: true, side: 2, inlineOrder: true}).range(1),
+        w(1, new WordWidget("C"), 3),
+      ]))])
+      let [a, c] = Array.from(cm.contentDOM.querySelectorAll("strong"))
+      let b = cm.contentDOM.querySelector("hr")!
+      ist(a.parentNode, cm.contentDOM.firstChild)
+      ist(c.parentNode, cm.contentDOM.lastChild)
+      ist(b.previousSibling, a.parentNode)
+      ist(b.nextSibling, c.parentNode)
+    })
+
+    it("can show inline and block widgets next to each other before a position", () => {
+      let cm = tempView("xy", [decos(Decoration.set([
+        w(1, new WordWidget("A"), -3),
+        Decoration.widget({widget: new BlockWidget("B"), block: true, side: -2, inlineOrder: true}).range(1),
+        w(1, new WordWidget("C"), -2),
+      ]))])
+      let [a, c] = Array.from(cm.contentDOM.querySelectorAll("strong"))
+      let b = cm.contentDOM.querySelector("hr")!
+      ist(a.parentNode, cm.contentDOM.firstChild)
+      ist(c.parentNode, cm.contentDOM.lastChild)
+      ist(b.previousSibling, a.parentNode)
+      ist(b.nextSibling, c.parentNode)
+    })
   })
 
   function r(from: number, to: number, spec: any = {}) { return Decoration.replace(spec).range(from, to) }

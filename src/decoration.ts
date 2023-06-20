@@ -41,11 +41,14 @@ interface WidgetDecorationSpec {
   /// values will determine their ordering—those with a lower value
   /// come first. Defaults to 0. May not be more than 10000 or less
   /// than -10000.
-  ///
-  /// Block widgets are always drawn before inline widgets when side
-  /// is non-positive, and after them when side is positive,
-  /// regardless of the value of `side`.
   side?: number
+  /// By default, to avoid unintended mixing of block and inline
+  /// widgets, block widgets with a positive `side` are always drawn
+  /// after all inline widgets at that position, and those with a
+  /// non-positive side before inline widgets. Setting this option to
+  /// `true` for a block widget will turn this off and cause it to be
+  /// rendered between the inline widgets, ordered by `side`.
+  inlineOrder?: boolean
   /// Determines whether this is a block widgets, which will be drawn
   /// between lines, or an inline widget (the default) which is drawn
   /// between the surrounding text.
@@ -226,7 +229,9 @@ export abstract class Decoration extends RangeValue {
   /// given position.
   static widget(spec: WidgetDecorationSpec): Decoration {
     let side = Math.max(-10000, Math.min(10000, spec.side || 0)), block = !!spec.block
-    side += block ? (side > 0 ? Side.BlockAfter : Side.BlockBefore) : (side > 0 ? Side.InlineAfter : Side.InlineBefore)
+    side += (block && !spec.inlineOrder)
+      ? (side > 0 ? Side.BlockAfter : Side.BlockBefore)
+      : (side > 0 ? Side.InlineAfter : Side.InlineBefore)
     return new PointDecoration(spec, side, side, block, spec.widget || null, false)
   }
 
