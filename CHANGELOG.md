@@ -1,3 +1,15 @@
+## 6.14.0 (2023-06-23)
+
+### Bug fixes
+
+When dragging text inside the editor, look at the state of Ctrl (or Alt on macOS) at the time of the drop, not the start of drag, to determine whether to move or copy the text.
+
+Fix an issue where having a bunch of padding on lines could cause vertical cursor motion and `posAtCoords` to jump over lines.
+
+### New features
+
+Block widget decorations can now be given an `inlineOrder` option to make them appear in the same ordering as surrounding inline widgets.
+
 ## 6.13.2 (2023-06-13)
 
 ### Bug fixes
