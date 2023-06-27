@@ -202,7 +202,7 @@ export class ViewState {
     let heightChanges = ChangedRange.extendWithRanges(contentChanges, heightRelevantDecoChanges(
       prevDeco, this.stateDeco, update ? update.changes : ChangeSet.empty(this.state.doc.length)))
     let prevHeight = this.heightMap.height
-    let scrollAnchor = this.scrolledToBottom ? null : this.lineBlockAtHeight(this.scrollTop)
+    let scrollAnchor = this.scrolledToBottom ? null : this.scrollAnchorAt(this.scrollTop)
     this.heightMap = this.heightMap.applyChanges(this.stateDeco, update.startState.doc,
                                                  this.heightOracle.setDoc(this.state.doc), heightChanges)
     if (this.heightMap.height != prevHeight) update.flags |= UpdateFlag.Height
@@ -510,6 +510,11 @@ export class ViewState {
 
   lineBlockAtHeight(height: number): BlockInfo {
     return scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height), QueryType.ByHeight, this.heightOracle, 0, 0), this.scaler)
+  }
+
+  scrollAnchorAt(scrollTop: number) {
+    let block = this.lineBlockAtHeight(scrollTop + 8)
+    return block.from >= this.viewport.from || this.viewportLines[0].top - scrollTop > 200 ? block : this.viewportLines[0]
   }
 
   elementAtHeight(height: number): BlockInfo {

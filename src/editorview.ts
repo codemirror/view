@@ -388,13 +388,12 @@ export class EditorView {
             scrollAnchorPos = -1
             scrollAnchorHeight = this.viewState.heightMap.height
           } else {
-            let block = this.viewState.lineBlockAtHeight(scrollTop)
+            let block = this.viewState.scrollAnchorAt(scrollTop)
             scrollAnchorPos = block.from
             scrollAnchorHeight = block.top
           }
         }
         this.updateState = UpdateState.Measuring
-        let oldViewport = this.viewport
         let changed = this.viewState.measure(this)
         if (!changed && !this.measureRequests.length && this.viewState.scrollTarget == null) break
         if (i > 5) {
@@ -411,7 +410,7 @@ export class EditorView {
           try { return m.read(this) }
           catch(e) { logException(this.state, e); return BadMeasure }
         })
-        let update = ViewUpdate.create(this, this.state, []), redrawn = false, scrolled = false
+        let update = ViewUpdate.create(this, this.state, []), redrawn = false
         update.flags |= changed
         if (!updated) updated = update
         else updated.flags |= changed
@@ -428,25 +427,26 @@ export class EditorView {
             if (m.write) m.write(measured[i], this)
           } catch(e) { logException(this.state, e) }
         }
-        if (this.viewState.editorHeight) {
-          if (this.viewState.scrollTarget) {
-            this.docView.scrollIntoView(this.viewState.scrollTarget)
-            this.viewState.scrollTarget = null
-            scrolled = true
-          } else {
-            let newAnchorHeight = scrollAnchorPos < 0 ? this.viewState.heightMap.height :
-              this.viewState.lineBlockAt(scrollAnchorPos).top
-            let diff = newAnchorHeight - scrollAnchorHeight
-            if (diff > 1 || diff < -1) {
-              scrollTop = sDOM.scrollTop = scrollTop + diff
-              scrolled = true
-            }
-            scrollAnchorHeight = -1
-          }
-        }
         if (redrawn) this.docView.updateSelection(true)
-        if (this.viewport.from == oldViewport.from && this.viewport.to == oldViewport.to &&
-            !scrolled && this.measureRequests.length == 0) break
+        if (!update.viewportChanged && this.measureRequests.length == 0) {
+          if (this.viewState.editorHeight) {
+            if (this.viewState.scrollTarget) {
+              this.docView.scrollIntoView(this.viewState.scrollTarget)
+              this.viewState.scrollTarget = null
+              continue
+            } else {
+              let newAnchorHeight = scrollAnchorPos < 0 ? this.viewState.heightMap.height :
+                this.viewState.lineBlockAt(scrollAnchorPos).top
+              let diff = newAnchorHeight - scrollAnchorHeight
+              if (diff > 1 || diff < -1) {
+                scrollTop = sDOM.scrollTop = scrollTop + diff
+                scrollAnchorHeight = -1
+                continue
+              }
+            }
+          }
+          break
+        }
       }
     } finally {
       this.updateState = UpdateState.Idle
