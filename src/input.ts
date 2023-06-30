@@ -517,7 +517,7 @@ handlers.mousedown = (view, event: MouseEvent) => {
   }
   if (!style && event.button == 0) style = basicMouseSelection(view, event)
   if (style) {
-    let mustFocus = view.root.activeElement != view.contentDOM
+    let mustFocus = !view.hasFocus
     view.inputState.startMouseSelection(new MouseSelection(view, event, style, mustFocus))
     if (mustFocus) view.observer.ignore(() => focusPreventScroll(view.contentDOM))
     if (view.inputState.mouseSelection) view.inputState.mouseSelection.start(event)
