@@ -65,7 +65,7 @@ export abstract class ContentView {
       let prev: Node | null = null, next
       for (let child of this.children) {
         if (child.dirty) {
-          if (!child.dom && (next = prev ? prev.nextSibling : parent.firstChild)) {
+          if (!child.dom && (next = prev ? prev.nextSibling : parent.firstChild) && next != view.docView.compositionNode) {
             let contentView = ContentView.get(next)
             if (!contentView || !contentView.parent && contentView.canReuseDOM(child))
               child.reuseDOM(next)

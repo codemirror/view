@@ -17,6 +17,7 @@ export class DocView extends ContentView {
   children!: BlockView[]
 
   compositionDeco = Decoration.none
+  compositionNode: Node | null = null
   decorations: readonly DecorationSet[] = []
   dynamicDecorationMap: boolean[] = []
 
@@ -66,10 +67,8 @@ export class DocView extends ContentView {
       }
     }
 
-    if (this.view.inputState.composing < 0)
-      this.compositionDeco = Decoration.none
-    else if (update.transactions.length || this.dirty)
-      this.compositionDeco = computeCompositionDeco(this.view, update.changes)
+    ;({deco: this.compositionDeco, node: this.compositionNode} =
+      this.view.inputState.composing < 0 ? noComp : computeCompositionDeco(this.view, update.changes))
 
     // When the DOM nodes around the selection are moved to another
     // parent, Chrome sometimes reports a different selection through
@@ -456,9 +455,11 @@ export function compositionSurroundingNode(view: EditorView) {
   }
 }
 
-function computeCompositionDeco(view: EditorView, changes: ChangeSet): DecorationSet {
+const noComp = {deco: Decoration.none, node: null}
+
+function computeCompositionDeco(view: EditorView, changes: ChangeSet): {deco: DecorationSet, node: Node | null} {
   let surrounding = compositionSurroundingNode(view)
-  if (!surrounding) return Decoration.none
+  if (!surrounding) return noComp
   let {from, to, node, text: textNode} = surrounding
 
   let newFrom = changes.mapPos(from, 1), newTo = Math.max(newFrom, changes.mapPos(to, -1))
@@ -466,7 +467,7 @@ function computeCompositionDeco(view: EditorView, changes: ChangeSet): Decoratio
   if (node.nodeType == 3) reader.readTextNode(node as Text)
   else reader.readRange(node.firstChild, null)
   let {text} = reader
-  if (text.indexOf(LineBreakPlaceholder) > -1) return Decoration.none // Don't try to preserve multi-line compositions
+  if (text.indexOf(LineBreakPlaceholder) > -1) return noComp // Don't try to preserve multi-line compositions
 
   if (newTo - newFrom < text.length) {
     if (state.doc.sliceString(newFrom, Math.min(state.doc.length, newFrom + text.length)) == text)
@@ -474,17 +475,18 @@ function computeCompositionDeco(view: EditorView, changes: ChangeSet): Decoratio
     else if (state.doc.sliceString(Math.max(0, newTo - text.length), newTo) == text)
       newFrom = newTo - text.length
     else
-      return Decoration.none
+      return noComp
   } else if (state.doc.sliceString(newFrom, newTo) != text) {
-    return Decoration.none
+    return noComp
   }
 
   let topView = ContentView.get(node)
   if (topView instanceof CompositionView) topView = topView.widget.topView
   else if (topView) topView.parent = null
-  return Decoration.set(
+  let deco = Decoration.set(
     Decoration.replace({widget: new CompositionWidget(node, textNode, topView), inclusive: true})
       .range(newFrom, newTo))
+  return {deco, node}
 }
 
 export class CompositionWidget extends WidgetType {
