@@ -314,3 +314,7 @@ export function atElementStart(doc: HTMLElement, selection: SelectionRange) {
     }
   }
 }
+
+export function isScrolledToBottom(elt: HTMLElement) {
+  return elt.scrollTop > Math.max(1, elt.scrollHeight - elt.clientHeight - 4)
+}

@@ -5,7 +5,8 @@ import {StyleModule, StyleSpec} from "style-mod"
 import {DocView} from "./docview"
 import {ContentView} from "./contentview"
 import {InputState, focusChangeTransaction, isFocusChange} from "./input"
-import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy, dispatchKey} from "./dom"
+import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy,
+        isScrolledToBottom, dispatchKey} from "./dom"
 import {posAtCoords, moveByChar, moveToLineBoundary, byGroup, moveVertically, skipAtoms} from "./cursor"
 import {BlockInfo} from "./heightmap"
 import {ViewState} from "./viewstate"
@@ -384,7 +385,7 @@ export class EditorView {
     try {
       for (let i = 0;; i++) {
         if (scrollAnchorHeight < 0) {
-          if (scrollTop > sDOM.scrollHeight - sDOM.clientHeight - 4) {
+          if (isScrolledToBottom(sDOM)) {
             scrollAnchorPos = -1
             scrollAnchorHeight = this.viewState.heightMap.height
           } else {

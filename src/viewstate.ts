@@ -1,5 +1,5 @@
 import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} from "@codemirror/state"
-import {Rect} from "./dom"
+import {Rect, isScrolledToBottom} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
 import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
         contentAttributes} from "./extension"
@@ -263,7 +263,7 @@ export class ViewState {
       this.scrollAnchorHeight = -1
       this.scrollTop = view.scrollDOM.scrollTop
     }
-    this.scrolledToBottom = this.scrollTop > view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight - 4
+    this.scrolledToBottom = isScrolledToBottom(view.scrollDOM)
 
     // Pixel viewport
     let pixelViewport = (this.printing ? fullPixelRange : visiblePixelRange)(dom, this.paddingTop)
