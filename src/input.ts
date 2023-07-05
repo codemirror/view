@@ -233,7 +233,7 @@ export class InputState {
 
 const PendingKeys = [
   {key: "Backspace", keyCode: 8, inputType: "deleteContentBackward"},
-  {key: "Enter", keyCode: 13, inputType: "insertParagraph"},
+  {key: "Enter", keyCode: 13, inputType: "insertLineBreak"},
   {key: "Delete", keyCode: 46, inputType: "deleteContentForward"}
 ]
 
