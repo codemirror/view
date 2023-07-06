@@ -1,3 +1,17 @@
+## 6.14.1 (2023-07-06)
+
+### Bug fixes
+
+Fix an issue where scrolling up through line-wrapped text would sometimes cause the scroll position to pop down.
+
+Fix an issue where clicking wouldn't focus the editor on Firefox when it was in an iframe and already the active element of the frame.
+
+Fix a bug that could cause compositions to be disrupted because their surrounding DOM was repurposed for some other piece of content.
+
+Fix a bug where adding content to the editor could inappropriately move the scroll position.
+
+Extend detection of Enter presses on Android to `beforeInput` events with an `"insertLineBreak"` type.
+
 ## 6.14.0 (2023-06-23)
 
 ### Bug fixes
