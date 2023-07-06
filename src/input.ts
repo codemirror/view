@@ -278,6 +278,10 @@ function dragScrollSpeed(dist: number) {
   return Math.max(0, dist) * 0.7 + 8
 }
 
+function dist(a: MoustEvent, b: MouseEvent) {
+  return Math.max(Math.abs(a.clientX - b.clientX), Math.abs(a.clientY - b.clientY))
+}
+
 class MouseSelection {
   dragging: null | false | SelectionRange
   extend: boolean
@@ -289,7 +293,7 @@ class MouseSelection {
   atoms: readonly RangeSet<any>[]
 
   constructor(private view: EditorView,
-              startEvent: MouseEvent,
+              private startEvent: MouseEvent,
               private style: MouseSelectionStyle,
               private mustSelect: boolean) {
     this.lastEvent = startEvent
@@ -315,7 +319,7 @@ class MouseSelection {
 
   move(event: MouseEvent) {
     if (event.buttons == 0) return this.destroy()
-    if (this.dragging !== false) return
+    if (this.dragging || this.dragging == null && dist(this.startEvent, event) < 10) return
     this.select(this.lastEvent = event)
 
     let sx = 0, sy = 0
@@ -392,7 +396,7 @@ class MouseSelection {
   select(event: MouseEvent) {
     let {view} = this, selection = this.skipAtoms(this.style.get(event, this.extend, this.multiple))
     if (this.mustSelect || !selection.eq(view.state.selection) ||
-        selection.main.assoc != view.state.selection.main.assoc)
+        selection.main.assoc != view.state.selection.main.assoc && this.dragging === false)
       this.view.dispatch({
         selection,
         userEvent: "select.pointer"
