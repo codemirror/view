@@ -278,7 +278,7 @@ function dragScrollSpeed(dist: number) {
   return Math.max(0, dist) * 0.7 + 8
 }
 
-function dist(a: MoustEvent, b: MouseEvent) {
+function dist(a: MouseEvent, b: MouseEvent) {
   return Math.max(Math.abs(a.clientX - b.clientX), Math.abs(a.clientY - b.clientY))
 }
 
