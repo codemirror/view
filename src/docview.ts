@@ -328,6 +328,7 @@ export class DocView extends ContentView {
     let dummy = document.createElement("div"), lineHeight!: number, charWidth!: number, textHeight!: number
     dummy.className = "cm-line"
     dummy.style.width = "99999px"
+    dummy.style.position = "absolute"
     dummy.textContent = "abc def ghi jkl mno pqr stu"
     this.view.observer.ignore(() => {
       this.dom.appendChild(dummy)
