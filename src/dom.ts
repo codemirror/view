@@ -105,12 +105,13 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
                                    xMargin: number, yMargin: number, ltr: boolean) {
   let doc = dom.ownerDocument!, win = doc.defaultView || window
 
-  for (let cur: any = dom; cur;) {
+  for (let cur: any = dom, stop = false; cur && !stop;) {
     if (cur.nodeType == 1) { // Element
       let bounding: Rect, top = cur == doc.body
       if (top) {
         bounding = windowRect(win)
       } else {
+        if (/^(fixed|sticky)$/.test(getComputedStyle(cur).position)) stop = true
         if (cur.scrollHeight <= cur.clientHeight && cur.scrollWidth <= cur.clientWidth) {
           cur = cur.assignedSlot || cur.parentNode
           continue
