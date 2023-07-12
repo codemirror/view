@@ -1,5 +1,5 @@
 import {Text as DocText} from "@codemirror/state"
-import {ContentView, DOMPos, Dirty, mergeChildrenInto, noChildren} from "./contentview"
+import {ContentView, DOMPos, ViewFlag, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
 import {Rect, flattenRect, textRange, clientRectsFor, clearAttributes, contains} from "./dom"
 import {CompositionWidget, DocView} from "./docview"
@@ -84,13 +84,13 @@ export class MarkView extends ContentView {
   reuseDOM(node: Node) {
     if (node.nodeName == this.mark.tagName.toUpperCase()) {
       this.setDOM(node)
-      this.dirty |= Dirty.Attrs | Dirty.Node
+      this.flags |= ViewFlag.AttrsDirty | ViewFlag.NodeDirty
     }
   }
 
   sync(view: EditorView, track?: {node: Node, written: boolean}) {
     if (!this.dom) this.setDOM(this.setAttrs(document.createElement(this.mark.tagName)))
-    else if (this.dirty & Dirty.Attrs) this.setAttrs(this.dom)
+    else if (this.flags & ViewFlag.AttrsDirty) this.setAttrs(this.dom)
     super.sync(view, track)
   }
 

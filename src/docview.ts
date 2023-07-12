@@ -1,5 +1,5 @@
 import {ChangeSet, RangeSet} from "@codemirror/state"
-import {ContentView, ChildCursor, Dirty, DOMPos, replaceRange} from "./contentview"
+import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {CompositionView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
@@ -83,7 +83,7 @@ export class DocView extends ContentView {
     let decoDiff = findChangedDeco(prevDeco, deco, update.changes)
     changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff)
 
-    if (this.dirty == Dirty.Not && changedRanges.length == 0) {
+    if (!(this.flags & ViewFlag.Dirty) && changedRanges.length == 0) {
       return false
     } else {
       this.updateInner(changedRanges, update.startState.doc.length)
@@ -112,7 +112,7 @@ export class DocView extends ContentView {
       // to detect that situation.
       let track = browser.chrome || browser.ios ? {node: observer.selectionRange.focusNode!, written: false} : undefined
       this.sync(this.view, track)
-      this.dirty = Dirty.Not
+      this.flags &= ~ViewFlag.Dirty
       if (track && (track.written || observer.selectionRange.focusNode != track.node)) this.forceSelection = true
       this.dom.style.height = ""
     })

@@ -1,5 +1,5 @@
 import browser from "./browser"
-import {ContentView, Dirty} from "./contentview"
+import {ContentView, ViewFlag} from "./contentview"
 import {EditorView} from "./editorview"
 import {editable} from "./extension"
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition,
@@ -381,7 +381,7 @@ export class DOMObserver {
     let cView = this.view.docView.nearest(rec.target)
     if (!cView || cView.ignoreMutation(rec)) return null
     cView.markDirty(rec.type == "attributes")
-    if (rec.type == "attributes") cView.dirty |= Dirty.Attrs
+    if (rec.type == "attributes") cView.flags |= ViewFlag.AttrsDirty
 
     if (rec.type == "childList") {
       let childBefore = findChild(cView, rec.previousSibling || rec.target.previousSibling, -1)

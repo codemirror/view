@@ -3,15 +3,15 @@ import {Rect, maxOffset, domIndex} from "./dom"
 import {EditorView} from "./editorview"
 
 // Track mutated / outdated status of a view node's DOM
-export const enum Dirty {
-  // All synced up
-  Not = 0,
+export const enum ViewFlag {
   // At least one child is dirty
-  Child = 1,
+  ChildDirty = 1,
   // The node itself isn't in sync with its child list
-  Node = 2,
+  NodeDirty = 2,
   // The node's DOM attributes might have changed
-  Attrs = 4
+  AttrsDirty = 4,
+  // Mask for all of the dirty flags
+  Dirty = 7,
 }
 
 export class DOMPos {
@@ -26,7 +26,7 @@ export const noChildren: ContentView[] = []
 export abstract class ContentView {
   parent: ContentView | null = null
   dom: Node | null = null
-  dirty: number = Dirty.Node
+  flags: number = ViewFlag.NodeDirty
   abstract length: number
   abstract children: ContentView[]
   breakAfter!: number
@@ -60,18 +60,18 @@ export abstract class ContentView {
   abstract coordsAt(_pos: number, _side: number): Rect | null
 
   sync(view: EditorView, track?: {node: Node, written: boolean}) {
-    if (this.dirty & Dirty.Node) {
+    if (this.flags & ViewFlag.NodeDirty) {
       let parent = this.dom as HTMLElement
       let prev: Node | null = null, next
       for (let child of this.children) {
-        if (child.dirty) {
+        if (child.flags & ViewFlag.Dirty) {
           if (!child.dom && (next = prev ? prev.nextSibling : parent.firstChild) && next != view.docView.compositionNode) {
             let contentView = ContentView.get(next)
             if (!contentView || !contentView.parent && contentView.canReuseDOM(child))
               child.reuseDOM(next)
           }
           child.sync(view, track)
-          child.dirty = Dirty.Not
+          child.flags &= ~ViewFlag.Dirty
         }
         next = prev ? prev.nextSibling : parent.firstChild
         if (track && !track.written && track.node == parent && next != child.dom) track.written = true
@@ -85,10 +85,10 @@ export abstract class ContentView {
       next = prev ? prev.nextSibling : parent.firstChild
       if (next && track && track.node == parent) track.written = true
       while (next) next = rm(next)
-    } else if (this.dirty & Dirty.Child) {
-      for (let child of this.children) if (child.dirty) {
+    } else if (this.flags & ViewFlag.ChildDirty) {
+      for (let child of this.children) if (child.flags & ViewFlag.Dirty) {
         child.sync(view, track)
-        child.dirty = Dirty.Not
+        child.flags &= ~ViewFlag.Dirty
       }
     }
   }
@@ -155,15 +155,15 @@ export abstract class ContentView {
   }
 
   markDirty(andParent: boolean = false) {
-    this.dirty |= Dirty.Node
+    this.flags |= ViewFlag.NodeDirty
     this.markParentsDirty(andParent)
   }
 
   markParentsDirty(childList: boolean) {
     for (let parent = this.parent; parent; parent = parent.parent) {
-      if (childList) parent.dirty |= Dirty.Node
-      if (parent.dirty & Dirty.Child) return
-      parent.dirty |= Dirty.Child
+      if (childList) parent.flags |= ViewFlag.NodeDirty
+      if (parent.flags & ViewFlag.ChildDirty) return
+      parent.flags |= ViewFlag.ChildDirty
       childList = false
     }
   }
@@ -171,7 +171,7 @@ export abstract class ContentView {
   setParent(parent: ContentView) {
     if (this.parent != parent) {
       this.parent = parent
-      if (this.dirty) this.markParentsDirty(true)
+      if (this.flags & ViewFlag.Dirty) this.markParentsDirty(true)
     }
   }
 

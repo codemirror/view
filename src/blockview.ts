@@ -1,4 +1,4 @@
-import {ContentView, DOMPos, Dirty, noChildren, mergeChildrenInto} from "./contentview"
+import {ContentView, DOMPos, ViewFlag, noChildren, mergeChildrenInto} from "./contentview"
 import {DocView} from "./docview"
 import {TextView, MarkView, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
 import {clientRectsFor, Rect, clearAttributes} from "./dom"
@@ -88,7 +88,7 @@ export class LineView extends ContentView implements BlockView {
   reuseDOM(node: Node) {
     if (node.nodeName == "DIV") {
       this.setDOM(node)
-      this.dirty |= Dirty.Attrs | Dirty.Node
+      this.flags |= ViewFlag.AttrsDirty | ViewFlag.NodeDirty
     }
   }
 
@@ -97,7 +97,7 @@ export class LineView extends ContentView implements BlockView {
       this.setDOM(document.createElement("div"))
       this.dom!.className = "cm-line"
       this.prevAttrs = this.attrs ? null : undefined
-    } else if (this.dirty & Dirty.Attrs) {
+    } else if (this.flags & ViewFlag.AttrsDirty) {
       clearAttributes(this.dom)
       this.dom!.className = "cm-line"
       this.prevAttrs = this.attrs ? null : undefined
