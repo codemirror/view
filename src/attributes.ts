@@ -26,3 +26,12 @@ export function updateAttrs(dom: HTMLElement, prev: Attrs | null, attrs: Attrs |
   if (attrs) for (let name in attrs) if (!(prev && prev[name] == attrs[name])) dom.setAttribute(changed = name, attrs[name])
   return !!changed
 }
+
+export function getAttrs(dom: HTMLElement) {
+  let attrs = Object.create(null)
+  for (let i = 0; i < dom.attributes.length; i++) {
+    let attr = dom.attributes[i]
+    attrs[attr.name] = attr.value
+  }
+  return attrs
+}

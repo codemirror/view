@@ -12,6 +12,9 @@ export const enum ViewFlag {
   AttrsDirty = 4,
   // Mask for all of the dirty flags
   Dirty = 7,
+  // Set temporarily during a doc view update on the nodes around the
+  // composition
+  Composition = 8,
 }
 
 export class DOMPos {
@@ -65,7 +68,7 @@ export abstract class ContentView {
       let prev: Node | null = null, next
       for (let child of this.children) {
         if (child.flags & ViewFlag.Dirty) {
-          if (!child.dom && (next = prev ? prev.nextSibling : parent.firstChild) && next != view.docView.compositionNode) {
+          if (!child.dom && (next = prev ? prev.nextSibling : parent.firstChild)) {
             let contentView = ContentView.get(next)
             if (!contentView || !contentView.parent && contentView.canReuseDOM(child))
               child.reuseDOM(next)
@@ -231,7 +234,9 @@ export abstract class ContentView {
 
   become(other: ContentView): boolean { return false }
 
-  canReuseDOM(other: ContentView) { return other.constructor == this.constructor }
+  canReuseDOM(other: ContentView) {
+    return other.constructor == this.constructor && !((this.flags | other.flags) & ViewFlag.Composition)
+  }
 
   abstract split(at: number): ContentView
 

@@ -15,7 +15,7 @@ function up(node: Text, text: string = "", from = node.nodeValue!.length, to = f
 }
 
 function hasCompositionDeco(cm: EditorView) {
-  return cm.docView.compositionDeco.size > 0
+  return cm.docView.hasComposition
 }
 
 function compose(cm: EditorView, start: () => Text,
@@ -27,11 +27,15 @@ function compose(cm: EditorView, start: () => Text,
     if (i < 0) node = start()
     else update[i](node)
     let {focusNode, focusOffset} = sel
+    let stack = []
+    for (let p = node.parentNode; p && p != cm.contentDOM; p = p.parentNode) stack.push(p)
     cm.observer.flush()
 
     if (options.cancel && i == update.length - 1) {
       ist(!hasCompositionDeco(cm))
     } else {
+      for (let p = node.parentNode, i = 0; p && p != cm.contentDOM && i < stack.length; p = p.parentNode, i++)
+        ist(p, stack[i])
       ist(node.parentNode && cm.contentDOM.contains(node.parentNode))
       ist(sel.focusNode, focusNode)
       ist(sel.focusOffset, focusOffset)
@@ -237,6 +241,19 @@ describe("Composition", () => {
     compose(cm, () => {
       let span = cm.domAtPos(1).node.parentNode!
       let wrap = span.appendChild(document.createElement("font"))
+      let text = wrap.appendChild(document.createTextNode(""))
+      return up(text, "1")
+    }, [n => up(n, "2")])
+    ist(cm.state.doc.toString(), "one12 two")
+  })
+
+  it("can handle siblings being moved into a new wrapper", () => {
+    let cm = requireFocus(tempView("one two", [wordHighlighter]))
+    compose(cm, () => {
+      let span = cm.domAtPos(1).node.parentNode as HTMLElement
+      let wrap = span.parentNode!.insertBefore(document.createElement("font"), span)
+      wrap.appendChild(span.cloneNode(true))
+      span.remove()
       let text = wrap.appendChild(document.createTextNode(""))
       return up(text, "1")
     }, [n => up(n, "2")])

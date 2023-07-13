@@ -817,7 +817,7 @@ handlers.compositionend = view => {
     // Otherwise, make sure that, if no changes come in soon, the
     // composition view is cleared.
     setTimeout(() => {
-      if (view.inputState.composing < 0 && view.docView.compositionDeco.size)
+      if (view.inputState.composing < 0 && view.docView.hasComposition)
         view.update([])
     }, 50)
   }

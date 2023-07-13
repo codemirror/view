@@ -3,7 +3,7 @@ import {inputHandler, editable} from "./extension"
 import {contains, dispatchKey} from "./dom"
 import browser from "./browser"
 import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
-import {compositionSurroundingNode} from "./docview"
+import {findCompositionNode} from "./docview"
 import {EditorSelection, Text} from "@codemirror/state"
 
 export class DOMChange {
@@ -141,7 +141,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
           change.to <= sel.to && change.to >= sel.to - 10) {
         let replaced = view.state.sliceDoc(change.from, change.to)
-        let compositionRange = compositionSurroundingNode(view) || view.state.doc.lineAt(sel.head)
+        let composition = findCompositionNode(view) || view.state.doc.lineAt(sel.head)
         let offset = sel.to - change.to, size = sel.to - sel.from
         tr = startState.changeByRange(range => {
           if (range.from == sel.from && range.to == sel.to)
@@ -152,7 +152,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
               // changes in the same node work without aborting
               // composition, so cursors in the composition range are
               // ignored.
-              compositionRange && range.to >= compositionRange.from && range.from <= compositionRange.to)
+              composition && range.to >= composition.from && range.from <= composition.to)
             return {range}
           let rangeChanges = startState.changes({from, to, insert: change!.insert}), selOff = range.to - sel.to
           return {

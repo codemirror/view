@@ -1,8 +1,8 @@
 import {Text as DocText} from "@codemirror/state"
 import {ContentView, DOMPos, ViewFlag, mergeChildrenInto, noChildren} from "./contentview"
 import {WidgetType, MarkDecoration} from "./decoration"
-import {Rect, flattenRect, textRange, clientRectsFor, clearAttributes, contains} from "./dom"
-import {CompositionWidget, DocView} from "./docview"
+import {Rect, flattenRect, textRange, clientRectsFor, clearAttributes} from "./dom"
+import {DocView} from "./docview"
 import browser from "./browser"
 import {EditorView} from "./editorview"
 
@@ -35,7 +35,10 @@ export class TextView extends ContentView {
   }
 
   merge(from: number, to: number, source: ContentView | null): boolean {
-    if (source && (!(source instanceof TextView) || this.length - (to - from) + source.length > MaxJoinLen))
+    if ((this.flags & ViewFlag.Composition) ||
+        source && (!(source instanceof TextView) ||
+                   this.length - (to - from) + source.length > MaxJoinLen ||
+                   (source.flags & ViewFlag.Composition)))
       return false
     this.text = this.text.slice(0, from) + (source ? source.text : "") + this.text.slice(to)
     this.markDirty()
@@ -46,6 +49,7 @@ export class TextView extends ContentView {
     let result = new TextView(this.text.slice(from))
     this.text = this.text.slice(0, from)
     this.markDirty()
+    result.flags |= this.flags & ViewFlag.Composition
     return result
   }
 
@@ -79,6 +83,10 @@ export class MarkView extends ContentView {
     if (this.mark.class) dom.className = this.mark.class
     if (this.mark.attrs) for (let name in this.mark.attrs) dom.setAttribute(name, this.mark.attrs[name])
     return dom
+  }
+
+  canReuseDOM(other: ContentView) {
+    return super.canReuseDOM(other) && !((this.flags | other.flags) & ViewFlag.Composition)
   }
 
   reuseDOM(node: Node) {
@@ -156,7 +164,7 @@ export class WidgetView extends ContentView {
   prevWidget: WidgetType | null = null
 
   static create(widget: WidgetType, length: number, side: number) {
-    return new (widget.customView || WidgetView)(widget, length, side)
+    return new WidgetView(widget, length, side)
   }
 
   constructor(public widget: WidgetType, public length: number, readonly side: number) {
@@ -241,131 +249,6 @@ export class WidgetView extends ContentView {
   destroy() {
     super.destroy()
     if (this.dom) this.widget.destroy(this.dom)
-  }
-}
-
-export class CompositionView extends WidgetView {
-  widget!: CompositionWidget
-
-  domAtPos(pos: number) {
-    let {topView, text} = this.widget
-    if (!topView) return new DOMPos(text, Math.min(pos, text.nodeValue!.length))
-    return scanCompositionTree(pos, 0, topView, text, this.length - topView.length, (v, p) => v.domAtPos(p),
-                               (text, p) => new DOMPos(text, Math.min(p, text.nodeValue!.length)))
-  }
-
-  sync() { this.setDOM(this.widget.toDOM()) }
-
-  localPosFromDOM(node: Node, offset: number): number {
-    let {topView, text} = this.widget
-    if (!topView) return Math.min(offset, this.length)
-    return posFromDOMInCompositionTree(node, offset, topView, text, this.length - topView.length)
-  }
-
-  ignoreMutation(): boolean { return false }
-
-  get overrideDOMText() { return null }
-
-  coordsAt(pos: number, side: number) {
-    let {topView, text} = this.widget
-    if (!topView) return textCoords(text, pos, side)
-    return scanCompositionTree(pos, side, topView, text, this.length - topView.length,
-                               (v, pos, side) => v.coordsAt(pos, side),
-                               (text, pos, side) => textCoords(text, pos, side))
-  }
-
-  destroy() {
-    super.destroy()
-    this.widget.topView?.destroy()
-  }
-
-  get isEditable() { return true }
-
-  canReuseDOM() { return true }
-}
-
-// Uses the old structure of a chunk of content view frozen for
-// composition to try and find a reasonable DOM location for the given
-// offset.
-function scanCompositionTree<T>(pos: number, side: number, view: ContentView, text: Text, dLen: number,
-                                enterView: (view: ContentView, pos: number, side: number) => T,
-                                fromText: (text: Text, pos: number, side: number) => T): T {
-  if (view instanceof MarkView) {
-    for (let child = view.dom!.firstChild; child; child = child.nextSibling) {
-      let desc = ContentView.get(child)
-      if (!desc) {
-        let inner = scanCompositionNode(pos, side, child, fromText)
-        if (typeof inner != "number") return inner
-        pos = inner
-      } else {
-        let hasComp = contains(child, text)
-        let len = desc.length + (hasComp ? dLen : 0)
-        if (pos < len || pos == len && desc.getSide() <= 0)
-          return hasComp ? scanCompositionTree(pos, side, desc, text, dLen, enterView, fromText) : enterView(desc, pos, side)
-        pos -= len
-      }
-    }
-    return enterView(view, view.length, -1)
-  } else if (view.dom == text) {
-    return fromText(text, pos, side)
-  } else {
-    return enterView(view, pos, side)
-  }
-}
-
-function scanCompositionNode<T>(pos: number, side: number, node: Node,
-                                fromText: (text: Text, pos: number, side: number) => T): T | number {
-  if (node.nodeType == 3) {
-    let len = node.nodeValue!.length
-    if (pos <= len) return fromText(node as Text, pos, side)
-    pos -= len
-  } else if (node.nodeType == 1 && (node as HTMLElement).contentEditable != "false") {
-    for (let child = node.firstChild; child; child = child.nextSibling) {
-      let inner = scanCompositionNode(pos, side, child, fromText)
-      if (typeof inner != "number") return inner
-      pos = inner
-    }
-  }
-  return pos
-}
-
-function posFromDOMInCompositionTree(node: Node, offset: number, view: ContentView, text: Text, dLen: number): number {
-  if (view instanceof MarkView) {
-    let pos = 0
-    for (let child = view.dom!.firstChild; child; child = child.nextSibling) {
-      let childView = ContentView.get(child)
-      if (childView) {
-        let hasComp = contains(child, text) 
-        if (contains(child, node))
-          return pos + (hasComp ? posFromDOMInCompositionTree(node, offset, childView, text, dLen) 
-                                : childView.localPosFromDOM(node, offset))
-        pos += childView.length + (hasComp ? dLen : 0)
-      } else {
-        let inner = posFromDOMInOpaqueNode(node, offset, child)
-        if (inner.result != null) return pos + inner.result
-        pos += inner.size!
-      }
-    }
-  } else if (view.dom == text) {
-    return Math.min(offset, text.nodeValue!.length)
-  }
-  return view.localPosFromDOM(node, offset)
-}
-
-function posFromDOMInOpaqueNode(node: Node, offset: number, target: Node): {result?: number, size?: number} {
-  if (target.nodeType == 3) {
-    return node == target ? {result: offset} : {size: target.nodeValue!.length}
-  } else if (target.nodeType == 1 && (target as HTMLElement).contentEditable != "false") {
-    let pos = 0
-    for (let child = target.firstChild, i = 0;; child = child.nextSibling, i++) {
-      if (node == target && i == offset) return {result: pos}
-      if (!child) return {size: pos}
-      let inner = posFromDOMInOpaqueNode(node, offset, child)
-      if (inner.result != null) return {result: offset + inner.result}
-      pos += inner.size!
-    }
-  } else {
-    return target.contains(node) ? {result: 0} : {size: 0}
   }
 }
 

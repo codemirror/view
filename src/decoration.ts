@@ -1,5 +1,4 @@
 import {MapMode, RangeValue, Range, RangeSet} from "@codemirror/state"
-import {WidgetView} from "./inlineview"
 import {attrsEq, Attrs} from "./attributes"
 import {EditorView} from "./editorview"
 import {Rect} from "./dom"
@@ -144,9 +143,6 @@ export abstract class WidgetType {
   /// zero for before, greater than zero for after, and zero for
   /// directly at that position.
   coordsAt(dom: HTMLElement, pos: number, side: number): Rect | null { return null }
-
-  /// @internal
-  get customView(): null | typeof WidgetView { return null }
 
   /// @internal
   get isHidden() { return false }
