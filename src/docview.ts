@@ -547,7 +547,8 @@ function findCompositionRange(view: EditorView, changes: ChangeSet): Composition
     else if (parent != view.contentDOM)
       marks.push({node: parent, deco: new MarkDecoration({
         inclusive: true,
-        attributes: getAttrs(parent),
+        class: parent.className,
+        attributes: getAttrs(parent, true),
         tagName: parent.tagName.toLowerCase()
       })})
     else

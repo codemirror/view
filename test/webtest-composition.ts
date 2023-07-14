@@ -1,6 +1,6 @@
 import {tempView, requireFocus} from "./tempview.js"
 import {EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType} from "@codemirror/view"
-import {EditorState, EditorSelection, StateField} from "@codemirror/state"
+import {EditorState, EditorSelection, StateField, Range} from "@codemirror/state"
 import ist from "ist"
 
 function event(cm: EditorView, type: string) {
@@ -59,15 +59,18 @@ function wordDeco(state: EditorState): DecorationSet {
 
 const wordHighlighter = EditorView.decorations.compute(["doc"], wordDeco)
 
+function deco(deco: readonly Range<Decoration>[]) {
+  return ViewPlugin.define(() => ({
+    decorations: Decoration.set(deco),
+    update(update: ViewUpdate) { this.decorations = this.decorations.map(update.changes) }
+  }), {decorations: v => v.decorations})
+}
+
 function widgets(positions: number[], sides: number[]): ViewPlugin<any> {
   let xWidget = new class extends WidgetType {
     toDOM() { let s = document.createElement("var"); s.textContent = "×"; return s }
   }
-  let startDeco = Decoration.set(positions.map((p, i) => Decoration.widget({widget: xWidget, side: sides[i]}).range(p)))
-  return ViewPlugin.define(() => ({
-    decorations: startDeco,
-    update(update: ViewUpdate) { this.decorations = this.decorations.map(update.changes) }
-  }), {decorations: v => v.decorations})
+  return deco(positions.map((p, i) => Decoration.widget({widget: xWidget, side: sides[i]}).range(p)))
 }
 
 describe("Composition", () => {
@@ -180,6 +183,36 @@ describe("Composition", () => {
       ist(cm.contentDOM.querySelectorAll("var").length, 2)
     }})
     ist(cm.state.doc.toString(), "b")
+  })
+
+  it("works for composition in the middle of a mark", () => {
+    let cm = requireFocus(tempView("one three", [wordHighlighter, deco([Decoration.mark({class: "a"}).range(0, 9)])]))
+    compose(cm, () => up(cm.domAtPos(4).node as Text, "-"), [n => {
+      let a = n.parentNode as HTMLElement
+      ist(a.className, "a")
+      ist(a.innerHTML, '<span class="word">one</span> -<span class="word">three</span>')
+      return up(n, ".")
+    }])
+    ist(cm.state.doc.toString(), "one -.three")
+  })
+
+  it("works when composition rewraps the middle of a mark", () => {
+    let cm = requireFocus(tempView("one three", [wordHighlighter, deco([Decoration.mark({class: "a"}).range(0, 9)])]))
+    compose(cm, () => {
+      let space = cm.domAtPos(4).node as Text, a = space.parentNode as HTMLElement
+      let wrap1 = a.cloneNode(), wrap2 = a.cloneNode()
+      wrap2.appendChild(a.lastChild!)
+      a.parentNode!.insertBefore(wrap2, a.nextSibling)
+      wrap1.appendChild(space)
+      a.parentNode!.insertBefore(wrap1, a.nextSibling)
+      return up(space, "-")
+    }, [n => {
+      let a = n.parentNode as HTMLElement
+      ist(a.className, "a")
+      ist(a.innerHTML, '<span class="word">one</span> -<span class="word">three</span>')
+      return up(n, ".")
+    }])
+    ist(cm.state.doc.toString(), "one -.three")
   })
 
   it("cancels composition when a change fully overlaps with it", () => {
