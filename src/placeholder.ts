@@ -40,7 +40,9 @@ export function placeholder(content: string | HTMLElement): Extension {
     placeholder: DecorationSet
 
     constructor(readonly view: EditorView) {
-      this.placeholder = Decoration.set([Decoration.widget({widget: new Placeholder(content), side: 1}).range(0)])
+      this.placeholder = content
+        ? Decoration.set([Decoration.widget({widget: new Placeholder(content), side: 1}).range(0)])
+        : Decoration.none
     }
 
     update!: () => void // Kludge to convince TypeScript that this is a plugin value
