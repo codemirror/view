@@ -11,14 +11,15 @@ export function combineAttrs(source: Attrs, target: Attrs) {
 
 const noAttrs = Object.create(null)
 
-export function attrsEq(a: Attrs | null, b: Attrs | null): boolean {
+export function attrsEq(a: Attrs | null, b: Attrs | null, ignore?: string): boolean {
   if (a == b) return true
   if (!a) a = noAttrs
   if (!b) b = noAttrs
   let keysA = Object.keys(a!), keysB = Object.keys(b!)
-  if (keysA.length != keysB.length) return false
+  if (keysA.length - (ignore && keysA.indexOf(ignore) > -1 ? 1 : 0) !=
+      keysB.length - (ignore && keysB.indexOf(ignore) > -1 ? 1 : 0)) return false
   for (let key of keysA) {
-    if (keysB.indexOf(key) == -1 || a![key] !== b![key]) return false
+    if (key != ignore && (keysB.indexOf(key) == -1 || a![key] !== b![key])) return false
   }
   return true
 }
@@ -30,12 +31,11 @@ export function updateAttrs(dom: HTMLElement, prev: Attrs | null, attrs: Attrs |
   return !!changed
 }
 
-export function getAttrs(dom: HTMLElement, omitClass = false) {
+export function getAttrs(dom: HTMLElement) {
   let attrs = Object.create(null)
   for (let i = 0; i < dom.attributes.length; i++) {
     let attr = dom.attributes[i]
-    if (!omitClass || attr.name != "class")
-      attrs[attr.name] = attr.value
+    attrs[attr.name] = attr.value
   }
   return attrs
 }

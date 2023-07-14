@@ -285,8 +285,8 @@ export class MarkDecoration extends Decoration {
     return this == other ||
       other instanceof MarkDecoration &&
       this.tagName == other.tagName &&
-      this.class == other.class &&
-      attrsEq(this.attrs, other.attrs)
+      (this.class || this.attrs?.class) == (other.class || other.attrs?.class) &&
+      attrsEq(this.attrs, other.attrs, "class")
   }
 
   range(from: number, to = from) {
