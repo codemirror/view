@@ -67,6 +67,11 @@ export interface KeyBinding {
   /// which would cause the browser to view source instead when no
   /// selection can be undone).
   preventDefault?: boolean
+  /// When set to true, `stopPropagation` will be called on keyboard
+  /// events that have their `preventDefault` called in response to
+  /// this key binding (see also
+  /// [`preventDefault`](#view.KeyBinding.preventDefault)).
+  stopPropagation?: boolean
 }
 
 type PlatformName = "mac" | "win" | "linux" | "key"
@@ -102,7 +107,11 @@ function modifiers(name: string, event: KeyboardEvent, shift: boolean) {
   return name
 }
 
-type Binding = {preventDefault: boolean, run: ((view: EditorView, event: KeyboardEvent) => boolean)[]}
+type Binding = {
+  preventDefault: boolean,
+  stopPropagation: boolean,
+  run: ((view: EditorView, event: KeyboardEvent) => boolean)[]
+}
 
 // In each scope, the `_all` property is used for bindings that apply
 // to all keys.
@@ -156,7 +165,8 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
       throw new Error("Key binding " + name + " is used both as a regular binding and as a multi-stroke prefix")
   }
 
-  let add = (scope: string, key: string, command: Command | undefined, preventDefault?: boolean) => {
+  let add = (scope: string, key: string, command: Command | undefined,
+             preventDefault?: boolean, stopPropagation?: boolean) => {
     let scopeObj = bound[scope] || (bound[scope] = Object.create(null))
     let parts = key.split(/ (?!$)/).map(k => normalizeKeyName(k, platform))
     for (let i = 1; i < parts.length; i++) {
@@ -164,6 +174,7 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
       checkPrefix(prefix, true)
       if (!scopeObj[prefix]) scopeObj[prefix] = {
         preventDefault: true,
+        stopPropagation: false,
         run: [(view: EditorView) => {
           let ourObj = storedPrefix = {view, prefix, scope}
           setTimeout(() => { if (storedPrefix == ourObj) storedPrefix = null }, PrefixTimeout)
@@ -173,23 +184,28 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
     }
     let full = parts.join(" ")
     checkPrefix(full, false)
-    let binding = scopeObj[full] || (scopeObj[full] = {preventDefault: false, run: scopeObj._any?.run?.slice() || []})
+    let binding = scopeObj[full] || (scopeObj[full] = {
+      preventDefault: false,
+      stopPropagation: false,
+      run: scopeObj._any?.run?.slice() || []
+    })
     if (command) binding.run.push(command)
     if (preventDefault) binding.preventDefault = true
+    if (stopPropagation) binding.stopPropagation = true
   }
 
   for (let b of bindings) {
     let scopes = b.scope ? b.scope.split(" ") : ["editor"]
     if (b.any) for (let scope of scopes) {
       let scopeObj = bound[scope] || (bound[scope] = Object.create(null))
-      if (!scopeObj._any) scopeObj._any = {preventDefault: false, run: []}
+      if (!scopeObj._any) scopeObj._any = {preventDefault: false, stopPropagation: false, run: []}
       for (let key in scopeObj) scopeObj[key].run.push(b.any)
     }
     let name = b[platform] || b.key
     if (!name) continue
     for (let scope of scopes) {
-      add(scope, name, b.run, b.preventDefault)
-      if (b.shift) add(scope, "Shift-" + name, b.shift, b.preventDefault)
+      add(scope, name, b.run, b.preventDefault, b.stopPropagation)
+      if (b.shift) add(scope, "Shift-" + name, b.shift, b.preventDefault, b.stopPropagation)
     }
   }
   return bound
@@ -198,11 +214,13 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
 function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope: string): boolean {
   let name = keyName(event)
   let charCode = codePointAt(name, 0), isChar = codePointSize(charCode) == name.length && name != " "
-  let prefix = "", fallthrough = false
+  let prefix = "", handled = false, prevented = false, stopPropagation = false
   if (storedPrefix && storedPrefix.view == view && storedPrefix.scope == scope) {
     prefix = storedPrefix.prefix + " "
-    if (fallthrough = modifierCodes.indexOf(event.keyCode) < 0)
+    if (modifierCodes.indexOf(event.keyCode) < 0) {
+      prevented = true
       storedPrefix = null
+    }
   }
 
   let ran: Set<(view: EditorView, event: KeyboardEvent) => boolean> = new Set
@@ -210,27 +228,41 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
     if (binding) {
       for (let cmd of binding.run) if (!ran.has(cmd)) {
         ran.add(cmd)
-        if (cmd(view, event)) return true
+        if (cmd(view, event)) {
+          if (binding.stopPropagation) stopPropagation = true
+          return true
+        }
       }
-      if (binding.preventDefault) fallthrough = true
+      if (binding.preventDefault) {
+        if (binding.stopPropagation) stopPropagation = true
+        prevented = true
+      }
     }
     return false
   }
 
   let scopeObj = map[scope], baseName, shiftName
   if (scopeObj) {
-    if (runFor(scopeObj[prefix + modifiers(name, event, !isChar)])) return true
-    if (isChar && (event.altKey || event.metaKey || event.ctrlKey) &&
-        // Ctrl-Alt may be used for AltGr on Windows
-        !(browser.windows && event.ctrlKey && event.altKey) &&
-        (baseName = base[event.keyCode]) && baseName != name) {
-      if (runFor(scopeObj[prefix + modifiers(baseName, event, true)])) return true
-      else if (event.shiftKey && (shiftName = shift[event.keyCode]) != name && shiftName != baseName &&
-               runFor(scopeObj[prefix + modifiers(shiftName, event, false)])) return true
-    } else if (isChar && event.shiftKey) {
-      if (runFor(scopeObj[prefix + modifiers(name, event, true)])) return true
+    if (runFor(scopeObj[prefix + modifiers(name, event, !isChar)])) {
+      handled = true
+    } else if (isChar && (event.altKey || event.metaKey || event.ctrlKey) &&
+               // Ctrl-Alt may be used for AltGr on Windows
+               !(browser.windows && event.ctrlKey && event.altKey) &&
+               (baseName = base[event.keyCode]) && baseName != name) {
+      if (runFor(scopeObj[prefix + modifiers(baseName, event, true)])) {
+        handled = true
+      } else if (event.shiftKey && (shiftName = shift[event.keyCode]) != name && shiftName != baseName &&
+                 runFor(scopeObj[prefix + modifiers(shiftName, event, false)])) {
+        handled = true
+      }
+    } else if (isChar && event.shiftKey &&
+               runFor(scopeObj[prefix + modifiers(name, event, true)])) {
+      handled = true
     }
-    if (runFor(scopeObj._any)) return true
+    if (!handled && runFor(scopeObj._any)) handled = true
   }
-  return fallthrough
+
+  if (prevented) handled = true
+  if (handled && stopPropagation) event.stopPropagation()
+  return handled
 }
