@@ -1,3 +1,21 @@
+## 6.15.0 (2023-07-17)
+
+### Bug fixes
+
+Fix dragging a selection from inside the current selection on macOS.
+
+Fix an issue that could cause the scroll position to jump wildly
+
+Don't try to scroll fixed-positioned elements into view by scrolling their parent elements.
+
+Fix a bug that caused the cursor to be hidden when showing a placeholder that consisted of the empty string.
+
+Resolve some issues where composition could incorrectly affect nearby replaced content.
+
+### New features
+
+Key bindings can now set a `stopPropagation` field to cause the view to stop the key event propagation when it considers the event handled.
+
 ## 6.14.1 (2023-07-06)
 
 ### Bug fixes
