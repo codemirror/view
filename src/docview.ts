@@ -527,7 +527,8 @@ export function findCompositionNode(view: EditorView): {from: number, to: number
       }
     }
   }
-  return {from, to, node: textNode}
+  let {main} = view.state.selection
+  return from > main.head || to < main.head ? null : {from, to, node: textNode}
 }
 
 function findCompositionRange(view: EditorView, changes: ChangeSet): Composition | null {
