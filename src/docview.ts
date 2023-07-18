@@ -147,9 +147,16 @@ export class DocView extends ContentView {
         breakAtStart = before.breakAtStart
         openStart = before.openStart; openEnd = after.openEnd
         let compLine = this.compositionView(composition)
-        compLine.merge(compLine.length, compLine.length, after.content[0], false, after.openStart, 0)
-        compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, before.openEnd)
-        content = before.content.slice(0, before.content.length - 1).concat(compLine).concat(after.content.slice(1))
+        if (after.content.length) {
+          compLine.breakAfter = after.content[0].breakAfter
+          if (compLine.merge(compLine.length, compLine.length, after.content[0], false, after.openStart, 0))
+            after.content.shift()
+        }
+        if (before.content.length) {
+          if (compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, before.openEnd))
+            before.content.pop()
+        }
+        content = before.content.concat(compLine).concat(after.content)
       } else {
         ;({content, breakAtStart, openStart, openEnd} =
           ContentBuilder.build(this.view.state.doc, fromB, toB, this.decorations, this.dynamicDecorationMap))
@@ -176,8 +183,10 @@ export class DocView extends ContentView {
       cView.flags |= ViewFlag.Composition
       this.markedForComposition.add(cView)
       let prev = ContentView.get(dom)
-      if (prev) prev.dom = null
-      cView.setDOM(dom)
+      if (prev != cView) {
+        if (prev) prev.dom = null
+        cView.setDOM(dom)
+      }
     }
     let pos = this.childPos(composition.range.fromB, 1)
     let cView: ContentView = this.children[pos.i]

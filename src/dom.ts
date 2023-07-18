@@ -293,7 +293,7 @@ export function getRoot(node: Node | null | undefined): DocumentOrShadowRoot | n
 }
 
 export function clearAttributes(node: HTMLElement) {
-  while(node.attributes.length) node.removeAttributeNode(node.attributes[0])
+  while (node.attributes.length) node.removeAttributeNode(node.attributes[0])
 }
 
 export function atElementStart(doc: HTMLElement, selection: SelectionRange) {
