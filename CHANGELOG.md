@@ -1,3 +1,9 @@
+## 6.15.2 (2023-07-18)
+
+### Bug fixes
+
+Fix the check that made sure compositions are dropped when the selection is moved.
+
 ## 6.15.1 (2023-07-18)
 
 ### Bug fixes
