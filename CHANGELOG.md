@@ -1,3 +1,9 @@
+## 6.15.1 (2023-07-18)
+
+### Bug fixes
+
+Fix a regression that could cause the composition content to be drawn incorrectly.
+
 ## 6.15.0 (2023-07-17)
 
 ### Bug fixes
