@@ -15,7 +15,7 @@ function up(node: Text, text: string = "", from = node.nodeValue!.length, to = f
 }
 
 function hasCompositionDeco(cm: EditorView) {
-  return cm.docView.hasComposition
+  return !!cm.docView.hasComposition
 }
 
 function compose(cm: EditorView, start: () => Text,

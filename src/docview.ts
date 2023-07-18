@@ -26,7 +26,7 @@ export class DocView extends ContentView {
 
   decorations: readonly DecorationSet[] = []
   dynamicDecorationMap: boolean[] = []
-  hasComposition = false
+  hasComposition: {from: number, to: number} | null = null
   markedForComposition: Set<ContentView> = new Set
 
   // Track a minimum width for the editor. When measuring sizes in
@@ -76,8 +76,13 @@ export class DocView extends ContentView {
     }
 
     let composition = this.view.inputState.composing < 0 ? null : findCompositionRange(this.view, update.changes)
-    if (this.hasComposition) this.markedForComposition.clear()
-    this.hasComposition = !!composition
+    if (this.hasComposition) {
+      this.markedForComposition.clear()
+      let {from, to} = this.hasComposition
+      changedRanges = new ChangedRange(from, to, update.changes.mapPos(from, -1), update.changes.mapPos(to, 1))
+        .addToSet(changedRanges.slice())
+    }
+    this.hasComposition = composition ? {from: composition.range.fromB, to: composition.range.toB} : null
 
     // When the DOM nodes around the selection are moved to another
     // parent, Chrome sometimes reports a different selection through
