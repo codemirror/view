@@ -1,3 +1,9 @@
+## 6.15.3 (2023-07-18)
+
+### Bug fixes
+
+Fix another crash regression for compositions before line breaks.
+
 ## 6.15.2 (2023-07-18)
 
 ### Bug fixes
