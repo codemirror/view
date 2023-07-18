@@ -152,14 +152,16 @@ export class DocView extends ContentView {
         breakAtStart = before.breakAtStart
         openStart = before.openStart; openEnd = after.openEnd
         let compLine = this.compositionView(composition)
-        if (after.content.length) {
+        if (after.breakAtStart) {
+          compLine.breakAfter = 1
+        } else if (after.content.length &&
+                   compLine.merge(compLine.length, compLine.length, after.content[0], false, after.openStart, 0)) {
           compLine.breakAfter = after.content[0].breakAfter
-          if (compLine.merge(compLine.length, compLine.length, after.content[0], false, after.openStart, 0))
-            after.content.shift()
+          after.content.shift()
         }
-        if (before.content.length) {
-          if (compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, before.openEnd))
-            before.content.pop()
+        if (before.content.length &&
+            compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, before.openEnd)) {
+          before.content.pop()
         }
         content = before.content.concat(compLine).concat(after.content)
       } else {

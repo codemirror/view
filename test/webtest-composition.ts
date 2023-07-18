@@ -269,6 +269,23 @@ describe("Composition", () => {
     ist(cm.state.doc.toString(), "one two \nthreexyz")
   })
 
+  it("works before a block widget", () => {
+    let widget = new class extends WidgetType {
+      toDOM() { let d = document.createElement("div"); d.textContent = "---"; return d }
+    }
+    let cm = requireFocus(tempView("abcd", [deco([Decoration.widget({widget, side: 1}).range(2)])]))
+    compose(cm, () => up(cm.domAtPos(1).node as Text, "p"), [n => up(n, "q"), n => up(n, "r")])
+    ist(cm.state.doc.toString(), "abpqrcd")
+  })
+
+  it("properly handles line break insertion at end of composition", () => {
+    let cm = requireFocus(tempView("one two three", [wordHighlighter]))
+    compose(cm, () => up(cm.domAtPos(5).node as Text, "o"), [
+      () => cm.dispatch({changes: {from: 8, insert: "\n"}})
+    ])
+    ist(cm.state.doc.toString(), "one twoo\n three")
+  })
+
   it("can handle browsers inserting new wrapper nodes around the composition", () => {
     let cm = requireFocus(tempView("one two", [wordHighlighter]))
     compose(cm, () => {
