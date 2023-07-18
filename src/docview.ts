@@ -527,8 +527,7 @@ export function findCompositionNode(view: EditorView): {from: number, to: number
       }
     }
   }
-  let {main} = view.state.selection
-  return from > main.head || to < main.head ? null : {from, to, node: textNode}
+  return {from, to, node: textNode}
 }
 
 function findCompositionRange(view: EditorView, changes: ChangeSet): Composition | null {
@@ -549,7 +548,8 @@ function findCompositionRange(view: EditorView, changes: ChangeSet): Composition
     // Not found
     else return null
   }
-  if (view.state.doc.sliceString(fromB, toB) != text) return null
+  let {main} = view.state.selection
+  if (view.state.doc.sliceString(fromB, toB) != text || fromB > main.head || toB < main.head) return null
 
   let marks: {node: HTMLElement, deco: MarkDecoration}[] = []
   let range = new ChangedRange(fromA, toA, fromB, toB)
