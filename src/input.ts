@@ -683,8 +683,9 @@ handlers.paste = (view: EditorView, event: ClipboardEvent) => {
   if (view.state.readOnly) return event.preventDefault()
   view.observer.flush()
   let data = brokenClipboardAPI ? null : event.clipboardData
-  if (data) {
-    doPaste(view, data.getData("text/plain") || data.getData("text/uri-text"))
+  let dataFromClipboard = data && (data.getData("text/plain") || data.getData("text/uri-text"))
+  if (dataFromClipboard) {
+    doPaste(view, dataFromClipboard)
     event.preventDefault()
   } else {
     capturePaste(view)
