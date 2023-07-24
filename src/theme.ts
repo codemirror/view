@@ -150,7 +150,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     display: "flex",
     height: "100%",
     boxSizing: "border-box",
-    left: 0,
+    insetInlineStart: 0,
     zIndex: 200
   },
 
