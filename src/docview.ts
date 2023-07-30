@@ -1,4 +1,4 @@
-import {ChangeSet, RangeSet} from "@codemirror/state"
+import {ChangeSet, RangeSet, findClusterBreak} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
 import {DOMReader, LineBreakPlaceholder} from "./domreader"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
@@ -8,7 +8,7 @@ import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, BlockType, addRange, MarkDecoration} from "./decoration"
 import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
-        getSelection, hasSelection} from "./dom"
+        getSelection, hasSelection, textRange} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet,
         ChangedRange, ScrollTarget, getScrollMargins} from "./extension"
 import {EditorView} from "./editorview"
@@ -348,6 +348,24 @@ export class DocView extends ContentView {
         return child.coordsAt(pos - start, side)
       off = start
     }
+  }
+
+  coordsForChar(pos: number) {
+    let {i, off} = this.childPos(pos, 1), child: ContentView = this.children[i]
+    if (!(child instanceof LineView)) return null
+    while (child.children.length) {
+      let {i, off: childOff} = child.childPos(off, 1)
+      for (;; i++) {
+        if (i == child.children.length) return null
+        if ((child = child.children[i]).length) break
+      }
+      off = childOff
+    }
+    if (!(child instanceof TextView)) return null
+    let end = findClusterBreak(child.text, off)
+    if (end == off) return null
+    let rects = textRange(child.dom as Text, off, end).getClientRects()
+    return !rects.length || rects[0].top >= rects[0].bottom ? null : rects[0]
   }
 
   measureVisibleLineHeights(viewport: {from: number, to: number}) {

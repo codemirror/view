@@ -691,6 +691,16 @@ export class EditorView {
     return flattenRect(rect, (span.dir == Direction.LTR) == (side > 0))
   }
 
+  /// Return the rectangle around a given character. If `pos` does not
+  /// point in front of a character that is in the viewport and
+  /// rendered (i.e. not replaced, not a line break), this will return
+  /// null. For space characters that are a line wrap point, this will
+  /// return the position before the line break.
+  coordsForChar(pos: number): Rect | null {
+    this.readMeasured()
+    return this.docView.coordsForChar(pos)
+  }
+
   /// The default width of a character in the editor. May not
   /// accurately reflect the width of all characters (given variable
   /// width fonts or styling of invididual ranges).

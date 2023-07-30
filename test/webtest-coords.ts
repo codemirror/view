@@ -130,3 +130,60 @@ describe("EditorView coords", () => {
     ist(near(cm.coordsAtPos(3, -1)!.left, cm.coordsAtPos(3, 1)!.left - 10))
   })
 })
+
+describe("coordsForChar", () => {
+  function near(a: number, b: number) {
+    return Math.abs(a - b) < 0.01
+  }
+
+  it("returns reasonable coords", () => {
+    let cm = tempView("abc\ndef")
+    let a = cm.coordsForChar(0)!, c = cm.coordsForChar(2)!, d = cm.coordsForChar(4)!, f = cm.coordsForChar(6)!
+    ist(a.right, a.left, ">")
+    ist(a.bottom, a.top, ">")
+    ist(a.top, c.top, near)
+    ist(a.bottom, c.bottom, near)
+    ist(c.left, a.right, ">")
+    ist(a.bottom, d.bottom, "<")
+    ist(d.top, f.top, near)
+    ist(f.left, c.left, near)
+  })
+
+  it("returns null for non-rendered characters", () => {
+    let cm = tempView("abc\ndef\n", [deco(Decoration.replace({}).range(1, 2))])
+    ist(cm.coordsForChar(1), null)
+    ist(cm.coordsForChar(3), null)
+    ist(cm.coordsForChar(8), null)
+  })
+
+  it("returns proper rectangles in right-to-left text", () => {
+    let cm = tempView("شاهد")
+    let first = cm.coordsForChar(0)!, last = cm.coordsForChar(cm.state.doc.length - 1)!
+    ist(first.left, first.right, "<")
+    ist(last.left, last.right, "<")
+    ist(first.left, last.right, ">")
+  })
+
+  it("doesn't include space taken up by widgets", () => {
+    let cm = tempView("abc", [deco(Decoration.widget({widget: inline, side: 1}).range(1),
+                                   Decoration.widget({widget: inline, side: -1}).range(2))])
+    let a = cm.coordsForChar(0)!, b = cm.coordsForChar(1)!, c = cm.coordsForChar(2)!
+    let ws = cm.contentDOM.querySelectorAll(".widget") as NodeListOf<HTMLElement>
+    let w1 = ws[0].getBoundingClientRect(), w2 = ws[1].getBoundingClientRect()
+    let ε = 0.01
+    ist(a.right - ε, w1.left, "<=")
+    ist(b.left + ε, w1.right, ">=")
+    ist(b.right - ε, w2.left, "<=")
+    ist(c.left + ε, w2.right, ">=")
+  })
+
+  it("returns positions for wrap points", () => {
+    let cm = tempView("aaaaaaaaa bbbbbbbbbbbbb", [EditorView.theme({"&": {maxWidth: "7em"}}), EditorView.lineWrapping])
+    let a = cm.coordsForChar(0)!, b = cm.coordsForChar(10)!, wrap = cm.coordsForChar(9)!
+    ist(a.top, b.top, "<")
+    ist(wrap)
+    ist(wrap.top, a.top, near)
+    ist(wrap.top, b.top, "<")
+    ist(wrap.left, a.right, ">")
+  })
+})
