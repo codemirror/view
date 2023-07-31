@@ -1,3 +1,13 @@
+## 6.16.0 (2023-07-31)
+
+### Bug fixes
+
+Fix an issue that made the gutter not stick in place when the editor was in a right-to-left context.
+
+### New features
+
+The new `EditorView.coordsForChar` method returns the client rectangle for a given character in the editor.
+
 ## 6.15.3 (2023-07-18)
 
 ### Bug fixes
