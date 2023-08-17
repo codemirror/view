@@ -115,7 +115,8 @@ export class BidiSpan {
 const types: T[] = []
 
 export function computeOrder(line: string, direction: Direction) {
-  let len = line.length, outerType = direction == LTR ? T.L : T.R, oppositeType = direction == LTR ? T.R : T.L
+  let len = line.length
+  let outerType = (direction == LTR ? T.L : T.R) as T, oppositeType = direction == LTR ? T.R : T.L
 
   if (!line || outerType == T.L && !BidiRE.test(line)) return trivialOrder(len)
 
