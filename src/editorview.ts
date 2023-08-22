@@ -504,7 +504,8 @@ export class EditorView {
 
   private mountStyles() {
     this.styleModules = this.state.facet(styleModule)
-    StyleModule.mount(this.root, this.styleModules.concat(baseTheme).reverse())
+    let nonce = this.state.facet(EditorView.cspNonce)
+    StyleModule.mount(this.root, this.styleModules.concat(baseTheme).reverse(), nonce ? {nonce} : undefined)
   }
 
   private readMeasured() {
@@ -963,6 +964,11 @@ export class EditorView {
   static baseTheme(spec: {[selector: string]: StyleSpec}): Extension {
     return Prec.lowest(styleModule.of(buildTheme("." + baseThemeID, spec, lightDarkIDs)))
   }
+
+  /// Provides a Content Security Policy nonce to use when creating
+  /// the style sheets for the editor. Holds the empty string when no
+  /// nonce has been provided.
+  static cspNonce = Facet.define<string, string>({combine: values => values.length ? values[0] : ""})
 
   /// Facet that provides additional DOM attributes for the editor's
   /// editable DOM element.
