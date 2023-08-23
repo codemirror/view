@@ -25,10 +25,18 @@ export function attrsEq(a: Attrs | null, b: Attrs | null, ignore?: string): bool
 }
 
 export function updateAttrs(dom: HTMLElement, prev: Attrs | null, attrs: Attrs | null) {
-  let changed = null
-  if (prev) for (let name in prev) if (!(attrs && name in attrs)) dom.removeAttribute(changed = name)
-  if (attrs) for (let name in attrs) if (!(prev && prev[name] == attrs[name])) dom.setAttribute(changed = name, attrs[name])
-  return !!changed
+  let changed = false
+  if (prev) for (let name in prev) if (!(attrs && name in attrs)) {
+    changed = true
+    if (name == "style") dom.style.cssText = ""
+    else dom.removeAttribute(name)
+  }
+  if (attrs) for (let name in attrs) if (!(prev && prev[name] == attrs[name])) {
+    changed = true
+    if (name == "style") dom.style.cssText = attrs[name]
+    else dom.setAttribute(name, attrs[name])
+  }
+  return changed
 }
 
 export function getAttrs(dom: HTMLElement) {
