@@ -111,132 +111,163 @@ export class BidiSpan {
   }
 }
 
+// Arrays of isolates are always sorted by position. Isolates are
+// never empty. Nested isolates don't stick out of their parent.
+type Isolate = {from: number, to: number, direction: Direction, inner: readonly Isolate[]}
+
 // Reused array of character types
 const types: T[] = []
 
-export function computeOrder(line: string, direction: Direction) {
-  let len = line.length
-  let outerType = (direction == LTR ? T.L : T.R) as T, oppositeType = direction == LTR ? T.R : T.L
-
-  if (!line || outerType == T.L && !BidiRE.test(line)) return trivialOrder(len)
-
-  // W1. Examine each non-spacing mark (NSM) in the level run, and
-  // change the type of the NSM to the type of the previous
-  // character. If the NSM is at the start of the level run, it will
-  // get the type of sor.
-  // W2. Search backwards from each instance of a European number
-  // until the first strong type (R, L, AL, or sor) is found. If an
-  // AL is found, change the type of the European number to Arabic
-  // number.
-  // W3. Change all ALs to R.
-  // (Left after this: L, R, EN, AN, ET, CS, NI)
-  for (let i = 0, prev = outerType, prevStrong = outerType; i < len; i++) {
-    let type = charType(line.charCodeAt(i))
-    if (type == T.NSM) type = prev
-    else if (type == T.EN && prevStrong == T.AL) type = T.AN
-    types[i] = type == T.AL ? T.R : type
-    if (type & T.Strong) prevStrong = type
-    prev = type
-  }
-
-  // W5. A sequence of European terminators adjacent to European
-  // numbers changes to all European numbers.
-  // W6. Otherwise, separators and terminators change to Other
-  // Neutral.
-  // W7. Search backwards from each instance of a European number
-  // until the first strong type (R, L, or sor) is found. If an L is
-  // found, then change the type of the European number to L.
-  // (Left after this: L, R, EN+AN, NI)
-  for (let i = 0, prev = outerType, prevStrong = outerType; i < len; i++) {
-    let type = types[i]
-    if (type == T.CS) {
-      if (i < len - 1 && prev == types[i + 1] && (prev & T.Num)) type = types[i] = prev
-      else types[i] = T.NI
-    } else if (type == T.ET) {
-      let end = i + 1
-      while (end < len && types[end] == T.ET) end++
-      let replace = (i && prev == T.EN) || (end < len && types[end] == T.EN) ? (prevStrong == T.L ? T.L : T.EN) : T.NI
-      for (let j = i; j < end; j++) types[j] = replace
-      i = end - 1
-    } else if (type == T.EN && prevStrong == T.L) {
-      types[i] = T.L
+// Fill in the character types (in `types`) from `from` to `to` and
+// apply W normalization rules.
+function computeCharTypes(line: string, from: number, to: number, isolates: readonly Isolate[], outerType: T) {
+  for (let iI = 0; iI <= isolates.length; iI++) {
+    let sFrom = iI ? isolates[iI].to : from, sTo = iI < isolates.length ? isolates[iI].from : to
+    let prevType = iI ? T.NI : outerType
+    
+    // W1. Examine each non-spacing mark (NSM) in the level run, and
+    // change the type of the NSM to the type of the previous
+    // character. If the NSM is at the start of the level run, it will
+    // get the type of sor.
+    // W2. Search backwards from each instance of a European number
+    // until the first strong type (R, L, AL, or sor) is found. If an
+    // AL is found, change the type of the European number to Arabic
+    // number.
+    // W3. Change all ALs to R.
+    // (Left after this: L, R, EN, AN, ET, CS, NI)
+    for (let i = sFrom, prev = prevType, prevStrong = prevType; i < sTo; i++) {
+      let type = charType(line.charCodeAt(i))
+      if (type == T.NSM) type = prev
+      else if (type == T.EN && prevStrong == T.AL) type = T.AN
+      types[i] = type == T.AL ? T.R : type
+      if (type & T.Strong) prevStrong = type
+      prev = type
     }
-    prev = type
-    if (type & T.Strong) prevStrong = type
-  }
 
-  // N0. Process bracket pairs in an isolating run sequence
-  // sequentially in the logical order of the text positions of the
-  // opening paired brackets using the logic given below. Within this
-  // scope, bidirectional types EN and AN are treated as R.
-  for (let i = 0, sI = 0, context = 0, ch, br, type; i < len; i++) {
-    // Keeps [startIndex, type, strongSeen] triples for each open
-    // bracket on BracketStack.
-    if (br = Brackets[ch = line.charCodeAt(i)]) {
-      if (br < 0) { // Closing bracket
+    // W5. A sequence of European terminators adjacent to European
+    // numbers changes to all European numbers.
+    // W6. Otherwise, separators and terminators change to Other
+    // Neutral.
+    // W7. Search backwards from each instance of a European number
+    // until the first strong type (R, L, or sor) is found. If an L is
+    // found, then change the type of the European number to L.
+    // (Left after this: L, R, EN+AN, NI)
+    for (let i = sFrom, prev = prevType, prevStrong = prevType; i < sTo; i++) {
+      let type = types[i]
+      if (type == T.CS) {
+        if (i < sTo - 1 && prev == types[i + 1] && (prev & T.Num)) type = types[i] = prev
+        else types[i] = T.NI
+      } else if (type == T.ET) {
+        let end = i + 1
+        while (end < sTo && types[end] == T.ET) end++
+        let replace = (i && prev == T.EN) || (end < to && types[end] == T.EN) ? (prevStrong == T.L ? T.L : T.EN) : T.NI
+        for (let j = i; j < end; j++) types[j] = replace
+        i = end - 1
+      } else if (type == T.EN && prevStrong == T.L) {
+        types[i] = T.L
+      }
+      prev = type
+      if (type & T.Strong) prevStrong = type
+    }
+  }
+}
+
+// Process brackets throughout a run sequence.
+function processBracketPairs(line: string, ranges: number[], outerType: T) {
+  let oppositeType = outerType == T.L ? T.R : T.L
+
+  for (let r = 0, sI = 0, context = 0; r < ranges.length;) {
+    let from = ranges[r++], to = ranges[r++]
+    // N0. Process bracket pairs in an isolating run sequence
+    // sequentially in the logical order of the text positions of the
+    // opening paired brackets using the logic given below. Within this
+    // scope, bidirectional types EN and AN are treated as R.
+    for (let i = from, ch, br, type; i < to; i++) {
+      // Keeps [startIndex, type, strongSeen] triples for each open
+      // bracket on BracketStack.
+      if (br = Brackets[ch = line.charCodeAt(i)]) {
+        if (br < 0) { // Closing bracket
+          for (let sJ = sI - 3; sJ >= 0; sJ -= 3) {
+            if (BracketStack[sJ + 1] == -br) {
+              let flags = BracketStack[sJ + 2]
+              let type = (flags & Bracketed.EmbedInside) ? outerType :
+                !(flags & Bracketed.OppositeInside) ? 0 :
+                (flags & Bracketed.OppositeBefore) ? oppositeType : outerType
+              if (type) types[i] = types[BracketStack[sJ]] = type
+              sI = sJ
+              break
+            }
+          }
+        } else if (BracketStack.length == Bracketed.MaxDepth) {
+          break
+        } else {
+          BracketStack[sI++] = i
+          BracketStack[sI++] = ch
+          BracketStack[sI++] = context
+        }
+      } else if ((type = types[i]) == T.R || type == T.L) {
+        let embed = type == outerType
+        context = embed ? 0 : Bracketed.OppositeBefore
         for (let sJ = sI - 3; sJ >= 0; sJ -= 3) {
-          if (BracketStack[sJ + 1] == -br) {
-            let flags = BracketStack[sJ + 2]
-            let type = (flags & Bracketed.EmbedInside) ? outerType :
-              !(flags & Bracketed.OppositeInside) ? 0 :
-              (flags & Bracketed.OppositeBefore) ? oppositeType : outerType
-            if (type) types[i] = types[BracketStack[sJ]] = type
-            sI = sJ
+          let cur = BracketStack[sJ + 2]
+          if (cur & Bracketed.EmbedInside) break
+          if (embed) {
+            BracketStack[sJ + 2] |= Bracketed.EmbedInside
+          } else {
+            if (cur & Bracketed.OppositeInside) break
+            BracketStack[sJ + 2] |= Bracketed.OppositeInside
+          }
+        }
+      }
+    }
+  }
+}
+
+function processNeutrals(ranges: number[], outerType: T) {
+  for (let r = 0, prev = outerType; r < ranges.length;) {
+    let from = ranges[r++], to = ranges[r++]
+    // N1. A sequence of neutrals takes the direction of the
+    // surrounding strong text if the text on both sides has the same
+    // direction. European and Arabic numbers act as if they were R in
+    // terms of their influence on neutrals. Start-of-level-run (sor)
+    // and end-of-level-run (eor) are used at level run boundaries.
+    // N2. Any remaining neutrals take the embedding direction.
+    // (Left after this: L, R, EN+AN)
+    for (let i = from; i < to;) {
+      let type = types[i]
+      if (type == T.NI) {
+        let end = i + 1
+        for (;;) {
+          if (end == to) {
+            if (r == ranges.length) break
+            end = ranges[r++]; to = ranges[r++]
+          } else if (types[end] == T.NI) {
+            end++
+          } else {
             break
           }
         }
-      } else if (BracketStack.length == Bracketed.MaxDepth) {
-        break
-      } else {
-        BracketStack[sI++] = i
-        BracketStack[sI++] = ch
-        BracketStack[sI++] = context
-      }
-    } else if ((type = types[i]) == T.R || type == T.L) {
-      let embed = type == outerType
-      context = embed ? 0 : Bracketed.OppositeBefore
-      for (let sJ = sI - 3; sJ >= 0; sJ -= 3) {
-        let cur = BracketStack[sJ + 2]
-        if (cur & Bracketed.EmbedInside) break
-        if (embed) {
-          BracketStack[sJ + 2] |= Bracketed.EmbedInside
-        } else {
-          if (cur & Bracketed.OppositeInside) break
-          BracketStack[sJ + 2] |= Bracketed.OppositeInside
+        let beforeL = prev == T.L
+        let afterL = (end < ranges[ranges.length - 1] ? types[end] : outerType) == T.L
+        let replace = beforeL == afterL ? (beforeL ? T.L : T.R) : outerType
+        for (let j = end, rJ = r, fromJ = ranges[r - 2]; j > i;) {
+          if (j == fromJ) { j = ranges[--rJ]; fromJ = ranges[--rJ] }
+          types[--j] = replace
         }
+        i = end
+      } else {
+        prev = type
+        i++
       }
     }
   }
+}
 
-  // N1. A sequence of neutrals takes the direction of the
-  // surrounding strong text if the text on both sides has the same
-  // direction. European and Arabic numbers act as if they were R in
-  // terms of their influence on neutrals. Start-of-level-run (sor)
-  // and end-of-level-run (eor) are used at level run boundaries.
-  // N2. Any remaining neutrals take the embedding direction.
-  // (Left after this: L, R, EN+AN)
-  for (let i = 0; i < len; i++) {
-    if (types[i] == T.NI) {
-      let end = i + 1
-      while (end < len && types[end] == T.NI) end++
-      let beforeL = (i ? types[i - 1] : outerType) == T.L
-      let afterL = (end < len ? types[end] : outerType) == T.L
-      let replace = beforeL == afterL ? (beforeL ? T.L : T.R) : outerType
-      for (let j = i; j < end; j++) types[j] = replace
-      i = end - 1
-    }
-  }
-
-  // Here we depart from the documented algorithm, in order to avoid
-  // building up an actual levels array. Since there are only three
-  // levels (0, 1, 2) in an implementation that doesn't take
-  // explicit embedding into account, we can build up the order on
-  // the fly, without following the level-based algorithm.
-  let order = []
-  if (outerType == T.L) {
-    for (let i = 0; i < len;) {
+function emitSimpleSpans(from: number, to: number, direction: Direction, order: BidiSpan[]) {
+  if (direction == Direction.LTR) {
+    for (let i = from; i < to;) {
       let start = i, rtl = types[i++] != T.L
-      while (i < len && rtl == (types[i] != T.L)) i++
+      while (i < to && rtl == (types[i] != T.L)) i++
       if (rtl) {
         for (let j = i; j > start;) {
           let end = j, l = types[--j] != T.R
@@ -248,12 +279,101 @@ export function computeOrder(line: string, direction: Direction) {
       }
     }
   } else {
-    for (let i = 0; i < len;) {
+    for (let i = from; i < to;) {
       let start = i, rtl = types[i++] == T.R
-      while (i < len && rtl == (types[i] == T.R)) i++
+      while (i < to && rtl == (types[i] == T.R)) i++
       order.push(new BidiSpan(start, i, rtl ? 1 : 2))
     }
   }
+}
+
+// FIXME name
+function emitSpans(line: string, from: number, to: number,
+                   direction: Direction, baseDirection: Direction,
+                   isolates: readonly Isolate[], order: BidiSpan[]) {
+  let level = direction == Direction.RTL ? 1 : types[from] == T.L ? 0 : 2
+  if (direction == baseDirection) { // Don't flip
+    for (let iCh = from, iI = 0; iCh < to;) {
+      if (iI < isolates.length) {
+        let next = isolates[iI++]
+        if (next.from > iCh) order.push(new BidiSpan(iCh, next.from, level))
+        computeSectionOrder(line, next.direction, baseDirection, next.inner, next.from, next.to, order)
+        iCh = next.to
+      } else {
+        order.push(new BidiSpan(iCh, to, level))
+        break
+      }
+    }
+  } else { // Flip the spans
+    for (let iCh = to, iI = isolates.length - 1; iCh > from;) {
+      if (iI) {
+        let next = isolates[iI--]
+        if (next.to < iCh) order.push(new BidiSpan(next.to, iCh, level))
+        computeSectionOrder(line, next.direction, baseDirection, next.inner, next.from, next.to, order)
+        iCh = next.from
+      } else {
+        order.push(new BidiSpan(from, iCh, level))
+        break
+      }
+    }
+  }
+}
+
+function emitRecursiveSpans(line: string, from: number, to: number,
+                            direction: Direction, baseDirection: Direction,
+                            isolates: readonly Isolate[], order: BidiSpan[]) {
+  let iI = 0, ourType = direction == Direction.LTR ? T.L : T.R
+
+  for (let iCh = from; iCh < to;) {
+    let sameDir = iI < isolates.length && iCh == isolates[iI].from || types[iCh] == ourType
+    let localIsolates = [], iEnd = iCh
+    for (;;) {
+      if (iI < isolates.length && iEnd == isolates[iI].from) {
+        let iso = isolates[iI++]
+        localIsolates.push(iso)
+        iEnd = iso.to
+      } else if (iEnd == to || (sameDir ? types[iEnd] != ourType : types[iEnd] == ourType)) {
+        // Back up over isolates at the end of a range that doesn't match direction
+        if (iEnd == to && !sameDir) {
+          while (iI && isolates[iI - 1].to) iEnd = isolates[--iI].from
+        }
+        break
+      } else {
+        iEnd++
+      }
+    }
+    let innerDir = ourType ? direction : direction == Direction.LTR ? Direction.RTL : Direction.LTR
+    if (ourType || direction == Direction.RTL)
+      emitSpans(line, iCh, iEnd, direction, baseDirection, localIsolates, order)
+    else
+      emitRecursiveSpans(line, iCh, iEnd, innerDir, baseDirection, localIsolates, order)
+  }
+}
+
+function computeSectionOrder(line: string, direction: Direction, baseDirection: Direction,
+                             isolates: readonly Isolate[],
+                             from: number, to: number, order: BidiSpan[]) {
+  let ranges = [from]
+  for (let isolate of isolates) ranges.push(isolate.from, isolate.to)
+  if (isolates) while (to > types.length) types[types.length] = T.NI // Make sure types array has no gaps
+  ranges.push(to)
+
+  let outerType = (direction == LTR ? T.L : T.R) as T
+  computeCharTypes(line, from, to, isolates, outerType)
+  processBracketPairs(line, ranges, outerType)
+  processNeutrals(ranges, outerType)
+
+  if (!isolates.length) emitSimpleSpans(from, to, direction, order)
+  else emitRecursiveSpans(line, from, to, direction, baseDirection, isolates, order)
+}
+
+export function computeOrder(line: string, direction: Direction, isolates: readonly Isolate[]) {
+  let len = line.length
+
+  if (!line || direction == Direction.LTR && !isolates.length && !BidiRE.test(line)) return trivialOrder(len)
+
+  let order: BidiSpan[] = []
+  computeSectionOrder(line, direction, direction, isolates, 0, line.length, order)
   return order
 }
 

@@ -68,7 +68,7 @@ function ourOrder(order: readonly BidiSpan[], dir: Direction) {
 function tests(dir: Direction) {
   describe(Direction[dir] + " context", () => {
     for (let i = 0; i < cases.length; i++) it(cases[i], () => {
-      ist(ourOrder(__test.computeOrder(cases[i], dir), dir).join("-"), getOrder(i, dir).join("-"))
+      ist(ourOrder(__test.computeOrder(cases[i], dir, []), dir).join("-"), getOrder(i, dir).join("-"))
     })
   })
 
@@ -76,7 +76,7 @@ function tests(dir: Direction) {
     for (let i = 0; i < cases.length; i++) {
       for (let forward = true;; forward = false) {
         it(cases[i] + (forward ? " forward" : " backward"), () => {
-          let order = __test.computeOrder(cases[i], dir)
+          let order = __test.computeOrder(cases[i], dir, [])
           let line = Text.of([cases[i]]).line(1)
           let seen = []
           for (let p = EditorSelection.cursor(forward ? 0 : line.length);;) {
@@ -97,7 +97,7 @@ function tests(dir: Direction) {
       let str = "aé̠őx 😎🙉 👨‍🎤💪🏽👩‍👩‍👧‍👦 🇩🇪🇫🇷"
       let points = [0, 1, 4, 6, 7, 8, 10, 12, 13, 18, 22, 33, 34, 38, 42]
       let line = Text.of([str]).line(1)
-      let order = __test.computeOrder(str, Direction.LTR)
+      let order = __test.computeOrder(str, Direction.LTR, [])
       for (let i = 1; i < points.length; i++) {
         ist(__test.moveVisually(line, order, Direction.LTR, EditorSelection.cursor(points[i - 1], 0, 0), true)!.from, points[i])
         ist(__test.moveVisually(line, order, Direction.LTR, EditorSelection.cursor(points[i], 0, 0), false)!.from, points[i - 1])
