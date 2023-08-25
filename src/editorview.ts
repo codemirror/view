@@ -16,12 +16,12 @@ import {ViewUpdate, styleModule,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, atomicRanges,
         scrollMargins, MeasureRequest, editable, inputHandler, focusChangeEffect, perLineTextDirection,
-        scrollIntoView, UpdateFlag, ScrollTarget} from "./extension"
+        scrollIntoView, UpdateFlag, ScrollTarget, bidiIsolatedRanges, getIsolatedRanges} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
 import browser from "./browser"
-import {computeOrder, trivialOrder, BidiSpan, Direction} from "./bidi"
+import {computeOrder, trivialOrder, BidiSpan, Direction, Isolate, isolatesEq} from "./bidi"
 import {applyDOMChange, DOMChange} from "./domchange"
 
 /// The type of object given to the [`EditorView`](#view.EditorView)
@@ -744,10 +744,15 @@ export class EditorView {
   /// rightmost spans come first.
   bidiSpans(line: Line) {
     if (line.length > MaxBidiLine) return trivialOrder(line.length)
-    let dir = this.textDirectionAt(line.from)
-    for (let entry of this.bidiCache) if (entry.from == line.from && entry.dir == dir) return entry.order
-    let order = computeOrder(line.text, dir, [])
-    this.bidiCache.push(new CachedOrder(line.from, line.to, dir, order))
+    let dir = this.textDirectionAt(line.from), isolates: readonly Isolate[] | undefined
+    for (let entry of this.bidiCache) {
+      if (entry.from == line.from && entry.dir == dir &&
+          (entry.fresh || isolatesEq(entry.isolates, isolates = getIsolatedRanges(this, line.from, line.to))))
+        return entry.order
+    }
+    if (!isolates) isolates = getIsolatedRanges(this, line.from, line.to)
+    let order = computeOrder(line.text, dir, isolates)
+    this.bidiCache.push(new CachedOrder(line.from, line.to, dir, isolates, true, order))
     return order
   }
 
@@ -920,6 +925,15 @@ export class EditorView {
   /// regions.
   static atomicRanges = atomicRanges
 
+  /// When range decorations add a `unicode-bidi: isolate` style, they
+  /// should also include a
+  /// [`bidiIsolate`](#view.MarkDecorationSpec.bidiIsolate) property
+  /// in their decoration spec, and be exposed through this facet, so
+  /// that the editor can compute the proper text order. (Other values
+  /// for `unicode-bidi`, except of course `normal`, are not
+  /// supported.)
+  static bidiIsolatedRanges = bidiIsolatedRanges
+
   /// Facet that allows extensions to provide additional scroll
   /// margins (space around the sides of the scrolling element that
   /// should be considered invisible). This can be useful when the
@@ -1024,16 +1038,19 @@ class CachedOrder {
     readonly from: number,
     readonly to: number,
     readonly dir: Direction,
+    readonly isolates: readonly Isolate[],
+    readonly fresh: boolean,
     readonly order: readonly BidiSpan[]
   ) {}
 
   static update(cache: CachedOrder[], changes: ChangeDesc) {
-    if (changes.empty) return cache
+    if (changes.empty && !cache.some(c => c.fresh)) return cache
     let result = [], lastDir = cache.length ? cache[cache.length - 1].dir : Direction.LTR
     for (let i = Math.max(0, cache.length - 10); i < cache.length; i++) {
       let entry = cache[i]
       if (entry.dir == lastDir && !changes.touchesRange(entry.from, entry.to))
-        result.push(new CachedOrder(changes.mapPos(entry.from, 1), changes.mapPos(entry.to, -1), entry.dir, entry.order))
+        result.push(new CachedOrder(changes.mapPos(entry.from, 1), changes.mapPos(entry.to, -1),
+                                    entry.dir, entry.isolates, false, entry.order))
     }
     return result
   }

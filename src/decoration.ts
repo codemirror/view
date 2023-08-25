@@ -1,4 +1,5 @@
 import {MapMode, RangeValue, Range, RangeSet} from "@codemirror/state"
+import {Direction} from "./bidi"
 import {attrsEq, Attrs} from "./attributes"
 import {EditorView} from "./editorview"
 import {Rect} from "./dom"
@@ -24,6 +25,10 @@ interface MarkDecorationSpec {
   /// this one if they partially overlap it, and line breaks always
   /// end decoration elements.
   tagName?: string
+  /// When using sets of decorations in
+  /// [`bidiIsolatedRanges`](##view.EditorView^bidiIsolatedRanges),
+  /// this property provides the direction of the isolates.
+  bidiIsolate?: Direction
   /// Decoration specs allow extra properties, which can be retrieved
   /// through the decoration's [`spec`](#view.Decoration.spec)
   /// property.

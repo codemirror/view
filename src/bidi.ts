@@ -113,16 +113,26 @@ export class BidiSpan {
 
 // Arrays of isolates are always sorted by position. Isolates are
 // never empty. Nested isolates don't stick out of their parent.
-type Isolate = {from: number, to: number, direction: Direction, inner: readonly Isolate[]}
+export type Isolate = {from: number, to: number, direction: Direction, inner: readonly Isolate[]}
+
+export function isolatesEq(a: readonly Isolate[], b: readonly Isolate[]) {
+  if (a.length != b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    let iA = a[i], iB = b[i]
+    if (iA.from != iB.from || iA.to != iB.to || iA.direction != iB.direction || !isolatesEq(iA.inner, iB.inner))
+      return false
+  }
+  return true
+}
 
 // Reused array of character types
 const types: T[] = []
 
 // Fill in the character types (in `types`) from `from` to `to` and
 // apply W normalization rules.
-function computeCharTypes(line: string, from: number, to: number, isolates: readonly Isolate[], outerType: T) {
+function computeCharTypes(line: string, rFrom: number, rTo: number, isolates: readonly Isolate[], outerType: T) {
   for (let iI = 0; iI <= isolates.length; iI++) {
-    let sFrom = iI ? isolates[iI].to : from, sTo = iI < isolates.length ? isolates[iI].from : to
+    let from = iI ? isolates[iI - 1].to : rFrom, to = iI < isolates.length ? isolates[iI].from : rTo
     let prevType = iI ? T.NI : outerType
     
     // W1. Examine each non-spacing mark (NSM) in the level run, and
@@ -135,7 +145,7 @@ function computeCharTypes(line: string, from: number, to: number, isolates: read
     // number.
     // W3. Change all ALs to R.
     // (Left after this: L, R, EN, AN, ET, CS, NI)
-    for (let i = sFrom, prev = prevType, prevStrong = prevType; i < sTo; i++) {
+    for (let i = from, prev = prevType, prevStrong = prevType; i < to; i++) {
       let type = charType(line.charCodeAt(i))
       if (type == T.NSM) type = prev
       else if (type == T.EN && prevStrong == T.AL) type = T.AN
@@ -152,15 +162,15 @@ function computeCharTypes(line: string, from: number, to: number, isolates: read
     // until the first strong type (R, L, or sor) is found. If an L is
     // found, then change the type of the European number to L.
     // (Left after this: L, R, EN+AN, NI)
-    for (let i = sFrom, prev = prevType, prevStrong = prevType; i < sTo; i++) {
+    for (let i = from, prev = prevType, prevStrong = prevType; i < to; i++) {
       let type = types[i]
       if (type == T.CS) {
-        if (i < sTo - 1 && prev == types[i + 1] && (prev & T.Num)) type = types[i] = prev
+        if (i < to - 1 && prev == types[i + 1] && (prev & T.Num)) type = types[i] = prev
         else types[i] = T.NI
       } else if (type == T.ET) {
         let end = i + 1
-        while (end < sTo && types[end] == T.ET) end++
-        let replace = (i && prev == T.EN) || (end < to && types[end] == T.EN) ? (prevStrong == T.L ? T.L : T.EN) : T.NI
+        while (end < to && types[end] == T.ET) end++
+        let replace = (i && prev == T.EN) || (end < rTo && types[end] == T.EN) ? (prevStrong == T.L ? T.L : T.EN) : T.NI
         for (let j = i; j < end; j++) types[j] = replace
         i = end - 1
       } else if (type == T.EN && prevStrong == T.L) {
@@ -173,11 +183,11 @@ function computeCharTypes(line: string, from: number, to: number, isolates: read
 }
 
 // Process brackets throughout a run sequence.
-function processBracketPairs(line: string, ranges: number[], outerType: T) {
+function processBracketPairs(line: string, rFrom: number, rTo: number, isolates: readonly Isolate[], outerType: T) {
   let oppositeType = outerType == T.L ? T.R : T.L
 
-  for (let r = 0, sI = 0, context = 0; r < ranges.length;) {
-    let from = ranges[r++], to = ranges[r++]
+  for (let iI = 0, sI = 0, context = 0; iI <= isolates.length; iI++) {
+    let from = iI ? isolates[iI - 1].to : rFrom, to = iI < isolates.length ? isolates[iI].from : rTo
     // N0. Process bracket pairs in an isolating run sequence
     // sequentially in the logical order of the text positions of the
     // opening paired brackets using the logic given below. Within this
@@ -223,9 +233,9 @@ function processBracketPairs(line: string, ranges: number[], outerType: T) {
   }
 }
 
-function processNeutrals(ranges: number[], outerType: T) {
-  for (let r = 0, prev = outerType; r < ranges.length;) {
-    let from = ranges[r++], to = ranges[r++]
+function processNeutrals(rFrom: number, rTo: number, isolates: readonly Isolate[], outerType: T) {
+  for (let iI = 0, prev = outerType; iI <= isolates.length; iI++) {
+    let from = iI ? isolates[iI - 1].to : rFrom, to = iI < isolates.length ? isolates[iI].from : rTo
     // N1. A sequence of neutrals takes the direction of the
     // surrounding strong text if the text on both sides has the same
     // direction. European and Arabic numbers act as if they were R in
@@ -239,8 +249,9 @@ function processNeutrals(ranges: number[], outerType: T) {
         let end = i + 1
         for (;;) {
           if (end == to) {
-            if (r == ranges.length) break
-            end = ranges[r++]; to = ranges[r++]
+            if (iI == isolates.length) break
+            end = isolates[iI++].to
+            to = iI < isolates.length ? isolates[iI].from : rTo
           } else if (types[end] == T.NI) {
             end++
           } else {
@@ -248,10 +259,10 @@ function processNeutrals(ranges: number[], outerType: T) {
           }
         }
         let beforeL = prev == T.L
-        let afterL = (end < ranges[ranges.length - 1] ? types[end] : outerType) == T.L
+        let afterL = (end < rTo ? types[end] : outerType) == T.L
         let replace = beforeL == afterL ? (beforeL ? T.L : T.R) : outerType
-        for (let j = end, rJ = r, fromJ = ranges[r - 2]; j > i;) {
-          if (j == fromJ) { j = ranges[--rJ]; fromJ = ranges[--rJ] }
+        for (let j = end, jI = iI, fromJ = jI ? isolates[jI - 1].to : rFrom; j > i;) {
+          if (j == fromJ) { j = isolates[--jI].from; fromJ = jI ? isolates[jI - 1].to : rFrom }
           types[--j] = replace
         }
         i = end
@@ -263,117 +274,108 @@ function processNeutrals(ranges: number[], outerType: T) {
   }
 }
 
-function emitSimpleSpans(from: number, to: number, direction: Direction, order: BidiSpan[]) {
-  if (direction == Direction.LTR) {
-    for (let i = from; i < to;) {
-      let start = i, rtl = types[i++] != T.L
-      while (i < to && rtl == (types[i] != T.L)) i++
-      if (rtl) {
-        for (let j = i; j > start;) {
-          let end = j, l = types[--j] != T.R
-          while (j > start && l == (types[j - 1] != T.R)) j--
-          order.push(new BidiSpan(j, end, l ? 2 : 1))
-        }
-      } else {
-        order.push(new BidiSpan(start, i, 0))
-      }
-    }
-  } else {
-    for (let i = from; i < to;) {
-      let start = i, rtl = types[i++] == T.R
-      while (i < to && rtl == (types[i] == T.R)) i++
-      order.push(new BidiSpan(start, i, rtl ? 1 : 2))
-    }
-  }
-}
-
-// FIXME name
-function emitSpans(line: string, from: number, to: number,
-                   direction: Direction, baseDirection: Direction,
-                   isolates: readonly Isolate[], order: BidiSpan[]) {
-  let level = direction == Direction.RTL ? 1 : types[from] == T.L ? 0 : 2
-  if (direction == baseDirection) { // Don't flip
-    for (let iCh = from, iI = 0; iCh < to;) {
-      if (iI < isolates.length) {
-        let next = isolates[iI++]
-        if (next.from > iCh) order.push(new BidiSpan(iCh, next.from, level))
-        computeSectionOrder(line, next.direction, baseDirection, next.inner, next.from, next.to, order)
-        iCh = next.to
-      } else {
-        order.push(new BidiSpan(iCh, to, level))
-        break
-      }
-    }
-  } else { // Flip the spans
-    for (let iCh = to, iI = isolates.length - 1; iCh > from;) {
-      if (iI) {
-        let next = isolates[iI--]
-        if (next.to < iCh) order.push(new BidiSpan(next.to, iCh, level))
-        computeSectionOrder(line, next.direction, baseDirection, next.inner, next.from, next.to, order)
-        iCh = next.from
-      } else {
-        order.push(new BidiSpan(from, iCh, level))
-        break
-      }
-    }
-  }
-}
-
 function emitRecursiveSpans(line: string, from: number, to: number,
-                            direction: Direction, baseDirection: Direction,
+                            level: number, baseLevel: number,
                             isolates: readonly Isolate[], order: BidiSpan[]) {
-  let iI = 0, ourType = direction == Direction.LTR ? T.L : T.R
+  let ourType = level % 2 ? T.R : T.L
 
-  for (let iCh = from; iCh < to;) {
-    let sameDir = iI < isolates.length && iCh == isolates[iI].from || types[iCh] == ourType
-    let localIsolates = [], iEnd = iCh
-    for (;;) {
-      if (iI < isolates.length && iEnd == isolates[iI].from) {
-        let iso = isolates[iI++]
-        localIsolates.push(iso)
-        iEnd = iso.to
-      } else if (iEnd == to || (sameDir ? types[iEnd] != ourType : types[iEnd] == ourType)) {
-        // Back up over isolates at the end of a range that doesn't match direction
-        if (iEnd == to && !sameDir) {
-          while (iI && isolates[iI - 1].to) iEnd = isolates[--iI].from
+  if ((level % 2) == (baseLevel % 2)) { // Don't flip
+    for (let iCh = from, iI = 0; iCh < to;) {
+      let sameDir = iI < isolates.length && iCh == isolates[iI].from || types[iCh] == ourType
+      // Holds an array of isolates to pass to a recursive call if we
+      // must recurse, null if we can emit directly
+      let recurse: Isolate[] | null = !sameDir && ourType == T.L ? [] : null
+      let localLevel = sameDir ? level : level + 1
+      let iScan = iCh
+      run: for (;;) {
+        if (iI < isolates.length && iScan == isolates[iI].from) {
+          let iso = isolates[iI++]
+          // Scan ahead to verify that there is another char in this dir after the isolate(s)
+          if (!sameDir) for (let upto = iso.to, jI = iI;;) {
+            if (upto == to) break run
+            if (jI < isolates.length && isolates[jI].from == upto) upto = isolates[jI++].to
+            else if (types[upto] == ourType) break run
+          }
+          if (recurse) {
+            recurse.push(iso)
+          } else {
+            if (iso.from > iCh) order.push(new BidiSpan(iCh, iso.from, localLevel))
+            let dirSwap = (iso.direction == LTR) != !(localLevel % 2)
+            computeSectionOrder(line, dirSwap ? level + 1 : level, baseLevel, iso.inner, iso.from, iso.to, order)
+            iCh = iso.to
+          }
+          iScan = iso.to
+        } else if (iScan == to || (sameDir ? types[iScan] != ourType : types[iScan] == ourType)) {
+          break
+        } else {
+          iScan++
         }
-        break
-      } else {
-        iEnd++
       }
+      if (recurse)
+        emitRecursiveSpans(line, iCh, iScan, level + 1, baseLevel, recurse, order)
+      else if (iCh < iScan)
+        order.push(new BidiSpan(iCh, iScan, localLevel))
+      iCh = iScan
     }
-    let innerDir = ourType ? direction : direction == Direction.LTR ? Direction.RTL : Direction.LTR
-    if (ourType || direction == Direction.RTL)
-      emitSpans(line, iCh, iEnd, direction, baseDirection, localIsolates, order)
-    else
-      emitRecursiveSpans(line, iCh, iEnd, innerDir, baseDirection, localIsolates, order)
+  } else { // Iterate in reverse to flip the span order
+    for (let iCh = to, iI = isolates.length; iCh > from;) {
+      let sameDir = iI && iCh == isolates[iI - 1].to || types[iCh - 1] == ourType
+      let recurse: Isolate[] | null = !sameDir && ourType == T.L ? [] : null
+      let localLevel = sameDir ? level : level + 1
+      let iScan = iCh
+      run: for (;;) {
+        if (iI && iScan == isolates[iI - 1].to) {
+          let iso = isolates[--iI]
+          // Scan ahead to verify that there is another char in this dir after the isolate(s)
+          if (!sameDir) for (let upto = iso.from, jI = iI;;) {
+            if (upto == from) break run
+            if (jI && isolates[jI - 1].to == upto) upto = isolates[--jI].from
+            else if (types[upto - 1] == ourType) break run
+          }
+          if (recurse) {
+            recurse.push(iso)
+          } else {
+            if (iso.to < iCh) order.push(new BidiSpan(iso.to, iCh, localLevel))
+            let dirSwap = (iso.direction == LTR) != !(localLevel % 2)
+            computeSectionOrder(line, dirSwap ? level + 1 : level, baseLevel, iso.inner, iso.from, iso.to, order)
+            iCh = iso.from
+          }
+          iScan = iso.from
+        } else if (iScan == from || (sameDir ? types[iScan - 1] != ourType : types[iScan - 1] == ourType)) {
+          break
+        } else {
+          iScan--
+        }
+      }
+      if (recurse)
+        emitRecursiveSpans(line, iScan, iCh, level + 1, baseLevel, recurse, order)
+      else if (iScan < iCh)
+        order.push(new BidiSpan(iScan, iCh, localLevel))
+      iCh = iScan
+    }
   }
 }
 
-function computeSectionOrder(line: string, direction: Direction, baseDirection: Direction,
+function computeSectionOrder(line: string, level: number, baseLevel: number,
                              isolates: readonly Isolate[],
                              from: number, to: number, order: BidiSpan[]) {
-  let ranges = [from]
-  for (let isolate of isolates) ranges.push(isolate.from, isolate.to)
-  if (isolates) while (to > types.length) types[types.length] = T.NI // Make sure types array has no gaps
-  ranges.push(to)
+  if (isolates.length) while (to > types.length) types[types.length] = T.NI // Make sure types array has no gaps
 
-  let outerType = (direction == LTR ? T.L : T.R) as T
+  let outerType = (level % 2 ? T.R : T.L) as T
   computeCharTypes(line, from, to, isolates, outerType)
-  processBracketPairs(line, ranges, outerType)
-  processNeutrals(ranges, outerType)
+  processBracketPairs(line, from, to, isolates, outerType)
+  processNeutrals(from, to, isolates, outerType)
 
-  if (!isolates.length) emitSimpleSpans(from, to, direction, order)
-  else emitRecursiveSpans(line, from, to, direction, baseDirection, isolates, order)
+  emitRecursiveSpans(line, from, to, level, baseLevel, isolates, order)
 }
 
 export function computeOrder(line: string, direction: Direction, isolates: readonly Isolate[]) {
   let len = line.length
 
-  if (!line || direction == Direction.LTR && !isolates.length && !BidiRE.test(line)) return trivialOrder(len)
+  if (!line || direction == LTR && !isolates.length && !BidiRE.test(line)) return trivialOrder(len)
 
-  let order: BidiSpan[] = []
-  computeSectionOrder(line, direction, direction, isolates, 0, line.length, order)
+  let order: BidiSpan[] = [], level = direction == LTR ? 0 : 1
+  computeSectionOrder(line, level, level, isolates, 0, line.length, order)
   return order
 }
 

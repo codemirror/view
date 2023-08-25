@@ -4,6 +4,7 @@ import {StyleModule} from "style-mod"
 import {DecorationSet, Decoration} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {Attrs} from "./attributes"
+import {Isolate} from "./bidi"
 import {Rect, ScrollStrategy} from "./dom"
 import {MakeSelectionStyle} from "./input"
 
@@ -226,6 +227,35 @@ export const contentAttributes = Facet.define<AttrSource>()
 export const decorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
 
 export const atomicRanges = Facet.define<(view: EditorView) => RangeSet<any>>()
+
+export const bidiIsolatedRanges = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
+
+export function getIsolatedRanges(view: EditorView, from: number, to: number): readonly Isolate[] {
+  let isolates = view.state.facet(bidiIsolatedRanges)
+  if (!isolates.length) return isolates as any[]
+  let sets = isolates.map<DecorationSet>(i => i instanceof Function ? i(view) : i)
+  let result: Isolate[] = []
+  RangeSet.spans(sets, from, to, {
+    point() {},
+    span(from, to, active, openStart) {
+      let level = result
+      for (let i = 0; i < active.length; i++) {
+        let iso = active[i].spec.bidiIsolate, update
+        if (iso == null) continue
+        if (i < openStart && level.length &&
+            (update = level[level.length - 1]).to == from && update.direction == iso) {
+          update.to = to
+          level = update.inner as Isolate[]
+        } else {
+          let add = {from, to, direction: iso, inner: []}
+          level.push(add)
+          level = add.inner
+        }
+      }
+    }
+  })
+  return result
+}
 
 export const scrollMargins = Facet.define<(view: EditorView) => Partial<Rect> | null>()
 

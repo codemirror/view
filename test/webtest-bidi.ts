@@ -1,6 +1,7 @@
+import {tempView} from "./tempview.js"
 import ist from "ist"
-import {__test, BidiSpan, Direction} from "@codemirror/view"
-import {Text, EditorSelection} from "@codemirror/state"
+import {__test, BidiSpan, Direction, Decoration, DecorationSet, EditorView} from "@codemirror/view"
+import {Text, EditorSelection, Range, StateField} from "@codemirror/state"
 
 function queryBrowserOrder(strings: readonly string[]) {
   let scratch = document.body.appendChild(document.createElement("div"))
@@ -106,7 +107,32 @@ function tests(dir: Direction) {
   })
 }
 
+const rtlTheme = EditorView.theme({"&": {direction: "rtl"}})
+const rtlIso = Decoration.mark({
+  attributes: {style: "direction: rtl; unicode-bidi: isolate"},
+  bidiIsolate: Direction.RTL
+})
+const ltrIso = Decoration.mark({
+  attributes: {style: "direction: ltr; unicode-bidi: isolate"},
+  bidiIsolate: Direction.LTR
+})
+
+function deco(...decorations: Range<Decoration>[]) {
+  return StateField.define<DecorationSet>({
+    create: () => Decoration.set(decorations),
+    update: (s, tr) => s.map(tr.changes),
+    provide: f => [EditorView.decorations.from(f), EditorView.bidiIsolatedRanges.from(f)]
+  })
+}
+
 describe("bidi", () => {
   tests(Direction.LTR)
   tests(Direction.RTL)
+
+  it("properly handles isolates in LTR", () => {
+    let cm = tempView("אחת -hello- שתיים", [rtlTheme, deco(ltrIso.range(4, 11))])
+    cm.measure()
+    let order = cm.bidiSpans(cm.state.doc.line(1))
+    console.log(order)
+  })
 })
