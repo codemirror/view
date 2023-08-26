@@ -237,12 +237,12 @@ export function getIsolatedRanges(view: EditorView, from: number, to: number): r
   let result: Isolate[] = []
   RangeSet.spans(sets, from, to, {
     point() {},
-    span(from, to, active, openStart) {
+    span(from, to, active, open) {
       let level = result
-      for (let i = 0; i < active.length; i++) {
+      for (let i = active.length - 1; i >= 0; i--, open--) {
         let iso = active[i].spec.bidiIsolate, update
         if (iso == null) continue
-        if (i < openStart && level.length &&
+        if (open > 0 && level.length &&
             (update = level[level.length - 1]).to == from && update.direction == iso) {
           update.to = to
           level = update.inner as Isolate[]

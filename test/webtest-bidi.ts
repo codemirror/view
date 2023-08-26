@@ -1,7 +1,7 @@
 import {tempView} from "./tempview.js"
 import ist from "ist"
 import {__test, BidiSpan, Direction, Decoration, DecorationSet, EditorView} from "@codemirror/view"
-import {Text, EditorSelection, Range, StateField} from "@codemirror/state"
+import {Text, EditorSelection, Range, StateField, Extension} from "@codemirror/state"
 
 function queryBrowserOrder(strings: readonly string[]) {
   let scratch = document.body.appendChild(document.createElement("div"))
@@ -125,14 +125,70 @@ function deco(...decorations: Range<Decoration>[]) {
   })
 }
 
+function testIsolates(doc: string, extensions: Extension, expected: string) {
+  let cm = tempView(doc, [extensions])
+  cm.measure()
+  ist(cm.bidiSpans(cm.state.doc.line(1)).map(s => s.from + "-" + s.to + ":" + s.level).join(" "), expected)
+}
+
 describe("bidi", () => {
   tests(Direction.LTR)
   tests(Direction.RTL)
 
+  it("properly handles isolates in RTL", () => {
+    testIsolates("אחת -hello- שתיים", [rtlTheme, deco(ltrIso.range(4, 11))],
+                 "0-4:1 4-11:2 11-17:1")
+  })
+
   it("properly handles isolates in LTR", () => {
-    let cm = tempView("אחת -hello- שתיים", [rtlTheme, deco(ltrIso.range(4, 11))])
-    cm.measure()
-    let order = cm.bidiSpans(cm.state.doc.line(1))
-    console.log(order)
+    testIsolates("one -שלום- two", deco(rtlIso.range(4, 10)),
+                 "0-4:0 4-10:1 10-14:0")
+  })
+
+  it("properly handles isolates in RTL text in LTR context", () => {
+    testIsolates("אחת -hello- שתיים", [deco(ltrIso.range(4, 11))],
+                 "11-17:1 4-11:2 0-4:1")
+  })
+
+  it("handles LTR isolates in nested numerals", () => {
+    testIsolates("كود12ab34المرآة", [rtlTheme, deco(ltrIso.range(5, 7))],
+                 "0-3:1 3-5:2 5-7:2 7-9:2 9-15:1")
+  })
+
+  it("handles RTL isolates in nested numerals", () => {
+    testIsolates("كود12مر34المرآة", [rtlTheme, deco(rtlIso.range(5, 7))],
+                 "0-3:1 3-5:2 5-7:1 7-9:2 9-15:1")
+  })
+
+  it("works for multiple isolates", () => {
+    testIsolates("one -שלום- two .אחת. three", [deco(rtlIso.range(4, 10), rtlIso.range(15, 20))],
+                 "0-4:0 4-10:1 10-15:0 15-20:1 20-26:0")
+  })
+
+  it("handles multiple isolates in a row", () => {
+    testIsolates("one -שלום- two", deco(rtlIso.range(4, 7), rtlIso.range(7, 10)),
+                 "0-4:0 4-7:1 7-10:1 10-14:0")
+  })
+
+  it("supports nested isolates", () => {
+    testIsolates("one -אחת .two. שתיים- three", [
+      deco(ltrIso.range(9, 14)),
+      deco(rtlIso.range(4, 21))
+    ], "0-4:0 14-21:1 9-14:2 4-9:1 21-27:0")
+  })
+
+  it("includes isolates at the end of spans in the base direction", () => {
+    testIsolates("oneאחת -", deco(ltrIso.range(6, 7), ltrIso.range(7, 8)),
+                 "0-3:0 3-6:1 6-7:0 7-8:0")
+  })
+
+  it("normalizes neutrals between isolates", () => {
+    testIsolates("שלa-bום", deco(ltrIso.range(2, 3), ltrIso.range(4, 5)),
+                 "5-7:1 4-5:2 3-4:1 2-3:2 0-2:1")
+  })
+
+  it("matches brackets across isolates", () => {
+    testIsolates("one(אחת)שתיים", deco(rtlIso.range(4, 5)),
+                 "0-4:0 4-5:1 5-7:1 7-8:0 8-13:1")
   })
 })

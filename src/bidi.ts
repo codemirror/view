@@ -274,28 +274,43 @@ function processNeutrals(rFrom: number, rTo: number, isolates: readonly Isolate[
   }
 }
 
-function emitRecursiveSpans(line: string, from: number, to: number,
-                            level: number, baseLevel: number,
-                            isolates: readonly Isolate[], order: BidiSpan[]) {
+// Find the contiguous ranges of character types in a given range, and
+// emit spans for them. Flip the order of the spans as appropriate
+// based on the level, and call through to compute the spans for
+// isolates at the proper point.
+function emitSpans(line: string, from: number, to: number, level: number, baseLevel: number,
+                   isolates: readonly Isolate[], order: BidiSpan[]) {
   let ourType = level % 2 ? T.R : T.L
 
-  if ((level % 2) == (baseLevel % 2)) { // Don't flip
+  if ((level % 2) == (baseLevel % 2)) { // Same dir as base direction, don't flip
     for (let iCh = from, iI = 0; iCh < to;) {
-      let sameDir = iI < isolates.length && iCh == isolates[iI].from || types[iCh] == ourType
+      // Scan a section of characters in direction ourType, unless
+      // there's another type of char right after iCh, in which case
+      // we scan a section of other characters (which, if ourType ==
+      // T.L, may contain both T.R and T.AN chars).
+      let sameDir = true, isNum = false
+      if (iI == isolates.length || iCh < isolates[iI].from) {
+        let next = types[iCh]
+        if (next != ourType) { sameDir = false; isNum = next == T.AN }
+      }
       // Holds an array of isolates to pass to a recursive call if we
-      // must recurse, null if we can emit directly
+      // must recurse (to distinguish T.AN inside an RTL section in
+      // LTR text), null if we can emit directly
       let recurse: Isolate[] | null = !sameDir && ourType == T.L ? [] : null
       let localLevel = sameDir ? level : level + 1
       let iScan = iCh
       run: for (;;) {
         if (iI < isolates.length && iScan == isolates[iI].from) {
-          let iso = isolates[iI++]
+          if (isNum) break run
+          let iso = isolates[iI]
           // Scan ahead to verify that there is another char in this dir after the isolate(s)
-          if (!sameDir) for (let upto = iso.to, jI = iI;;) {
+          if (!sameDir) for (let upto = iso.to, jI = iI + 1;;) {
             if (upto == to) break run
             if (jI < isolates.length && isolates[jI].from == upto) upto = isolates[jI++].to
             else if (types[upto] == ourType) break run
+            else break
           }
+          iI++
           if (recurse) {
             recurse.push(iso)
           } else {
@@ -312,25 +327,33 @@ function emitRecursiveSpans(line: string, from: number, to: number,
         }
       }
       if (recurse)
-        emitRecursiveSpans(line, iCh, iScan, level + 1, baseLevel, recurse, order)
+        emitSpans(line, iCh, iScan, level + 1, baseLevel, recurse, order)
       else if (iCh < iScan)
         order.push(new BidiSpan(iCh, iScan, localLevel))
       iCh = iScan
     }
-  } else { // Iterate in reverse to flip the span order
+  } else {
+    // Iterate in reverse to flip the span order. Same code again, but
+    // going from the back of the section to the front
     for (let iCh = to, iI = isolates.length; iCh > from;) {
-      let sameDir = iI && iCh == isolates[iI - 1].to || types[iCh - 1] == ourType
+      let sameDir = true, isNum = false
+      if (!iI || iCh > isolates[iI - 1].to) {
+        let next = types[iCh - 1]
+        if (next != ourType) { sameDir = false; isNum = next == T.AN }
+      }
       let recurse: Isolate[] | null = !sameDir && ourType == T.L ? [] : null
       let localLevel = sameDir ? level : level + 1
       let iScan = iCh
       run: for (;;) {
         if (iI && iScan == isolates[iI - 1].to) {
+          if (isNum) break run
           let iso = isolates[--iI]
           // Scan ahead to verify that there is another char in this dir after the isolate(s)
           if (!sameDir) for (let upto = iso.from, jI = iI;;) {
             if (upto == from) break run
             if (jI && isolates[jI - 1].to == upto) upto = isolates[--jI].from
             else if (types[upto - 1] == ourType) break run
+            else break
           }
           if (recurse) {
             recurse.push(iso)
@@ -348,7 +371,7 @@ function emitRecursiveSpans(line: string, from: number, to: number,
         }
       }
       if (recurse)
-        emitRecursiveSpans(line, iScan, iCh, level + 1, baseLevel, recurse, order)
+        emitSpans(line, iScan, iCh, level + 1, baseLevel, recurse, order)
       else if (iScan < iCh)
         order.push(new BidiSpan(iScan, iCh, localLevel))
       iCh = iScan
@@ -359,21 +382,20 @@ function emitRecursiveSpans(line: string, from: number, to: number,
 function computeSectionOrder(line: string, level: number, baseLevel: number,
                              isolates: readonly Isolate[],
                              from: number, to: number, order: BidiSpan[]) {
-  if (isolates.length) while (to > types.length) types[types.length] = T.NI // Make sure types array has no gaps
 
   let outerType = (level % 2 ? T.R : T.L) as T
   computeCharTypes(line, from, to, isolates, outerType)
   processBracketPairs(line, from, to, isolates, outerType)
   processNeutrals(from, to, isolates, outerType)
 
-  emitRecursiveSpans(line, from, to, level, baseLevel, isolates, order)
+  emitSpans(line, from, to, level, baseLevel, isolates, order)
 }
 
 export function computeOrder(line: string, direction: Direction, isolates: readonly Isolate[]) {
-  let len = line.length
+  if (!line) return [new BidiSpan(0, 0, direction == RTL ? 1 : 0)]
+  if (direction == LTR && !isolates.length && !BidiRE.test(line)) return trivialOrder(line.length)
 
-  if (!line || direction == LTR && !isolates.length && !BidiRE.test(line)) return trivialOrder(len)
-
+  if (isolates.length) while (line.length > types.length) types[types.length] = T.NI // Make sure types array has no gaps
   let order: BidiSpan[] = [], level = direction == LTR ? 0 : 1
   computeSectionOrder(line, level, level, isolates, 0, line.length, order)
   return order
