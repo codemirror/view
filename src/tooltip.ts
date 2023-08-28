@@ -3,6 +3,7 @@ import {EditorState, Transaction, StateEffect, StateEffectType,
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate, logException} from "./extension"
 import {Direction} from "./bidi"
+import {WidgetView} from "./inlineview"
 import {Rect} from "./dom"
 import browser from "./browser"
 
@@ -546,26 +547,36 @@ class HoverPlugin {
 
   startHover() {
     clearTimeout(this.restartTimeout)
-    let {lastMove} = this
-    let pos = this.view.contentDOM.contains(lastMove.target) ? this.view.posAtCoords(lastMove) : null
-    if (pos == null) return
-    let posCoords = this.view.coordsAtPos(pos)
-    if (posCoords == null || lastMove.y < posCoords.top || lastMove.y > posCoords.bottom ||
-        lastMove.x < posCoords.left - this.view.defaultCharacterWidth ||
-        lastMove.x > posCoords.right + this.view.defaultCharacterWidth) return
-    let bidi = this.view.bidiSpans(this.view.state.doc.lineAt(pos)).find(s => s.from <= pos! && s.to >= pos!)
-    let rtl = bidi && bidi.dir == Direction.RTL ? -1 : 1
-    let open = this.source(this.view, pos, (lastMove.x < posCoords.left ? -rtl : rtl) as -1 | 1)
+    let {view, lastMove} = this
+    let desc = view.docView.nearest(lastMove.target)
+    if (!desc) return
+    let pos: number, side: -1 | 1 = 1
+    if (desc instanceof WidgetView) {
+      pos = desc.posAtStart
+    } else {
+      pos = view.posAtCoords(lastMove)!
+      if (pos == null) return
+      let posCoords = view.coordsAtPos(pos)
+      if (!posCoords ||
+          lastMove.y < posCoords.top || lastMove.y > posCoords.bottom ||
+          lastMove.x < posCoords.left - view.defaultCharacterWidth ||
+          lastMove.x > posCoords.right + view.defaultCharacterWidth) return
+      let bidi = view.bidiSpans(view.state.doc.lineAt(pos)).find(s => s.from <= pos! && s.to >= pos!)
+      let rtl = bidi && bidi.dir == Direction.RTL ? -1 : 1
+      side = (lastMove.x < posCoords.left ? -rtl : rtl) as -1 | 1
+    }
+    let open = this.source(view, pos, side)
+
     if ((open as any)?.then) {
       let pending = this.pending = {pos}
       ;(open as Promise<Tooltip | null>).then(result => {
         if (this.pending == pending) {
           this.pending = null
-          if (result) this.view.dispatch({effects: this.setHover.of(result)})
+          if (result) view.dispatch({effects: this.setHover.of(result)})
         }
-      }, e => logException(this.view.state, e, "hover tooltip"))
+      }, e => logException(view.state, e, "hover tooltip"))
     } else if (open) {
-      this.view.dispatch({effects: this.setHover.of(open as Tooltip)})
+      view.dispatch({effects: this.setHover.of(open as Tooltip)})
     }
   }
 
