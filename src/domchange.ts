@@ -4,7 +4,7 @@ import {contains, dispatchKey} from "./dom"
 import browser from "./browser"
 import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
 import {findCompositionNode} from "./docview"
-import {EditorSelection, Text} from "@codemirror/state"
+import {EditorSelection, Text, Transaction, TransactionSpec} from "@codemirror/state"
 
 export class DOMChange {
   bounds: {
@@ -102,7 +102,6 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
   }
 
   if (change) {
-    let startState = view.state
     if (browser.ios && view.inputState.flushIOSKey(view)) return true
     // Android browsers don't fire reasonable key events for enter,
     // backspace, or delete. So this detects changes that look like
@@ -122,63 +121,12 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       return true
 
     let text = change.insert.toString()
-    if (view.state.facet(inputHandler).some(h => h(view, change!.from, change!.to, text)))
-      return true
-
     if (view.inputState.composing >= 0) view.inputState.composing++
-    let tr
-    if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3 &&
-        (!newSel || newSel.main.empty && newSel.main.from == change.from + change.insert.length) &&
-        view.inputState.composing < 0) {
-      let before = sel.from < change.from ? startState.sliceDoc(sel.from, change.from) : ""
-      let after = sel.to > change.to ? startState.sliceDoc(change.to, sel.to) : ""
-      tr = startState.replaceSelection(view.state.toText(
-        before + change.insert.sliceString(0, undefined, view.state.lineBreak) + after))
-    } else {
-      let changes = startState.changes(change)
-      let mainSel = newSel && newSel.main.to <= changes.newLength ? newSel.main : undefined
-      // Try to apply a composition change to all cursors
-      if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
-          change.to <= sel.to && change.to >= sel.to - 10) {
-        let replaced = view.state.sliceDoc(change.from, change.to)
-        let composition = findCompositionNode(view) || view.state.doc.lineAt(sel.head)
-        let offset = sel.to - change.to, size = sel.to - sel.from
-        tr = startState.changeByRange(range => {
-          if (range.from == sel.from && range.to == sel.to)
-            return {changes, range: mainSel || range.map(changes)}
-          let to = range.to - offset, from = to - replaced.length
-          if (range.to - range.from != size || view.state.sliceDoc(from, to) != replaced ||
-              // Unfortunately, there's no way to make multiple
-              // changes in the same node work without aborting
-              // composition, so cursors in the composition range are
-              // ignored.
-              composition && range.to >= composition.from && range.from <= composition.to)
-            return {range}
-          let rangeChanges = startState.changes({from, to, insert: change!.insert}), selOff = range.to - sel.to
-          return {
-            changes: rangeChanges,
-            range: !mainSel ? range.map(rangeChanges) :
-              EditorSelection.range(Math.max(0, mainSel.anchor + selOff), Math.max(0, mainSel.head + selOff))
-          }
-        })
-      } else {
-        tr = {
-          changes,
-          selection: mainSel && startState.selection.replaceRange(mainSel)
-        }
-      }
-    }
-    let userEvent = "input.type"
-    if (view.composing ||
-        view.inputState.compositionPendingChange && view.inputState.compositionEndedAt > Date.now() - 50) {
-      view.inputState.compositionPendingChange = false
-      userEvent += ".compose"
-      if (view.inputState.compositionFirstChange) {
-        userEvent += ".start"
-        view.inputState.compositionFirstChange = false
-      }
-    }
-    view.dispatch(tr, {scrollIntoView: true, userEvent})
+
+    let defaultTr: Transaction | null
+    let defaultInsert = () => defaultTr || (defaultTr = applyDefaultInsert(view, change!, newSel))
+    if (!view.state.facet(inputHandler).some(h => h(view, change!.from, change!.to, text, defaultInsert)))
+      view.dispatch(defaultInsert())
     return true
   } else if (newSel && !newSel.main.eq(sel)) {
     let scrollIntoView = false, userEvent = "select"
@@ -191,6 +139,63 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
   } else {
     return false
   }
+}
+
+function applyDefaultInsert(view: EditorView, change: {from: number, to: number, insert: Text},
+                            newSel: EditorSelection | null): Transaction {
+  let tr: TransactionSpec, startState = view.state, sel = startState.selection.main
+  if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3 &&
+    (!newSel || newSel.main.empty && newSel.main.from == change.from + change.insert.length) &&
+    view.inputState.composing < 0) {
+    let before = sel.from < change.from ? startState.sliceDoc(sel.from, change.from) : ""
+    let after = sel.to > change.to ? startState.sliceDoc(change.to, sel.to) : ""
+    tr = startState.replaceSelection(view.state.toText(
+      before + change.insert.sliceString(0, undefined, view.state.lineBreak) + after))
+  } else {
+    let changes = startState.changes(change)
+    let mainSel = newSel && newSel.main.to <= changes.newLength ? newSel.main : undefined
+    // Try to apply a composition change to all cursors
+    if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
+      change.to <= sel.to && change.to >= sel.to - 10) {
+      let replaced = view.state.sliceDoc(change.from, change.to)
+      let composition = findCompositionNode(view) || view.state.doc.lineAt(sel.head)
+      let offset = sel.to - change.to, size = sel.to - sel.from
+      tr = startState.changeByRange(range => {
+        if (range.from == sel.from && range.to == sel.to)
+          return {changes, range: mainSel || range.map(changes)}
+        let to = range.to - offset, from = to - replaced.length
+        if (range.to - range.from != size || view.state.sliceDoc(from, to) != replaced ||
+          // Unfortunately, there's no way to make multiple
+          // changes in the same node work without aborting
+          // composition, so cursors in the composition range are
+          // ignored.
+          composition && range.to >= composition.from && range.from <= composition.to)
+          return {range}
+        let rangeChanges = startState.changes({from, to, insert: change!.insert}), selOff = range.to - sel.to
+        return {
+          changes: rangeChanges,
+          range: !mainSel ? range.map(rangeChanges) :
+            EditorSelection.range(Math.max(0, mainSel.anchor + selOff), Math.max(0, mainSel.head + selOff))
+        }
+      })
+    } else {
+      tr = {
+        changes,
+        selection: mainSel && startState.selection.replaceRange(mainSel)
+      }
+    }
+  }
+  let userEvent = "input.type"
+  if (view.composing ||
+    view.inputState.compositionPendingChange && view.inputState.compositionEndedAt > Date.now() - 50) {
+    view.inputState.compositionPendingChange = false
+    userEvent += ".compose"
+    if (view.inputState.compositionFirstChange) {
+      userEvent += ".start"
+      view.inputState.compositionFirstChange = false
+    }
+  }
+  return startState.update(tr, {userEvent, scrollIntoView: true})
 }
 
 function findDiff(a: string, b: string, preferredPos: number, preferredSide: string | null)

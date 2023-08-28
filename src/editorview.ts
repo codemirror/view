@@ -861,6 +861,10 @@ export class EditorView {
   /// positions between which the change was found, and the new
   /// content. When one returns true, no further input handlers are
   /// called and the default behavior is prevented.
+  ///
+  /// The `insert` argument can be used to get the default transaction
+  /// that would be applied for this input. This can be useful when
+  /// dispatching the custom behavior as a separate transaction.
   static inputHandler = inputHandler
 
   /// This facet can be used to provide functions that create effects

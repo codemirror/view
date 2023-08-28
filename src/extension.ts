@@ -25,7 +25,8 @@ export const exceptionSink = Facet.define<(exception: any) => void>()
 
 export const updateListener = Facet.define<(update: ViewUpdate) => void>()
 
-export const inputHandler = Facet.define<(view: EditorView, from: number, to: number, text: string) => boolean>()
+export const inputHandler = Facet.define<(view: EditorView, from: number, to: number, text: string,
+                                          insert: () => Transaction) => boolean>()
 
 export const focusChangeEffect = Facet.define<(state: EditorState, focusing: boolean) => StateEffect<any> | null>()
 
