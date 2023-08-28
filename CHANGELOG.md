@@ -1,3 +1,21 @@
+## 6.17.0 (2023-08-28)
+
+### Bug fixes
+
+Fix a bug that broke hover tooltips when hovering over a widget.
+
+### New features
+
+The new `EditorView.cspNonce` facet can be used to provide a Content Security Policy nonce for the library's generated CSS.
+
+The new `EditorView.bidiIsolatedRanges` can be used to inform the editor about ranges styled as Unicode bidirection isolates, so that it can compute the character order correctly.
+
+`EditorView.dispatch` now also accepts an array of transactions to be applied together in a single view update.
+
+The new `dispatchTransactions` option to `new EditorView` now replaces the old (deprecated but still supported) `dispatch` option in a way that allows multiple transactions to be applied in one update.
+
+Input handlers are now passed an additional argument that they can use to retrieve the default transaction that would be applied for the insertion.
+
 ## 6.16.0 (2023-07-31)
 
 ### Bug fixes
