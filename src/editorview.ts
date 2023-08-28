@@ -42,11 +42,14 @@ export interface EditorViewConfig extends EditorStateConfig {
   /// not this option, the editor will automatically look up a root
   /// from the parent.
   root?: Document | ShadowRoot,
-  /// Override the transaction [dispatch
-  /// function](#view.EditorView.dispatch) for this editor view, which
-  /// is the way updates get routed to the view. Your implementation,
-  /// if provided, should probably call the view's [`update`
-  /// method](#view.EditorView.update).
+  /// Override the way transactions are
+  /// [dispatched](#view.EditorView.dispatch) for this editor view.
+  /// Your implementation, if provided, should probably call the
+  /// view's [`update` method](#view.EditorView.update).
+  dispatchTransactions?: (trs: readonly Transaction[], view: EditorView) => void
+  /// **Deprecated** single-transaction version of
+  /// `dispatchTransactions`. Will force transactions to be dispatched
+  /// one at a time when used.
   dispatch?: (tr: Transaction, view: EditorView) => void
 }
 
@@ -108,7 +111,7 @@ export class EditorView {
   /// composition there.
   get compositionStarted() { return this.inputState.composing >= 0 }
   
-  private _dispatch: (tr: Transaction, view: EditorView) => void
+  private dispatchTransactions: (trs: readonly Transaction[], view: EditorView) => void
 
   private _root: DocumentOrShadowRoot
 
@@ -182,7 +185,10 @@ export class EditorView {
     this.dom.appendChild(this.announceDOM)
     this.dom.appendChild(this.scrollDOM)
 
-    this._dispatch = config.dispatch || ((tr: Transaction) => this.update([tr]))
+    let {dispatch} = config
+    this.dispatchTransactions = config.dispatchTransactions ||
+      (dispatch && ((trs: readonly Transaction[]) => trs.forEach(tr => dispatch!(tr, this)))) ||
+      ((trs: readonly Transaction[]) => this.update(trs))
     this.dispatch = this.dispatch.bind(this)
     this._root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
 
@@ -204,18 +210,24 @@ export class EditorView {
   }
 
   /// All regular editor state updates should go through this. It
-  /// takes a transaction or transaction spec and updates the view to
-  /// show the new state produced by that transaction. Its
-  /// implementation can be overridden with an
-  /// [option](#view.EditorView.constructor^config.dispatch). This
-  /// function is bound to the view instance, so it does not have to
-  /// be called as a method.
+  /// takes a transaction, array of transactions, or transaction spec
+  /// and updates the view to show the new state produced by that
+  /// transaction. Its implementation can be overridden with an
+  /// [option](#view.EditorView.constructor^config.dispatchTransactions).
+  /// This function is bound to the view instance, so it does not have
+  /// to be called as a method.
+  ///
+  /// Note that when multiple `TransactionSpec` arguments are
+  /// provided, these define a single transaction (the specs will be
+  /// merged), not a sequence of transactions.
   dispatch(tr: Transaction): void
+  dispatch(trs: readonly Transaction[]): void
   dispatch(...specs: TransactionSpec[]): void
-  dispatch(...input: (Transaction | TransactionSpec)[]) {
-    let tr = input.length == 1 && input[0] instanceof Transaction ? input[0]
-      : this.state.update(...input as TransactionSpec[])
-    this._dispatch(tr, this)
+  dispatch(...input: (Transaction | readonly Transaction[] | TransactionSpec)[]) {
+    let trs = input.length == 1 && input[0] instanceof Transaction ? input as readonly Transaction[]
+      : input.length == 1 && Array.isArray(input[0]) ? input[0] as readonly Transaction[]
+      : [this.state.update(...input as TransactionSpec[])]
+    this.dispatchTransactions(trs, this)
   }
 
   /// Update the view for the given array of transactions. This will
