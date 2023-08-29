@@ -615,18 +615,11 @@ function isInTooltip(elt: HTMLElement) {
 }
 
 function isOverRange(view: EditorView, from: number, to: number, x: number, y: number, margin: number) {
-  let range = document.createRange()
-  let fromDOM = view.domAtPos(from), toDOM = view.domAtPos(to)
-  range.setEnd(toDOM.node, toDOM.offset)
-  range.setStart(fromDOM.node, fromDOM.offset)
-  let rects = range.getClientRects()
-  range.detach()
-  for (let i = 0; i < rects.length; i++) {
-    let rect = rects[i]
-    let dist = Math.max(rect.top - y, y - rect.bottom, rect.left - x, x - rect.right)
-    if (dist <= margin) return true
-  }
-  return false
+  let rect = view.scrollDOM.getBoundingClientRect()
+  let docBottom = view.documentTop + view.documentPadding.top + view.contentHeight
+  if (rect.left > x || rect.right < x || rect.top > y || Math.min(rect.bottom, docBottom) < y) return false
+  let pos = view.posAtCoords({x, y}, false)
+  return pos >= from && pos <= to
 }
 
 /// Set up a hover tooltip, which shows up when the pointer hovers
