@@ -384,6 +384,11 @@ export class EditorView {
   measure(flush = true) {
     if (this.destroyed) return
     if (this.measureScheduled > -1) this.win.cancelAnimationFrame(this.measureScheduled)
+    if (this.observer.delayedAndroidKey) {
+      this.measureScheduled = -1
+      this.requestMeasure()
+      return
+    }
     this.measureScheduled = 0 // Prevent requestMeasure calls from scheduling another animation frame
 
     if (flush) this.observer.forceFlush()
