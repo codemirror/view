@@ -112,6 +112,7 @@ export class InputState {
     // On Safari adding an input event handler somehow prevents an
     // issue where the composition vanishes when you press enter.
     if (browser.safari) view.contentDOM.addEventListener("input", () => null)
+    if (browser.gecko) firefoxCopyCutHack(view.contentDOM.ownerDocument)
   }
 
   ensureHandlers(view: EditorView, plugins: readonly PluginInstance[]) {
@@ -850,5 +851,19 @@ handlers.beforeinput = (view, event) => {
         }
       }, 100)
     }
+  }
+}
+
+const appliedFirefoxHack: Set<Document> = new Set
+
+// In Firefox, when cut/copy handlers are added to the document, that
+// somehow avoids a bug where those events aren't fired when the
+// selection is empty. See https://github.com/codemirror/dev/issues/1082
+// and https://bugzilla.mozilla.org/show_bug.cgi?id=995961
+function firefoxCopyCutHack(doc: Document) {
+  if (!appliedFirefoxHack.has(doc)) {
+    appliedFirefoxHack.add(doc)
+    doc.addEventListener("copy", () => {})
+    doc.addEventListener("cut", () => {})
   }
 }
