@@ -114,7 +114,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
           change.insert.length == 1 && change.insert.lines == 2 &&
           dispatchKey(view.contentDOM, "Enter", 13)) ||
          ((change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 ||
-           lastKey == 8 && change.insert.length < change.to - change.from) &&
+           lastKey == 8 && change.insert.length < change.to - change.from && change.to > sel.head) &&
           dispatchKey(view.contentDOM, "Backspace", 8)) ||
          (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
           dispatchKey(view.contentDOM, "Delete", 46))))
