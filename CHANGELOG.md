@@ -1,3 +1,17 @@
+## 6.17.1 (2023-08-31)
+
+### Bug fixes
+
+Don't close the hover tooltip when the pointer moves over empty space caused by line breaks within the hovered range.
+
+Fix a bug where on Chrome Android, if a virtual keyboard was slow to apply a change, the editor could end up dropping it.
+
+Work around an issue where line-wise copy/cut didn't work in Firefox because the browser wasn't firing those events when nothing was selected.
+
+Fix a crash triggered by the way some Android IME systems update the DOM.
+
+Fix a bug that caused replacing a word by an emoji on Chrome Android to be treated as a backspace press.
+
 ## 6.17.0 (2023-08-28)
 
 ### Bug fixes
