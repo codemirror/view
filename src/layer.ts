@@ -77,8 +77,8 @@ export class RectangleMarker implements LayerMarker {
 
 function getBase(view: EditorView) {
   let rect = view.scrollDOM.getBoundingClientRect()
-  let left = view.textDirection == Direction.LTR ? rect.left : rect.right - view.scrollDOM.clientWidth
-  return {left: left - view.scrollDOM.scrollLeft, top: rect.top - view.scrollDOM.scrollTop}
+  let left = view.textDirection == Direction.LTR ? rect.left : rect.right - view.scrollDOM.clientWidth * view.scaleX
+  return {left: left - view.scrollDOM.scrollLeft * view.scaleX, top: rect.top - view.scrollDOM.scrollTop * view.scaleY}
 }
 
 function wrappedLine(view: EditorView, pos: number, inside: {from: number, to: number}) {
@@ -210,6 +210,8 @@ class LayerView {
   measureReq: {read: () => readonly LayerMarker[], write: (markers: readonly LayerMarker[]) => void}
   dom: HTMLElement
   drawn: readonly LayerMarker[] = []
+  scaleX = 1
+  scaleY = 1
 
   constructor(readonly view: EditorView, readonly layer: LayerConfig) {
     this.measureReq = {read: this.measure.bind(this), write: this.draw.bind(this)}
@@ -217,6 +219,7 @@ class LayerView {
     this.dom.classList.add("cm-layer")
     if (layer.above) this.dom.classList.add("cm-layer-above")
     if (layer.class) this.dom.classList.add(layer.class)
+    this.scale()
     this.dom.setAttribute("aria-hidden", "true")
     this.setOrder(view.state)
     view.requestMeasure(this.measureReq)
@@ -226,8 +229,10 @@ class LayerView {
   update(update: ViewUpdate) {
     if (update.startState.facet(layerOrder) != update.state.facet(layerOrder))
       this.setOrder(update.state)
-    if (this.layer.update(update, this.dom) || update.geometryChanged)
+    if (this.layer.update(update, this.dom) || update.geometryChanged) {
+      this.scale()
       update.view.requestMeasure(this.measureReq)
+    }
   }
 
   setOrder(state: EditorState) {
@@ -238,6 +243,14 @@ class LayerView {
 
   measure(): readonly LayerMarker[] {
     return this.layer.markers(this.view)
+  }
+
+  scale() {
+    let {scaleX, scaleY} = this.view
+    if (scaleX != this.scaleX || scaleY != this.scaleY) {
+      this.scaleX = scaleX; this.scaleY = scaleY
+      this.dom.style.transform = `scale(${1 / scaleX}, ${1 / scaleY})`
+    }
   }
 
   draw(markers: readonly LayerMarker[]) {

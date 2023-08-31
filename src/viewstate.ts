@@ -68,8 +68,10 @@ export class LineGap {
     return true
   }
 
-  draw(wrapping: boolean) {
-    return Decoration.replace({widget: new LineGapWidget(this.size, wrapping)}).range(this.from, this.to)
+  draw(viewState: ViewState, wrapping: boolean) {
+    return Decoration.replace({
+      widget: new LineGapWidget(this.size * (wrapping ? viewState.scaleY : viewState.scaleX), wrapping)
+    }).range(this.from, this.to)
   }
 }
 
@@ -105,14 +107,18 @@ export class ViewState {
   pixelViewport: Rect = {left: 0, right: window.innerWidth, top: 0, bottom: 0}
   inView = true
 
-  paddingTop = 0
-  paddingBottom = 0
-  contentDOMWidth = 0
-  contentDOMHeight = 0
-  editorHeight = 0
-  editorWidth = 0
-  scrollTop = 0
+  paddingTop = 0 // Padding above the document, scaled
+  paddingBottom = 0 // Padding below the document, scaled
+  contentDOMWidth = 0 // contentDOM.getBoundingClientRect().width
+  contentDOMHeight = 0 // contentDOM.getBoundingClientRect().height
+  editorHeight = 0 // scrollDOM.clientHeight, unscaled
+  editorWidth = 0 // scrollDOM.clientWidth, unscaled
+  scrollTop = 0 // Last seen scrollDOM.scrollTop, scaled
   scrolledToBottom = true
+  // The CSS-transformation scale of the editor (transformed size /
+  // concrete size)
+  scaleX = 1
+  scaleY = 1
   // The vertical position (document-relative) to which to anchor the
   // scroll position. -1 means anchor to the end of the document.
   scrollAnchorPos = 0
@@ -166,7 +172,7 @@ export class ViewState {
     this.updateViewportLines()
     this.updateForViewport()
     this.lineGaps = this.ensureLineGaps([])
-    this.lineGapDeco = Decoration.set(this.lineGaps.map(gap => gap.draw(false)))
+    this.lineGapDeco = Decoration.set(this.lineGaps.map(gap => gap.draw(this, false)))
     this.computeVisibleRanges()
   }
 
@@ -247,8 +253,22 @@ export class ViewState {
     this.contentDOMHeight = domRect.height
     this.mustMeasureContent = false
     let result = 0, bias = 0
+
+    if (domRect.width && domRect.height) {
+      let scaleX = domRect.width / dom.offsetWidth
+      let scaleY = domRect.height / dom.offsetHeight
+      if (scaleX > 0.995 && scaleX < 1.005) scaleX = 1
+      if (scaleY > 0.995 && scaleY < 1.005) scaleY = 1
+      if (this.scaleX != scaleX || this.scaleY != scaleY) {
+        this.scaleX = scaleX; this.scaleY = scaleY
+        result |= UpdateFlag.Geometry
+        refresh = measureContent = true
+      }
+    }
+
     // Vertical padding
-    let paddingTop = parseInt(style.paddingTop!) || 0, paddingBottom = parseInt(style.paddingBottom!) || 0
+    let paddingTop = (parseInt(style.paddingTop!) || 0) * this.scaleY
+    let paddingBottom = (parseInt(style.paddingBottom!) || 0) * this.scaleY
     if (this.paddingTop != paddingTop || this.paddingBottom != paddingBottom) {
       this.paddingTop = paddingTop
       this.paddingBottom = paddingBottom
@@ -259,9 +279,10 @@ export class ViewState {
       this.editorWidth = view.scrollDOM.clientWidth
       result |= UpdateFlag.Geometry
     }
-    if (this.scrollTop != view.scrollDOM.scrollTop) {
+    let scrollTop = view.scrollDOM.scrollTop * this.scaleY
+    if (this.scrollTop != scrollTop) {
       this.scrollAnchorHeight = -1
-      this.scrollTop = view.scrollDOM.scrollTop
+      this.scrollTop = scrollTop
     }
     this.scrolledToBottom = isScrolledToBottom(view.scrollDOM)
 
@@ -485,7 +506,7 @@ export class ViewState {
   updateLineGaps(gaps: readonly LineGap[]) {
     if (!LineGap.same(gaps, this.lineGaps)) {
       this.lineGaps = gaps
-      this.lineGapDeco = Decoration.set(gaps.map(gap => gap.draw(this.heightOracle.lineWrapping)))
+      this.lineGapDeco = Decoration.set(gaps.map(gap => gap.draw(this, this.heightOracle.lineWrapping)))
     }
   }
 

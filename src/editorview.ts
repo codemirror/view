@@ -394,9 +394,9 @@ export class EditorView {
     if (flush) this.observer.forceFlush()
 
     let updated: ViewUpdate | null = null
-    let sDOM = this.scrollDOM, {scrollTop} = sDOM
+    let sDOM = this.scrollDOM, scrollTop = sDOM.scrollTop * this.scaleY
     let {scrollAnchorPos, scrollAnchorHeight} = this.viewState
-    if (scrollTop != this.viewState.scrollTop) scrollAnchorHeight = -1
+    if (Math.abs(scrollTop - this.viewState.scrollTop) > 1) scrollAnchorHeight = -1
     this.viewState.scrollAnchorHeight = -1
 
     try {
@@ -457,7 +457,8 @@ export class EditorView {
                 this.viewState.lineBlockAt(scrollAnchorPos).top
               let diff = newAnchorHeight - scrollAnchorHeight
               if (diff > 1 || diff < -1) {
-                scrollTop = sDOM.scrollTop = scrollTop + diff
+                scrollTop = scrollTop + diff
+                sDOM.scrollTop = scrollTop / this.scaleY
                 scrollAnchorHeight = -1
                 continue
               }
@@ -574,6 +575,14 @@ export class EditorView {
   get documentPadding() {
     return {top: this.viewState.paddingTop, bottom: this.viewState.paddingBottom}
   }
+
+  /// If the editor is transformed with CSS, this provides the scale
+  /// along the X axis. Otherwise, it will just be 1. Note that
+  /// transforms other than translation and scaling are not supported.
+  get scaleX() { return this.viewState.scaleX }
+
+  /// Provide the CSS transformed scale along the Y axis.
+  get scaleY() { return this.viewState.scaleY }
 
   /// Find the text line or block widget at the given vertical
   /// position (which is interpreted as relative to the [top of the

@@ -118,7 +118,7 @@ export class DocView extends ContentView {
       // messes with the scroll position during DOM mutation (though
       // no relayout is triggered and I cannot imagine how it can
       // recompute the scroll position without a layout)
-      this.dom.style.height = this.view.viewState.contentHeight + "px"
+      this.dom.style.height = this.view.viewState.contentHeight / this.view.scaleY + "px"
       this.dom.style.flexBasis = this.minWidth ? this.minWidth + "px" : ""
       // Chrome will sometimes, when DOM mutations occur directly
       // around the selection, get confused and report a different
@@ -443,7 +443,7 @@ export class DocView extends ContentView {
       let next = i == vs.viewports.length ? null : vs.viewports[i]
       let end = next ? next.from - 1 : this.length
       if (end > pos) {
-        let height = vs.lineBlockAt(end).bottom - vs.lineBlockAt(pos).top
+        let height = (vs.lineBlockAt(end).bottom - vs.lineBlockAt(pos).top) / this.view.scaleY
         deco.push(Decoration.replace({
           widget: new BlockGapWidget(height),
           block: true,

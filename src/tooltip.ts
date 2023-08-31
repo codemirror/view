@@ -12,7 +12,9 @@ type Measured = {
   parent: DOMRect,
   pos: (Rect | null)[],
   size: DOMRect[],
-  space: Rect
+  space: Rect,
+  scaleX: number, scaleY: number,
+  makeAbsolute: boolean
 }
 
 const Outside = "-10000px"
@@ -81,6 +83,9 @@ export function tooltips(config: {
   /// On iOS, which at the time of writing still doesn't properly
   /// support fixed positioning, the library always uses absolute
   /// positioning.
+  ///
+  /// If the tooltip parent element sits in a transformed element, the
+  /// library also falls back to absolute positioning.
   position?: "fixed" | "absolute",
   /// The element to put the tooltips into. By default, they are put
   /// in the editor (`cm-editor`) element, and that is usually what
@@ -100,7 +105,7 @@ export function tooltips(config: {
 
 type TooltipConfig = {
   position: "fixed" | "absolute",
-  parent: ParentNode | null,
+  parent: HTMLElement | null,
   tooltipSpace: (view: EditorView) => Rect
 }
 
@@ -124,7 +129,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
   inView = true
   position: "fixed" | "absolute"
-  parent: ParentNode | null
+  madeAbsolute = false
+  parent: HTMLElement | null
   container!: HTMLElement
   classes: string
   intersectionObserver: IntersectionObserver | null
@@ -181,7 +187,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     if (updated) this.observeIntersection()
     let shouldMeasure = updated || update.geometryChanged
     let newConfig = update.state.facet(tooltipConfig)
-    if (newConfig.position != this.position) {
+    if (newConfig.position != this.position && !this.madeAbsolute) {
       this.position = newConfig.position
       for (let t of this.manager.tooltipViews) t.dom.style.position = this.position
       shouldMeasure = true
@@ -223,8 +229,28 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     clearTimeout(this.measureTimeout)
   }
 
-  readMeasure() {
+  readMeasure(): Measured {
     let editor = this.view.dom.getBoundingClientRect()
+    let scaleX = 1, scaleY = 1, makeAbsolute = false
+    if (this.position == "fixed") {
+      let views = this.manager.tooltipViews
+      // When the dialog's offset parent isn't the body, we are
+      // probably in a transformed container, and should use absolute
+      // positioning instead, since fixed positioning inside a
+      // transform works in a very broken way.
+      makeAbsolute = views.length > 0 && views[0].dom.offsetParent != this.container.ownerDocument.body
+    }
+    if (makeAbsolute || this.position == "absolute") {
+      if (this.parent) {
+        let rect = this.parent.getBoundingClientRect()
+        if (rect.width && rect.height) {
+          scaleX = rect.width / this.parent.offsetWidth
+          scaleY = rect.height / this.parent.offsetHeight
+        }
+      } else {
+        ;({scaleX, scaleY} = this.view.viewState)
+      }
+    }
     return {
       editor,
       parent: this.parent ? this.container.getBoundingClientRect() : editor,
@@ -234,11 +260,18 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       }),
       size: this.manager.tooltipViews.map(({dom}) => dom.getBoundingClientRect()),
       space: this.view.state.facet(tooltipConfig).tooltipSpace(this.view),
+      scaleX, scaleY, makeAbsolute
     }
   }
 
   writeMeasure(measured: Measured) {
-    let {editor, space} = measured
+    if (measured.makeAbsolute) {
+      this.madeAbsolute = true
+      this.position = "absolute"
+      for (let t of this.manager.tooltipViews) t.dom.style.position = "absolute"
+    }
+
+    let {editor, space, scaleX, scaleY} = measured
     let others = []
     for (let i = 0; i < this.manager.tooltips.length; i++) {
       let tooltip = this.manager.tooltips[i], tView = this.manager.tooltipViews[i], {dom} = tView
@@ -268,7 +301,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       if (spaceVert < height && tView.resize !== false) {
         if (spaceVert < this.view.defaultLineHeight) { dom.style.top = Outside; continue }
         knownHeight.set(tView, height)
-        dom.style.height = (height = spaceVert) + "px"
+        dom.style.height = (height = spaceVert) / scaleY + "px"
       } else if (dom.style.height) {
         dom.style.height = ""
       }
@@ -278,13 +311,16 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         if (r.left < right && r.right > left && r.top < top + height && r.bottom > top)
           top = above ? r.top - height - 2 - arrowHeight : r.bottom + arrowHeight + 2
       if (this.position == "absolute") {
-        dom.style.top = (top - measured.parent.top) + "px"
-        dom.style.left = (left - measured.parent.left) + "px"
+        dom.style.top = (top - measured.parent.top) / scaleY + "px"
+        dom.style.left = (left - measured.parent.left) / scaleX + "px"
       } else {
-        dom.style.top = top + "px"
-        dom.style.left = left + "px"
+        dom.style.top = top / scaleY + "px"
+        dom.style.left = left / scaleX + "px"
       }
-      if (arrow) arrow.style.left = `${pos.left + (ltr ? offset.x : -offset.x) - (left + Arrow.Offset - Arrow.Size)}px`
+      if (arrow) {
+        let arrowLeft = pos.left + (ltr ? offset.x : -offset.x) - (left + Arrow.Offset - Arrow.Size)
+        arrow.style.left = arrowLeft / scaleX + "px"
+      }
 
       if (tView.overlap !== true)
         others.push({left, top, right, bottom: top + height})

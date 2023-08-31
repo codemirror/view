@@ -123,7 +123,7 @@ const gutterView = ViewPlugin.fromClass(class {
     this.dom = document.createElement("div")
     this.dom.className = "cm-gutters"
     this.dom.setAttribute("aria-hidden", "true")
-    this.dom.style.minHeight = this.view.contentHeight + "px"
+    this.dom.style.minHeight = (this.view.contentHeight / this.view.scaleY) + "px"
     this.gutters = view.state.facet(activeGutters).map(conf => new SingleGutterView(view, conf))
     for (let gutter of this.gutters) this.dom.appendChild(gutter.dom)
     this.fixed = !view.state.facet(unfixGutters)
@@ -219,7 +219,9 @@ const gutterView = ViewPlugin.fromClass(class {
   provide: plugin => EditorView.scrollMargins.of(view => {
     let value = view.plugin(plugin)
     if (!value || value.gutters.length == 0 || !value.fixed) return null
-    return view.textDirection == Direction.LTR ? {left: value.dom.offsetWidth} : {right: value.dom.offsetWidth}
+    return view.textDirection == Direction.LTR
+      ? {left: value.dom.offsetWidth * view.scaleX}
+      : {right: value.dom.offsetWidth * view.scaleX}
   })
 })
 
@@ -341,10 +343,12 @@ class GutterElement {
   }
 
   update(view: EditorView, height: number, above: number, markers: readonly GutterMarker[]) {
-    if (this.height != height)
-      this.dom.style.height = (this.height = height) + "px"
+    if (this.height != height) {
+      this.height = height
+      this.dom.style.height = height / view.scaleY + "px"
+    }
     if (this.above != above)
-      this.dom.style.marginTop = (this.above = above) ? above + "px" : ""
+      this.dom.style.marginTop = (this.above = above) ? above / view.scaleY + "px" : ""
     if (!sameMarkers(this.markers, markers)) this.setMarkers(view, markers)
   }
 

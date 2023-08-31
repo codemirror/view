@@ -40,23 +40,25 @@ const drawDropCursor = ViewPlugin.fromClass(class {
   }
 
   readPos(): {left: number, top: number, height: number} | null {
-    let pos = this.view.state.field(dropCursorPos)
-    let rect = pos != null && this.view.coordsAtPos(pos)
+    let {view} = this
+    let pos = view.state.field(dropCursorPos)
+    let rect = pos != null && view.coordsAtPos(pos)
     if (!rect) return null
-    let outer = this.view.scrollDOM.getBoundingClientRect()
+    let outer = view.scrollDOM.getBoundingClientRect()
     return { 
-      left: rect.left - outer.left + this.view.scrollDOM.scrollLeft,
-      top: rect.top - outer.top + this.view.scrollDOM.scrollTop,
+      left: rect.left - outer.left + view.scrollDOM.scrollLeft * view.scaleX,
+      top: rect.top - outer.top + view.scrollDOM.scrollTop * view.scaleY,
       height: rect.bottom - rect.top
     }
   }
 
   drawCursor(pos: {left: number, top: number, height: number} | null) {
     if (this.cursor) {
+      let {scaleX, scaleY} = this.view
       if (pos) {
-        this.cursor.style.left = pos.left + "px"
-        this.cursor.style.top = pos.top + "px"
-        this.cursor.style.height = pos.height + "px"
+        this.cursor.style.left = pos.left / scaleX + "px"
+        this.cursor.style.top = pos.top / scaleY + "px"
+        this.cursor.style.height = pos.height / scaleY + "px"
       } else {
         this.cursor.style.left = "-100000px"
       }

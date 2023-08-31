@@ -108,6 +108,7 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
   for (let cur: any = dom, stop = false; cur && !stop;) {
     if (cur.nodeType == 1) { // Element
       let bounding: Rect, top = cur == doc.body
+      let scaleX = 1, scaleY = 1
       if (top) {
         bounding = windowRect(win)
       } else {
@@ -117,9 +118,11 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
           continue
         }
         let rect = cur.getBoundingClientRect()
+        scaleX = rect.width / cur.offsetWidth
+        scaleY = rect.height / cur.offsetHeight
         // Make sure scrollbar width isn't included in the rectangle
-        bounding = {left: rect.left, right: rect.left + cur.clientWidth,
-                    top: rect.top, bottom: rect.top + cur.clientHeight}
+        bounding = {left: rect.left, right: rect.left + cur.clientWidth * scaleX,
+                    top: rect.top, bottom: rect.top + cur.clientHeight * scaleY}
       }
 
       let moveX = 0, moveY = 0
@@ -165,13 +168,13 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
           let movedX = 0, movedY = 0
           if (moveY) {
             let start = cur.scrollTop
-            cur.scrollTop += moveY
-            movedY = cur.scrollTop - start
+            cur.scrollTop += moveY / scaleY
+            movedY = (cur.scrollTop - start) * scaleY
           }
           if (moveX) {
             let start = cur.scrollLeft
-            cur.scrollLeft += moveX
-            movedX = cur.scrollLeft - start
+            cur.scrollLeft += moveX / scaleX
+            movedX = (cur.scrollLeft - start) * scaleX
           }
           rect = {left: rect.left - movedX, top: rect.top - movedY,
                   right: rect.right - movedX, bottom: rect.bottom - movedY} as ClientRect

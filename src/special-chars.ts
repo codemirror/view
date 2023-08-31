@@ -111,7 +111,9 @@ function specialCharPlugin() {
           if (code == 9) {
             let line = doc.lineAt(pos)
             let size = view.state.tabSize, col = countColumn(line.text, size, pos - line.from)
-            return Decoration.replace({widget: new TabWidget((size - (col % size)) * this.view.defaultCharacterWidth)})
+            return Decoration.replace({
+              widget: new TabWidget((size - (col % size)) * this.view.defaultCharacterWidth / this.view.scaleX)
+            })
           }
           return this.decorationCache[code] ||
             (this.decorationCache[code] = Decoration.replace({widget: new SpecialCharWidget(conf, code)}))
