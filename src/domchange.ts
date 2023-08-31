@@ -145,8 +145,8 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
                             newSel: EditorSelection | null): Transaction {
   let tr: TransactionSpec, startState = view.state, sel = startState.selection.main
   if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3 &&
-    (!newSel || newSel.main.empty && newSel.main.from == change.from + change.insert.length) &&
-    view.inputState.composing < 0) {
+      (!newSel || newSel.main.empty && newSel.main.from == change.from + change.insert.length) &&
+      view.inputState.composing < 0) {
     let before = sel.from < change.from ? startState.sliceDoc(sel.from, change.from) : ""
     let after = sel.to > change.to ? startState.sliceDoc(change.to, sel.to) : ""
     tr = startState.replaceSelection(view.state.toText(
@@ -158,7 +158,8 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
     if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
       change.to <= sel.to && change.to >= sel.to - 10) {
       let replaced = view.state.sliceDoc(change.from, change.to)
-      let composition = findCompositionNode(view) || view.state.doc.lineAt(sel.head)
+      let composition = findCompositionNode(view, change.insert.length - (change.to - change.from)) ||
+        view.state.doc.lineAt(sel.head)
       let offset = sel.to - change.to, size = sel.to - sel.from
       tr = startState.changeByRange(range => {
         if (range.from == sel.from && range.to == sel.to)

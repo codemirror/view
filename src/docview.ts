@@ -517,7 +517,7 @@ class BlockGapWidget extends WidgetType {
   get estimatedHeight() { return this.height }
 }
 
-export function findCompositionNode(view: EditorView): {from: number, to: number, node: Text} | null {
+export function findCompositionNode(view: EditorView, dLen: number): {from: number, to: number, node: Text} | null {
   let sel = view.observer.selectionRange
   let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
   if (!textNode) return null
@@ -527,10 +527,12 @@ export function findCompositionNode(view: EditorView): {from: number, to: number
     from = cView.posAtStart
     to = from + cView.length
   } else {
+    let oldLen = Math.max(0, textNode.nodeValue!.length - dLen)
     up: for (let offset = 0, node: Node | null = textNode;;) {
       for (let sibling = node.previousSibling, cView; sibling; sibling = sibling.previousSibling) {
         if (cView = ContentView.get(sibling)) {
-          from = to = cView.posAtEnd + offset
+          to = cView.posAtEnd + offset
+          from = Math.max(0, to - oldLen)
           break up
         }
         let reader = new DOMReader([], view.state)
@@ -542,16 +544,17 @@ export function findCompositionNode(view: EditorView): {from: number, to: number
       if (!node) return null
       let parentView = ContentView.get(node)
       if (parentView) {
-        from = to = parentView.posAtStart + offset
+        from = parentView.posAtStart + offset
+        to = from + oldLen
         break
       }
     }
   }
-  return {from, to, node: textNode}
+  return {from, to: to, node: textNode}
 }
 
 function findCompositionRange(view: EditorView, changes: ChangeSet): Composition | null {
-  let found = findCompositionNode(view)
+  let found = findCompositionNode(view, changes.newLength - changes.length)
   if (!found) return null
   let {from: fromA, to: toA, node: textNode} = found
   let fromB = changes.mapPos(fromA, -1), toB = changes.mapPos(toA, 1)
