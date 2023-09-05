@@ -1,3 +1,11 @@
+## 6.18.0 (2023-09-05)
+
+### New features
+
+The new `EditorView.scaleX` and `scaleY` properties return the CSS-transformed scale of the editor (or 1 when not scaled).
+
+The editor now supports being scaled with CSS.
+
 ## 6.17.1 (2023-08-31)
 
 ### Bug fixes
