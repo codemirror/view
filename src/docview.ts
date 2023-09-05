@@ -187,7 +187,7 @@ export class DocView extends ContentView {
 
   private fixCompositionDOM(composition: Composition) {
     let fix = (dom: Node, cView: ContentView) => {
-      cView.flags |= ViewFlag.Composition
+      cView.flags |= ViewFlag.Composition | (cView.children.some(c => c.flags & ViewFlag.Dirty) ? ViewFlag.ChildDirty : 0)
       this.markedForComposition.add(cView)
       let prev = ContentView.get(dom)
       if (prev != cView) {
