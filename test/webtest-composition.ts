@@ -398,4 +398,17 @@ describe("Composition", () => {
     ])
     ist(cm.state.doc.toString(), "(阿波)")
   })
+
+  it("can handle IME extending text nodes", () => {
+    let cm = requireFocus(tempView("x .a.", [wordHighlighter]))
+    compose(cm, () => {
+      let dot = cm.contentDOM.firstChild!.lastChild! as Text
+      dot.textContent = " .a.."
+      dot.previousSibling!.remove()
+      dot.previousSibling!.remove()
+      document.getSelection()!.collapse(dot, 5)
+      return dot
+    }, [])
+    ist(cm.contentDOM.textContent, "x .a..")
+  })
 })

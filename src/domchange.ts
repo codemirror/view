@@ -158,8 +158,13 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
     if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
       change.to <= sel.to && change.to >= sel.to - 10) {
       let replaced = view.state.sliceDoc(change.from, change.to)
-      let composition = findCompositionNode(view, change.insert.length - (change.to - change.from)) ||
-        view.state.doc.lineAt(sel.head)
+      let compositionRange: {from: number, to: number}, composition = newSel && findCompositionNode(view, newSel.main.head)
+      if (composition) {
+        let dLen = change.insert.length - (change.to - change.from)
+        compositionRange = {from: composition.from, to: composition.to - dLen}
+      } else {
+        compositionRange = view.state.doc.lineAt(sel.head)
+      }
       let offset = sel.to - change.to, size = sel.to - sel.from
       tr = startState.changeByRange(range => {
         if (range.from == sel.from && range.to == sel.to)
@@ -170,7 +175,7 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
           // changes in the same node work without aborting
           // composition, so cursors in the composition range are
           // ignored.
-          composition && range.to >= composition.from && range.from <= composition.to)
+          range.to >= compositionRange.from && range.from <= compositionRange.to)
           return {range}
         let rangeChanges = startState.changes({from, to, insert: change!.insert}), selOff = range.to - sel.to
         return {

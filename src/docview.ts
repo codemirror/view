@@ -1,6 +1,5 @@
 import {ChangeSet, RangeSet, findClusterBreak} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
-import {DOMReader, LineBreakPlaceholder} from "./domreader"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {TextView, MarkView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
@@ -253,7 +252,7 @@ export class DocView extends ContentView {
             let nextTo = nextToUneditable(anchor.node, anchor.offset)
             if (nextTo && nextTo != (NextTo.Before | NextTo.After)) {
               let text = nearbyTextNode(anchor.node, anchor.offset, nextTo == NextTo.Before ? 1 : -1)
-              if (text) anchor = new DOMPos(text, nextTo == NextTo.Before ? 0 : text.nodeValue!.length)
+              if (text) anchor = new DOMPos(text.node, text.offset)
             }
           }
           rawSel.collapse(anchor.node, anchor.offset)
@@ -517,65 +516,25 @@ class BlockGapWidget extends WidgetType {
   get estimatedHeight() { return this.height }
 }
 
-export function findCompositionNode(view: EditorView, dLen: number): {from: number, to: number, node: Text} | null {
+export function findCompositionNode(view: EditorView, headPos: number): {from: number, to: number, node: Text} | null {
   let sel = view.observer.selectionRange
   let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
   if (!textNode) return null
-  let cView = ContentView.get(textNode)
-  let from, to
-  if (cView instanceof TextView) {
-    from = cView.posAtStart
-    to = from + cView.length
-  } else {
-    let oldLen = Math.max(0, textNode.nodeValue!.length - dLen)
-    up: for (let offset = 0, node: Node | null = textNode;;) {
-      for (let sibling = node.previousSibling, cView; sibling; sibling = sibling.previousSibling) {
-        if (cView = ContentView.get(sibling)) {
-          to = cView.posAtEnd + offset
-          from = Math.max(0, to - oldLen)
-          break up
-        }
-        let reader = new DOMReader([], view.state)
-        reader.readNode(sibling)
-        if (reader.text.indexOf(LineBreakPlaceholder) > -1) return null
-        offset += reader.text.length
-      }
-      node = node.parentNode
-      if (!node) return null
-      let parentView = ContentView.get(node)
-      if (parentView) {
-        from = parentView.posAtStart + offset
-        to = from + oldLen
-        break
-      }
-    }
-  }
-  return {from, to: to, node: textNode}
+  let from = headPos - textNode.offset
+  return {from, to: from + textNode.node.nodeValue!.length, node: textNode.node}
 }
 
 function findCompositionRange(view: EditorView, changes: ChangeSet): Composition | null {
-  let found = findCompositionNode(view, changes.newLength - changes.length)
+  let found = findCompositionNode(view, view.state.selection.main.head)
   if (!found) return null
-  let {from: fromA, to: toA, node: textNode} = found
-  let fromB = changes.mapPos(fromA, -1), toB = changes.mapPos(toA, 1)
-  let text = textNode.nodeValue!
+  let {node: textNode, from, to} = found, text = textNode.nodeValue!
   // Don't try to preserve multi-line compositions
   if (/[\n\r]/.test(text)) return null
-  if (toB - fromB != text.length) {
-    // If there is a length mismatch, see if mapping non-inclusively helps
-    let fromB2 = changes.mapPos(fromA, 1), toB2 = changes.mapPos(toA, -1)
-    if (toB2 - fromB2 == text.length) fromB = fromB2, toB = toB2
-    // See if we can find an instance of the text at either side
-    else if (view.state.doc.sliceString(toB - text.length, toB) == text) fromB = toB - text.length
-    else if (view.state.doc.sliceString(fromB, fromB + text.length) == text) toB = fromB + text.length
-    // Not found
-    else return null
-  }
-  let {main} = view.state.selection
-  if (view.state.doc.sliceString(fromB, toB) != text || fromB > main.head || toB < main.head) return null
+  if (view.state.doc.sliceString(found.from, found.to) != text) return null
 
+  let inv = changes.invertedDesc
+  let range = new ChangedRange(inv.mapPos(from), inv.mapPos(to), from, to)
   let marks: {node: HTMLElement, deco: MarkDecoration}[] = []
-  let range = new ChangedRange(fromA, toA, fromB, toB)
   for (let parent = textNode.parentNode as HTMLElement;; parent = parent.parentNode as HTMLElement) {
     let parentView = ContentView.get(parent)
     if (parentView instanceof MarkView)
@@ -593,9 +552,9 @@ function findCompositionRange(view: EditorView, changes: ChangeSet): Composition
   }
 }
 
-function nearbyTextNode(startNode: Node, startOffset: number, side: number): Text | null {
+function nearbyTextNode(startNode: Node, startOffset: number, side: number): {node: Text, offset: number} | null {
   if (side <= 0) for (let node = startNode, offset = startOffset;;) {
-    if (node.nodeType == 3) return node as Text
+    if (node.nodeType == 3) return {node: node as Text, offset: offset}
     if (node.nodeType == 1 && offset > 0) {
       node = node.childNodes[offset - 1]
       offset = maxOffset(node)
@@ -604,7 +563,7 @@ function nearbyTextNode(startNode: Node, startOffset: number, side: number): Tex
     }
   }
   if (side >= 0) for (let node = startNode, offset = startOffset;;) {
-    if (node.nodeType == 3) return node as Text
+    if (node.nodeType == 3) return {node: node as Text, offset: offset}
     if (node.nodeType == 1 && offset < node.childNodes.length && side >= 0) {
       node = node.childNodes[offset]
       offset = 0
