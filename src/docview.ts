@@ -189,10 +189,8 @@ export class DocView extends ContentView {
       cView.flags |= ViewFlag.Composition | (cView.children.some(c => c.flags & ViewFlag.Dirty) ? ViewFlag.ChildDirty : 0)
       this.markedForComposition.add(cView)
       let prev = ContentView.get(dom)
-      if (prev != cView) {
-        if (prev) prev.dom = null
-        cView.setDOM(dom)
-      }
+      if (prev && prev != cView) prev.dom = null
+      cView.setDOM(dom)
     }
     let pos = this.childPos(composition.range.fromB, 1)
     let cView: ContentView = this.children[pos.i]

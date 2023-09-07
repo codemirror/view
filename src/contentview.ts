@@ -179,6 +179,7 @@ export abstract class ContentView {
   }
 
   setDOM(dom: Node) {
+    if (this.dom == dom) return
     if (this.dom) (this.dom as any).cmView = null
     this.dom = dom
     ;(dom as any).cmView = this
