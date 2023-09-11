@@ -264,8 +264,8 @@ export class DocView extends ContentView {
             }
           }
           rawSel.collapse(anchor.node, anchor.offset)
-          if (main.bidiLevel != null && (domSel as any).caretBidiLevel != null)
-            (domSel as any).caretBidiLevel = main.bidiLevel
+          if (main.bidiLevel != null && (rawSel as any).caretBidiLevel !== undefined)
+            (rawSel as any).caretBidiLevel = main.bidiLevel
         } else if (rawSel.extend) {
           // Selection.extend can be used to create an 'inverted' selection
           // (one where the focus is before the anchor), but not all
