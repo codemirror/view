@@ -1,3 +1,13 @@
+## 6.18.1 (2023-09-11)
+
+### Bug fixes
+
+Fix an issue where the editor duplicated text when the browser moved content into the focused text node on composition.
+
+Make sure `widgetMarker` is called for gutters on lines covered by a block replace decoration.
+
+Fix an issue where the cursor could be shown in a position that doesn't allow a cursor when the selection is in a block widget.
+
 ## 6.18.0 (2023-09-05)
 
 ### New features
