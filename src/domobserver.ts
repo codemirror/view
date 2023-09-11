@@ -356,7 +356,9 @@ export class DOMObserver {
     if (from > -1) this.lastChange = Date.now()
     this.view.inputState.lastFocusTime = 0
     this.selectionChanged = false
-    return new DOMChange(this.view, from, to, typeOver)
+    let change = new DOMChange(this.view, from, to, typeOver)
+    this.view.docView.domChanged = {newSel: change.newSel ? change.newSel.main : null}
+    return change
   }
 
   // Apply pending changes, if any

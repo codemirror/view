@@ -1,4 +1,4 @@
-import {ChangeSet, RangeSet, findClusterBreak} from "@codemirror/state"
+import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {TextView, MarkView} from "./inlineview"
@@ -25,6 +25,7 @@ export class DocView extends ContentView {
 
   decorations: readonly DecorationSet[] = []
   dynamicDecorationMap: boolean[] = []
+  domChanged: {newSel: SelectionRange | null} | null = null
   hasComposition: {from: number, to: number} | null = null
   markedForComposition: Set<ContentView> = new Set
 
@@ -74,7 +75,16 @@ export class DocView extends ContentView {
       }
     }
 
-    let composition = this.view.inputState.composing < 0 ? null : findCompositionRange(this.view, update.changes)
+    let readCompositionAt = -1
+    if (this.view.inputState.composing >= 0) {
+      if (this.domChanged?.newSel)
+        readCompositionAt = this.domChanged.newSel.head
+      else if (!touchesComposition(update.changes, this.hasComposition) && !update.selectionSet)
+        readCompositionAt = update.state.selection.main.head
+    }
+    let composition = readCompositionAt > -1 ? findCompositionRange(this.view, update.changes, readCompositionAt) : null
+    this.domChanged = null
+
     if (this.hasComposition) {
       this.markedForComposition.clear()
       let {from, to} = this.hasComposition
@@ -522,8 +532,8 @@ export function findCompositionNode(view: EditorView, headPos: number): {from: n
   return {from, to: from + textNode.node.nodeValue!.length, node: textNode.node}
 }
 
-function findCompositionRange(view: EditorView, changes: ChangeSet): Composition | null {
-  let found = findCompositionNode(view, view.state.selection.main.head)
+function findCompositionRange(view: EditorView, changes: ChangeSet, headPos: number): Composition | null {
+  let found = findCompositionNode(view, headPos)
   if (!found) return null
   let {node: textNode, from, to} = found, text = textNode.nodeValue!
   // Don't try to preserve multi-line compositions
@@ -599,4 +609,12 @@ function inUneditable(node: Node | null, inside: HTMLElement) {
     }
   }
   return false;
+}
+
+function touchesComposition(changes: ChangeSet, composition: null | {from: number, to: number}) {
+  let touched = false
+  if (composition) changes.iterChangedRanges((from, to) => {
+    if (from < composition!.to && to > composition!.from) touched = true
+  })
+  return touched
 }
