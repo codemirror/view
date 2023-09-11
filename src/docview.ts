@@ -223,9 +223,8 @@ export class DocView extends ContentView {
     this.forceSelection = false
 
     let main = this.view.state.selection.main
-    // FIXME need to handle the case where the selection falls inside a block range
-    let anchor = this.domAtPos(main.anchor)
-    let head = main.empty ? anchor : this.domAtPos(main.head)
+    let anchor = this.moveToLine(this.domAtPos(main.anchor))
+    let head = main.empty ? anchor : this.moveToLine(this.domAtPos(main.head))
 
     // Always reset on Firefox when next to an uneditable node to
     // avoid invisible cursor bugs (#111)
@@ -318,6 +317,24 @@ export class DocView extends ContentView {
     let newRange = view.observer.selectionRange
     if (view.docView.posFromDOM(newRange.anchorNode!, newRange.anchorOffset) != cursor.from)
       sel.collapse(anchorNode, anchorOffset)
+  }
+
+  // If a position is in/near a block widget, move it to a nearby text
+  // line, since we don't want the cursor inside a block widget.
+  moveToLine(pos: DOMPos) {
+    // Block widgets will return positions before/after them, which
+    // are thus directly in the document DOM element.
+    let dom = this.dom!, newPos
+    if (pos.node != dom) return pos
+    for (let i = pos.offset; !newPos && i < dom.childNodes.length; i++) {
+      let view = ContentView.get(dom.childNodes[i])
+      if (view instanceof LineView) newPos = view.domAtPos(0)
+    }
+    for (let i = pos.offset - 1; !newPos && i >= 0; i--) {
+      let view = ContentView.get(dom.childNodes[i])
+      if (view instanceof LineView) newPos = view.domAtPos(view.length)
+    }
+    return newPos ? new DOMPos(newPos.node, newPos.offset, true) : pos
   }
 
   nearest(dom: Node): ContentView | null {
