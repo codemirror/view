@@ -67,7 +67,6 @@ export class InputState {
     let handleEvent = (handler: (view: EditorView, event: Event) => void, event: Event) => {
       if (this.ignoreDuringComposition(event)) return
       if (event.type == "keydown" && this.keydown(view, event as KeyboardEvent)) return
-      if (this.mustFlushObserver(event)) view.observer.forceFlush()
       if (this.runCustomHandlers(event.type, view, event)) event.preventDefault()
       else handler(view, event)
     }
@@ -160,7 +159,7 @@ export class InputState {
       view.observer.delayAndroidKey(event.key, event.keyCode)
       return true
     }
-    // Prevent the default behavior of Enter on iOS makes the
+    // Preventing the default behavior of Enter on iOS makes the
     // virtual keyboard get stuck in the wrong (lowercase)
     // state. So we let it go through, and then, in
     // applyDOMChange, notify key handlers of it and reset to
@@ -173,6 +172,7 @@ export class InputState {
       setTimeout(() => this.flushIOSKey(view), 250)
       return true
     }
+    if (event.keyCode != 229) view.observer.forceFlush()
     return false
   }
 
@@ -197,10 +197,6 @@ export class InputState {
       return true
     }
     return false
-  }
-
-  mustFlushObserver(event: Event) {
-    return event.type == "keydown" && (event as any).keyCode != 229
   }
 
   startMouseSelection(mouseSelection: MouseSelection) {
