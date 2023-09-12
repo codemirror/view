@@ -74,7 +74,7 @@ const drawDropCursor = ViewPlugin.fromClass(class {
       this.view.dispatch({effects: setDropCursorPos.of(pos)})
   }
 }, {
-  eventHandlers: {
+  eventObservers: {
     dragover(event) {
       this.setDropPos(this.view.posAtCoords({x: event.clientX, y: event.clientY}))
     },

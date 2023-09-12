@@ -340,7 +340,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     }
   }
 }, {
-  eventHandlers: {
+  eventObservers: {
     scroll() { this.maybeMeasure() }
   }
 })

@@ -114,7 +114,7 @@ export function crosshairCursor(options: {
       }
     }
   }, {
-    eventHandlers: {
+    eventObservers: {
       keydown(e) {
         this.set(e.keyCode == code || getter(e))
       },
