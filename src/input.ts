@@ -16,7 +16,6 @@ export class InputState {
   lastFocusTime = 0
   lastScrollTop = 0
   lastScrollLeft = 0
-  chromeScrollHack = -1
 
   // On iOS, some keys need to have their default behavior happen
   // (after which we retroactively handle them and reset the DOM) to
@@ -95,19 +94,6 @@ export class InputState {
       if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom)
         handleEvent(handlers.drop, event)
     })
-    if (browser.chrome && browser.chrome_version == 102) { // FIXME remove at some point
-      // On Chrome 102, viewport updates somehow stop wheel-based
-      // scrolling. Turning off pointer events during the scroll seems
-      // to avoid the issue.
-      view.scrollDOM.addEventListener("wheel", () => {
-        if (this.chromeScrollHack < 0) view.contentDOM.style.pointerEvents = "none"
-        else window.clearTimeout(this.chromeScrollHack)
-        this.chromeScrollHack = setTimeout(() => {
-          this.chromeScrollHack = -1
-          view.contentDOM.style.pointerEvents = ""
-        }, 100)
-      }, {passive: true})
-    }
     this.notifiedFocused = view.hasFocus
     // On Safari adding an input event handler somehow prevents an
     // issue where the composition vanishes when you press enter.
