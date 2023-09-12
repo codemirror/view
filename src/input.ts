@@ -1,5 +1,5 @@
 import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation} from "@codemirror/state"
-import {EditorView, DOMEventHandlers} from "./editorview"
+import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
 import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior, atomicRanges,
@@ -28,11 +28,10 @@ export class InputState {
   lastContextMenu: number = 0
   scrollHandlers: ((event: Event) => boolean | void)[] = []
 
-  registeredEvents: string[] = []
-  customHandlers: {
-    plugin: PluginValue,
-    handlers: DOMEventHandlers<any>
-  }[] = []
+  handlers: {[event: string]: {
+    observers: readonly HandlerFunction[],
+    handlers: readonly HandlerFunction[]
+  }} = Object.create(null)
 
   // -1 means not in a composition. Otherwise, this counts the number
   // of changes made during the composition. The count is used to
@@ -63,23 +62,11 @@ export class InputState {
     this.lastSelectionTime = Date.now()
   }
 
-  constructor(view: EditorView) {
-    let handleEvent = (handler: (view: EditorView, event: Event) => void, event: Event) => {
-      if (this.ignoreDuringComposition(event)) return
-      if (event.type == "keydown" && this.keydown(view, event as KeyboardEvent)) return
-      if (this.runCustomHandlers(event.type, view, event)) event.preventDefault()
-      else handler(view, event)
-    }
-    for (let type in handlers) {
-      let handler = handlers[type]
-      view.contentDOM.addEventListener(type, event => {
-        if (eventBelongsToEditor(view, event)) handleEvent(handler, event)
-      }, handlerOptions[type])
-      this.registeredEvents.push(type)
-    }
+  constructor(readonly view: EditorView) {
+    this.handleEvent = this.handleEvent.bind(this)
     view.scrollDOM.addEventListener("mousedown", (event: MouseEvent) => {
       if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom) {
-        handleEvent(handlers.mousedown, event)
+        this.handleEvent(event)
         if (!event.defaultPrevented && event.button == 2) {
           // Make sure the content covers the entire scroller height, in order
           // to catch a native context menu click below it
@@ -91,7 +78,7 @@ export class InputState {
     })
     view.scrollDOM.addEventListener("drop", (event: DragEvent) => {
       if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom)
-        handleEvent(handlers.drop, event)
+        this.handleEvent(event)
     })
     this.notifiedFocused = view.hasFocus
     // On Safari adding an input event handler somehow prevents an
@@ -100,54 +87,46 @@ export class InputState {
     if (browser.gecko) firefoxCopyCutHack(view.contentDOM.ownerDocument)
   }
 
-  ensureHandlers(view: EditorView, plugins: readonly PluginInstance[]) {
-    let handlers
-    this.customHandlers = []
-    for (let plugin of plugins) if (handlers = plugin.update(view).spec?.domEventHandlers) {
-      this.customHandlers.push({plugin: plugin.value!, handlers})
-      for (let type in handlers) if (this.registeredEvents.indexOf(type) < 0 && type != "scroll") {
-        this.registeredEvents.push(type)
-        view.contentDOM.addEventListener(type, (event: Event) => {
-          if (!eventBelongsToEditor(view, event)) return
-          if (this.runCustomHandlers(type, view, event)) event.preventDefault()
-        })
+  handleEvent(event: Event) {
+    if (!eventBelongsToEditor(this.view, event) || this.ignoreDuringComposition(event)) return
+    if (event.type == "keydown" && this.keydown(event as KeyboardEvent)) return
+    this.runHandlers(event.type, event)
+  }
+
+  runHandlers(type: string, event: Event) {
+    let handlers = this.handlers[type]
+    if (handlers) {
+      for (let observer of handlers.observers) observer(this.view, event)
+      for (let handler of handlers.handlers) {
+        if (event.defaultPrevented) break
+        if (handler(this.view, event)) { event.preventDefault(); break }
       }
     }
   }
 
-  runCustomHandlers(type: string, view: EditorView, event: Event): boolean {
-    for (let set of this.customHandlers) {
-      let handler = set.handlers[type]
-      if (handler) {
-        try {
-          if (handler.call(set.plugin, event as any, view) || event.defaultPrevented) return true
-        } catch (e) {
-          logException(view.state, e)
-        }
+  ensureHandlers(plugins: readonly PluginInstance[]) {
+    let handlers = computeHandlers(plugins), prev = this.handlers, dom = this.view.contentDOM
+    for (let type in handlers) if (type != "scroll") {
+      let passive = !handlers[type].handlers.length
+      let exists: (typeof prev)["type"] | null = prev[type]
+      if (exists && passive != !exists.handlers.length) {
+        dom.removeEventListener(type, this.handleEvent)
+        exists = null
       }
+      if (!exists) dom.addEventListener(type, this.handleEvent, {passive})
     }
-    return false
+    for (let type in prev) if (type != "scroll" && !handlers[type])
+      dom.removeEventListener(type, this.handleEvent)
+    this.handlers = handlers
   }
 
-  runScrollHandlers(view: EditorView, event: Event) {
-    this.lastScrollTop = view.scrollDOM.scrollTop
-    this.lastScrollLeft = view.scrollDOM.scrollLeft
-    for (let set of this.customHandlers) {
-      let handler = set.handlers.scroll
-      if (handler) {
-        try { handler.call(set.plugin, event, view) }
-        catch (e) { logException(view.state, e) }
-      }
-    }
-  }
-
-  keydown(view: EditorView, event: KeyboardEvent) {
+  keydown(event: KeyboardEvent) {
     // Must always run, even if a custom handler handled the event
     this.lastKeyCode = event.keyCode
     this.lastKeyTime = Date.now()
 
     if (event.keyCode == 9 && Date.now() < this.lastEscPress + 2000) return true
-    if (event.keyCode != 27 && modifierCodes.indexOf(event.keyCode) < 0) view.inputState.lastEscPress = 0
+    if (event.keyCode != 27 && modifierCodes.indexOf(event.keyCode) < 0) this.view.inputState.lastEscPress = 0
 
     // Chrome for Android usually doesn't fire proper key events, but
     // occasionally does, usually surrounded by a bunch of complicated
@@ -156,7 +135,7 @@ export class InputState {
     // dispatch it.
     if (browser.android && browser.chrome && !(event as any).synthetic &&
         (event.keyCode == 13 || event.keyCode == 8)) {
-      view.observer.delayAndroidKey(event.key, event.keyCode)
+      this.view.observer.delayAndroidKey(event.key, event.keyCode)
       return true
     }
     // Preventing the default behavior of Enter on iOS makes the
@@ -169,18 +148,18 @@ export class InputState {
         ((pending = PendingKeys.find(key => key.keyCode == event.keyCode)) && !event.ctrlKey ||
          EmacsyPendingKeys.indexOf(event.key) > -1 && event.ctrlKey && !event.shiftKey)) {
       this.pendingIOSKey = pending || event
-      setTimeout(() => this.flushIOSKey(view), 250)
+      setTimeout(() => this.flushIOSKey(), 250)
       return true
     }
-    if (event.keyCode != 229) view.observer.forceFlush()
+    if (event.keyCode != 229) this.view.observer.forceFlush()
     return false
   }
 
-  flushIOSKey(view: EditorView) {
+  flushIOSKey() {
     let key = this.pendingIOSKey
     if (!key) return false
     this.pendingIOSKey = undefined
-    return dispatchKey(view.contentDOM, key.key, key.keyCode)
+    return dispatchKey(this.view.contentDOM, key.key, key.keyCode)
   }
 
   ignoreDuringComposition(event: Event): boolean {
@@ -212,6 +191,45 @@ export class InputState {
   destroy() {
     if (this.mouseSelection) this.mouseSelection.destroy()
   }
+}
+
+type HandlerFunction = (view: EditorView, event: Event) => boolean | void
+
+function bindHandler(
+  plugin: PluginValue,
+  handler: (this: PluginValue, event: Event, view: EditorView) => boolean | void
+): HandlerFunction {
+  return (view, event) => {
+    try {
+      return handler.call(plugin, event, view)
+    } catch (e) {
+      logException(view.state, e)
+    }
+  }
+}
+
+function computeHandlers(plugins: readonly PluginInstance[]) {
+  let result: {[event: string]: {
+    observers: HandlerFunction[],
+    handlers: HandlerFunction[]
+  }} = Object.create(null)
+  function record(type: string) {
+    return result[type] || (result[type] = {observers: [], handlers: []})
+  }
+  for (let plugin of plugins) {
+    let spec = plugin.spec
+    if (spec && spec.domEventHandlers) for (let type in spec.domEventHandlers) {
+      let f = spec.domEventHandlers[type]
+      if (f) record(type).handlers.push(bindHandler(plugin.value!, f))
+    }
+    if (spec && spec.domEventObservers) for (let type in spec.domEventObservers) {
+      let f = spec.domEventObservers[type]
+      if (f) record(type).observers.push(bindHandler(plugin.value!, f))
+    }
+  }
+  for (let type in handlers) record(type).handlers.push(handlers[type])
+  for (let type in observers) record(type).observers.push(observers[type])
+  return result
 }
 
 const PendingKeys = [
@@ -294,10 +312,7 @@ class MouseSelection {
   start(event: MouseEvent) {
     // When clicking outside of the selection, immediately apply the
     // effect of starting the selection
-    if (this.dragging === false) {
-      event.preventDefault()
-      this.select(event)
-    }
+    if (this.dragging === false) this.select(event)
   }
 
   move(event: MouseEvent) {
@@ -428,8 +443,8 @@ function eventBelongsToEditor(view: EditorView, event: Event): boolean {
   return true
 }
 
-const handlers: {[key: string]: (view: EditorView, event: any) => void} = Object.create(null)
-const handlerOptions: {[key: string]: AddEventListenerOptions} = Object.create(null)
+const handlers: {[key: string]: (view: EditorView, event: any) => boolean} = Object.create(null)
+const observers: {[key: string]: (view: EditorView, event: any) => undefined} = Object.create(null)
 
 // This is very crude, but unfortunately both these browsers _pretend_
 // that they have a clipboard API—all the objects and methods are
@@ -479,25 +494,29 @@ function doPaste(view: EditorView, input: string) {
   })
 }
 
+observers.scroll = view => {
+  view.inputState.lastScrollTop = view.scrollDOM.scrollTop
+  view.inputState.lastScrollLeft = view.scrollDOM.scrollLeft
+}
+
 handlers.keydown = (view, event: KeyboardEvent) => {
   view.inputState.setSelectionOrigin("select")
   if (event.keyCode == 27) view.inputState.lastEscPress = Date.now()
+  return false
 }
 
-handlers.touchstart = (view, e) => {
+observers.touchstart = (view, e) => {
   view.inputState.lastTouchTime = Date.now()
   view.inputState.setSelectionOrigin("select.pointer")
 }
 
-handlers.touchmove = view => {
+observers.touchmove = view => {
   view.inputState.setSelectionOrigin("select.pointer")
 }
 
-handlerOptions.touchstart = handlerOptions.touchmove = {passive: true}
-
 handlers.mousedown = (view, event: MouseEvent) => {
   view.observer.flush()
-  if (view.inputState.lastTouchTime > Date.now() - 2000) return // Ignore touch interaction
+  if (view.inputState.lastTouchTime > Date.now() - 2000) return false // Ignore touch interaction
   let style: MouseSelectionStyle | null = null
   for (let makeStyle of view.state.facet(mouseSelectionStyle)) {
     style = makeStyle(view, event)
@@ -508,8 +527,13 @@ handlers.mousedown = (view, event: MouseEvent) => {
     let mustFocus = !view.hasFocus
     view.inputState.startMouseSelection(new MouseSelection(view, event, style, mustFocus))
     if (mustFocus) view.observer.ignore(() => focusPreventScroll(view.contentDOM))
-    if (view.inputState.mouseSelection) view.inputState.mouseSelection.start(event)
+    let mouseSel = view.inputState.mouseSelection
+    if (mouseSel) {
+      mouseSel.start(event)
+      return !mouseSel.dragging
+    }
   }
+  return false
 }
 
 function rangeForClick(view: EditorView, pos: number, bias: -1 | 1, type: number): SelectionRange {
@@ -615,12 +639,12 @@ handlers.dragstart = (view, event: DragEvent) => {
     event.dataTransfer.setData("Text", view.state.sliceDoc(main.from, main.to))
     event.dataTransfer.effectAllowed = "copyMove"
   }
+  return false
 }
 
 function dropText(view: EditorView, event: DragEvent, text: string, direct: boolean) {
   if (!text) return
   let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
-  event.preventDefault()
 
   let {mouseSelection} = view.inputState
   let del = direct && mouseSelection && mouseSelection.dragging && dragMovesSelection(view, event) ?
@@ -637,12 +661,11 @@ function dropText(view: EditorView, event: DragEvent, text: string, direct: bool
 }
 
 handlers.drop = (view, event: DragEvent) => {
-  if (!event.dataTransfer) return
-  if (view.state.readOnly) return event.preventDefault()
+  if (!event.dataTransfer) return false
+  if (view.state.readOnly) return true
 
   let files = event.dataTransfer.files
   if (files && files.length) { // For a file drop, read the file's text.
-    event.preventDefault()
     let text = Array(files.length), read = 0
     let finishFile = () => {
       if (++read == files.length)
@@ -657,20 +680,27 @@ handlers.drop = (view, event: DragEvent) => {
       }
       reader.readAsText(files[i])
     }
+    return true
   } else {
-    dropText(view, event, event.dataTransfer.getData("Text"), true)
+    let text = event.dataTransfer.getData("Text")
+    if (text) {
+      dropText(view, event, text, true)
+      return true
+    }
   }
+  return false
 }
 
 handlers.paste = (view: EditorView, event: ClipboardEvent) => {
-  if (view.state.readOnly) return event.preventDefault()
+  if (view.state.readOnly) return true
   view.observer.flush()
   let data = brokenClipboardAPI ? null : event.clipboardData
   if (data) {
     doPaste(view, data.getData("text/plain") || data.getData("text/uri-text"))
-    event.preventDefault()
+    return true
   } else {
     capturePaste(view)
+    return false
   }
 }
 
@@ -718,23 +748,24 @@ let lastLinewiseCopy: string | null = null
 
 handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
   let {text, ranges, linewise} = copiedRange(view.state)
-  if (!text && !linewise) return
+  if (!text && !linewise) return false
   lastLinewiseCopy = linewise ? text : null
 
-  let data = brokenClipboardAPI ? null : event.clipboardData
-  if (data) {
-    event.preventDefault()
-    data.clearData()
-    data.setData("text/plain", text)
-  } else {
-    captureCopy(view, text)
-  }
   if (event.type == "cut" && !view.state.readOnly)
     view.dispatch({
       changes: ranges,
       scrollIntoView: true,
       userEvent: "delete.cut"
     })
+  let data = brokenClipboardAPI ? null : event.clipboardData
+  if (data) {
+    data.clearData()
+    data.setData("text/plain", text)
+    return true
+  } else {
+    captureCopy(view, text)
+    return false
+  }
 }
 
 export const isFocusChange = Annotation.define<boolean>()
@@ -759,7 +790,7 @@ function updateForFocusChange(view: EditorView) {
   }, 10)
 }
 
-handlers.focus = view => {
+observers.focus = view => {
   view.inputState.lastFocusTime = Date.now()
   // When focusing reset the scroll position, move it back to where it was
   if (!view.scrollDOM.scrollTop && (view.inputState.lastScrollTop || view.inputState.lastScrollLeft)) {
@@ -769,12 +800,12 @@ handlers.focus = view => {
   updateForFocusChange(view)
 }
 
-handlers.blur = view => {
+observers.blur = view => {
   view.observer.clearSelectionRange()
   updateForFocusChange(view)
 }
 
-handlers.compositionstart = handlers.compositionupdate = view => {
+observers.compositionstart = observers.compositionupdate = view => {
   if (view.inputState.compositionFirstChange == null)
     view.inputState.compositionFirstChange = true
   if (view.inputState.composing < 0) {
@@ -783,7 +814,7 @@ handlers.compositionstart = handlers.compositionupdate = view => {
   }
 }
 
-handlers.compositionend = view => {
+observers.compositionend = view => {
   view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
   view.inputState.compositionPendingKey = true
@@ -806,7 +837,7 @@ handlers.compositionend = view => {
   }
 }
 
-handlers.contextmenu = view => {
+observers.contextmenu = view => {
   view.inputState.lastContextMenu = Date.now()
 }
 
@@ -834,6 +865,7 @@ handlers.beforeinput = (view, event) => {
       }, 100)
     }
   }
+  return false
 }
 
 const appliedFirefoxHack: Set<Document> = new Set

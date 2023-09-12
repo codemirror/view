@@ -10,7 +10,7 @@ let hide: any = null
 
 /// Create a hidden view with the given document and extensions that
 /// lives until the next call to `tempView`.
-export function tempView(doc = "", extensions: readonly Extension[] = []): EditorView {
+export function tempView(doc = "", extensions: Extension = []): EditorView {
   if (currentTempView) {
     currentTempView.destroy()
     currentTempView = null

@@ -197,7 +197,7 @@ export class EditorView {
     for (let plugin of this.plugins) plugin.update(this)
     this.observer = new DOMObserver(this)
     this.inputState = new InputState(this)
-    this.inputState.ensureHandlers(this, this.plugins)
+    this.inputState.ensureHandlers(this.plugins)
     this.docView = new DocView(this)
 
     this.mountStyles()
@@ -347,7 +347,7 @@ export class EditorView {
       this.pluginMap.clear()
       for (let plugin of this.plugins) plugin.update(this)
       this.docView = new DocView(this)
-      this.inputState.ensureHandlers(this, this.plugins)
+      this.inputState.ensureHandlers(this.plugins)
       this.mountStyles()
       this.updateAttrs()
       this.bidiCache = []
@@ -373,7 +373,7 @@ export class EditorView {
       for (let plugin of this.plugins) if (plugin.mustUpdate != update) plugin.destroy(this)
       this.plugins = newPlugins
       this.pluginMap.clear()
-      this.inputState.ensureHandlers(this, this.plugins)
+      this.inputState.ensureHandlers(this.plugins)
     } else {
       for (let p of this.plugins) p.mustUpdate = update
     }
@@ -868,6 +868,16 @@ export class EditorView {
   /// its parent nodes is scrolled.
   static domEventHandlers(handlers: DOMEventHandlers<any>): Extension {
     return ViewPlugin.define(() => ({}), {eventHandlers: handlers})
+  }
+
+  /// Create an extension that registers DOM event observers. Contrary
+  /// to event [handlers](#view.EditorView^domEventHandlers),
+  /// observers can't be prevented from running by a higher-precedence
+  /// handler returning true. They also don't prevent other handlers
+  /// and observers from running when they return true, and should not
+  /// call `preventDefault`.
+  static domEventObservers(observers: DOMEventHandlers<any>): Extension {
+    return ViewPlugin.define(() => ({}), {eventObservers: observers})
   }
 
   /// An input handler can override the way changes to the editable

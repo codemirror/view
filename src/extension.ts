@@ -104,6 +104,11 @@ export interface PluginSpec<V extends PluginValue> {
   /// value.
   eventHandlers?: DOMEventHandlers<V>,
 
+  /// Registers [event observers](#view.EditorView^domEventObservers)
+  /// for the plugin. Will, when called, have their `this` bound to
+  /// the plugin value.
+  eventObservers?: DOMEventHandlers<V>,
+
   /// Specify that the plugin provides additional extensions when
   /// added to an editor configuration.
   provide?: (plugin: ViewPlugin<V>) => Extension
@@ -130,6 +135,8 @@ export class ViewPlugin<V extends PluginValue> {
     readonly create: (view: EditorView) => V,
     /// @internal
     readonly domEventHandlers: DOMEventHandlers<V> | undefined,
+    /// @internal
+    readonly domEventObservers: DOMEventHandlers<V> | undefined,
     buildExtensions: (plugin: ViewPlugin<V>) => Extension
   ) {
     this.extension = buildExtensions(this)
@@ -138,8 +145,8 @@ export class ViewPlugin<V extends PluginValue> {
   /// Define a plugin from a constructor function that creates the
   /// plugin's value, given an editor view.
   static define<V extends PluginValue>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
-    const {eventHandlers, provide, decorations: deco} = spec || {}
-    return new ViewPlugin<V>(nextPluginID++, create, eventHandlers, plugin => {
+    const {eventHandlers, eventObservers, provide, decorations: deco} = spec || {}
+    return new ViewPlugin<V>(nextPluginID++, create, eventHandlers, eventObservers, plugin => {
       let ext = [viewPlugin.of(plugin)]
       if (deco) ext.push(decorations.of(view => {
         let pluginInst = view.plugin(plugin)

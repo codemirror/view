@@ -121,7 +121,7 @@ export class DOMObserver {
   }
 
   onScrollChanged(e: Event) {
-    this.view.inputState.runScrollHandlers(this.view, e)
+    this.view.inputState.runHandlers("scroll", e)
     if (this.intersecting) this.view.measure()
   }
 
