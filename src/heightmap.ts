@@ -631,11 +631,11 @@ class NodeBuilder implements SpanIterator<Decoration> {
 
   addBlock(block: HeightMapBlock) {
     this.enterLine()
-    let type = block.deco?.type
-    if (type == BlockType.WidgetAfter && !this.isCovered) this.ensureLine()
+    let deco = block.deco
+    if (deco && deco.startSide > 0 && !this.isCovered) this.ensureLine()
     this.nodes.push(block)
     this.writtenTo = this.pos = this.pos + block.length
-    if (type != BlockType.WidgetBefore) this.covering = block
+    if (deco && deco.endSide > 0) this.covering = block
   }
 
   addLineDeco(height: number, breaks: number, length: number) {

@@ -685,6 +685,15 @@ describe("EditorView decoration", () => {
       ist(!cm.contentDOM.querySelector(".line"))
     })
 
+    it("draws lines around non-inclusive block widgets", () => {
+      let cm = decoEditor("1\n23\n4", [
+        br(0, 1, "X", false),
+        br(2, 4, "Y", false),
+        br(5, 6, "Z", false)
+      ])
+      ist(cm.contentDOM.querySelectorAll(".cm-line").length, 6)
+    })
+
     it("raises an error when providing block widgets from plugins", () => {
       ist.throws(() => {
         tempView("abc", [ViewPlugin.fromClass(class {

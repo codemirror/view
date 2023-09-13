@@ -1,5 +1,5 @@
 import {SpanIterator, RangeSet, Text, TextIterator} from "@codemirror/state"
-import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, BlockType, WidgetType} from "./decoration"
+import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, WidgetType} from "./decoration"
 import {ContentView} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {WidgetView, TextView, MarkView, WidgetBufferView} from "./inlineview"
@@ -32,7 +32,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     if (this.content.length == 0)
       return !this.breakAtStart && this.doc.lineAt(this.pos).from != this.pos
     let last = this.content[this.content.length - 1]
-    return !last.breakAfter && !(last instanceof BlockWidgetView && last.type == BlockType.WidgetBefore)
+    return !(last.breakAfter || last instanceof BlockWidgetView && last.deco.endSide < 0)
   }
 
   getLine() {
@@ -59,7 +59,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   finish(openEnd: number) {
     if (this.pendingBuffer && openEnd <= this.bufferMarks.length) this.flushBuffer()
     else this.pendingBuffer = Buf.No
-    if (!this.posCovered()) this.getLine()
+    if (!openEnd && !this.posCovered()) this.getLine()
   }
 
   buildText(length: number, active: readonly MarkDecoration[], openStart: number) {
@@ -108,9 +108,8 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     let len = to - from
     if (deco instanceof PointDecoration) {
       if (deco.block) {
-        let {type} = deco
-        if (type == BlockType.WidgetAfter && !this.posCovered()) this.getLine()
-        this.addBlockWidget(new BlockWidgetView(deco.widget || new NullWidget("div"), len, type))
+        if (deco.startSide > 0 && !this.posCovered()) this.getLine()
+        this.addBlockWidget(new BlockWidgetView(deco.widget || new NullWidget("div"), len, deco))
       } else {
         let view = WidgetView.create(deco.widget || new NullWidget("span"), len, len ? 0 : deco.startSide)
         let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length &&

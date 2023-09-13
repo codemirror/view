@@ -2,14 +2,14 @@ import {ContentView, DOMPos, ViewFlag, noChildren, mergeChildrenInto} from "./co
 import {DocView} from "./docview"
 import {TextView, MarkView, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
 import {clientRectsFor, Rect, clearAttributes} from "./dom"
-import {LineDecoration, WidgetType, BlockType} from "./decoration"
+import {LineDecoration, WidgetType, PointDecoration} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
 import browser from "./browser"
 import {EditorView} from "./editorview"
 import {Text} from "@codemirror/state"
 
 export interface BlockView extends ContentView {
-  type: BlockType
+  covers(side: -1 | 1): boolean
   dom: HTMLElement | null
 }
 
@@ -153,7 +153,7 @@ export class LineView extends ContentView implements BlockView {
 
   become(_other: ContentView) { return false }
 
-  get type() { return BlockType.Text }
+  covers() { return true }
 
   static find(docView: DocView, pos: number): LineView | null {
     for (let i = 0, off = 0; i < docView.children.length; i++) {
@@ -174,7 +174,7 @@ export class BlockWidgetView extends ContentView implements BlockView {
   breakAfter = 0
   prevWidget: WidgetType | null = null
 
-  constructor(public widget: WidgetType, public length: number, public type: BlockType) {
+  constructor(public widget: WidgetType, public length: number, public deco: PointDecoration) {
     super()
   }
 
@@ -193,7 +193,7 @@ export class BlockWidgetView extends ContentView implements BlockView {
   split(at: number) {
     let len = this.length - at
     this.length = at
-    let end = new BlockWidgetView(this.widget, len, this.type)
+    let end = new BlockWidgetView(this.widget, len, this.deco)
     end.breakAfter = this.breakAfter
     return end
   }
@@ -222,7 +222,7 @@ export class BlockWidgetView extends ContentView implements BlockView {
       if (this.dom && !this.prevWidget) this.prevWidget = this.widget
       this.widget = other.widget
       this.length = other.length
-      this.type = other.type
+      this.deco = other.deco
       this.breakAfter = other.breakAfter
       return true
     }
@@ -243,5 +243,10 @@ export class BlockWidgetView extends ContentView implements BlockView {
   destroy() {
     super.destroy()
     if (this.dom) this.widget.destroy(this.dom)
+  }
+
+  covers(side: -1 | 1) {
+    let {startSide, endSide} = this.deco
+    return startSide == endSide ? false : side < 0 ? startSide < 0 : endSide > 0
   }
 }

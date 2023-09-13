@@ -334,7 +334,7 @@ export class PointDecoration extends Decoration {
 
   // Only relevant when this.block == true
   get type() {
-    return this.startSide < this.endSide ? BlockType.WidgetRange
+    return this.startSide != this.endSide ? BlockType.WidgetRange
       : this.startSide <= 0 ? BlockType.WidgetBefore : BlockType.WidgetAfter
   }
 

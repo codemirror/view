@@ -4,7 +4,7 @@ import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {TextView, MarkView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
-import {Decoration, DecorationSet, WidgetType, BlockType, addRange, MarkDecoration} from "./decoration"
+import {Decoration, DecorationSet, WidgetType, addRange, MarkDecoration} from "./decoration"
 import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange} from "./dom"
@@ -363,15 +363,18 @@ export class DocView extends ContentView {
   }
 
   coordsAt(pos: number, side: number): Rect | null {
-    for (let off = this.length, i = this.children.length - 1;; i--) {
-      let child = this.children[i], start = off - child.breakAfter - child.length
-      if (pos > start ||
-          (pos == start && child.type != BlockType.WidgetBefore && child.type != BlockType.WidgetAfter &&
-           (!i || side == 2 || this.children[i - 1].breakAfter ||
-            (this.children[i - 1].type == BlockType.WidgetBefore && side > -2))))
-        return child.coordsAt(pos - start, side)
+    let best = null, bestPos = 0
+    for (let off = this.length, i = this.children.length - 1; i >= 0; i--) {
+      let child = this.children[i], end = off - child.breakAfter, start = end - child.length
+      if (end < pos) break
+      if (start <= pos && (start < pos || child.covers(-1)) && (end > pos || child.covers(1)) &&
+          (!best || child instanceof LineView && !(best instanceof LineView && side >= 0))) {
+        best = child
+        bestPos = start
+      }
       off = start
     }
+    return best ? best.coordsAt(pos - bestPos, side) : null
   }
 
   coordsForChar(pos: number) {

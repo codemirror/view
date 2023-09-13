@@ -103,25 +103,33 @@ describe("EditorView coords", () => {
   it("takes coordinates before side=1 block widgets", () => {
     let widget = Decoration.widget({widget: block, side: 1, block: true})
     let cm = tempView("ab", [deco(widget.range(0), widget.range(1), widget.range(2))])
-    let sides = Array.prototype.map.call(cm.contentDOM.querySelectorAll(".widget"), w => w.getBoundingClientRect().top)
-    ist(near(cm.coordsAtPos(0, 1)!.bottom, sides[0]))
+    let sides = Array.from(cm.contentDOM.querySelectorAll(".widget")).map(w => w.getBoundingClientRect().top)
     ist(near(cm.coordsAtPos(0, -1)!.bottom, sides[0]))
-    ist(near(cm.coordsAtPos(1, 1)!.bottom, sides[1]))
+    ist(near(cm.coordsAtPos(0, 1)!.bottom, sides[1]))
     ist(near(cm.coordsAtPos(1, -1)!.bottom, sides[1]))
-    ist(near(cm.coordsAtPos(2, 1)!.bottom, sides[2]))
+    ist(near(cm.coordsAtPos(1, 1)!.bottom, sides[2]))
     ist(near(cm.coordsAtPos(2, -1)!.bottom, sides[2]))
+    ist(near(cm.coordsAtPos(2, 1)!.bottom, sides[2]))
   })
 
   it("takes coordinates after side=-1 block widgets", () => {
     let widget = Decoration.widget({widget: block, side: -1, block: true})
     let cm = tempView("ab", [deco(widget.range(0), widget.range(1), widget.range(2))])
     let sides = Array.prototype.map.call(cm.contentDOM.querySelectorAll(".widget"), w => w.getBoundingClientRect().bottom)
-    ist(near(cm.coordsAtPos(0, 1)!.top, sides[0]))
     ist(near(cm.coordsAtPos(0, -1)!.top, sides[0]))
+    ist(near(cm.coordsAtPos(0, 1)!.top, sides[0]))
+    ist(near(cm.coordsAtPos(1, -1)!.top, sides[0]))
     ist(near(cm.coordsAtPos(1, 1)!.top, sides[1]))
-    ist(near(cm.coordsAtPos(1, -1)!.top, sides[1]))
+    ist(near(cm.coordsAtPos(2, -1)!.top, sides[1]))
     ist(near(cm.coordsAtPos(2, 1)!.top, sides[2]))
-    ist(near(cm.coordsAtPos(2, -1)!.top, sides[2]))
+  })
+
+  it("takes coordinates around non-inclusive block widgets", () => {
+    let widget = Decoration.replace({widget: block, inclusive: false, block: true})
+    let cm = tempView("ab", [deco(widget.range(0, 2))])
+    let rect = cm.contentDOM.querySelector(".widget")!.getBoundingClientRect()
+    ist(near(cm.coordsAtPos(0, 1)!.bottom, rect.top))
+    ist(near(cm.coordsAtPos(2, -1)!.top, rect.bottom))
   })
 
   it("takes proper coordinates for elements on decoration boundaries", () => {
