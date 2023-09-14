@@ -739,5 +739,6 @@ export const closeHoverTooltips = closeHoverTooltipEffect.of(null)
 /// re-positioning or CSS change affecting the editor) that could
 /// invalidate the existing tooltip positions.
 export function repositionTooltips(view: EditorView) {
-  view.plugin(tooltipPlugin)?.maybeMeasure()
+  let plugin = view.plugin(tooltipPlugin)
+  if (plugin) plugin.maybeMeasure()
 }
