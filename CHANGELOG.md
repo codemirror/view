@@ -1,3 +1,15 @@
+## 6.19.0 (2023-09-14)
+
+### Bug fixes
+
+Make sure the drop cursor is properly cleaned up even when another extension handles the drop event.
+
+Fix a crash related to non-inclusive replacing block decorations.
+
+### New features
+
+The new `EditorView.domEventObservers` (and the corresponding option to view plugins) allows you to register functions that are always called for an event, regardless of whether other handlers handled it.
+
 ## 6.18.1 (2023-09-11)
 
 ### Bug fixes
