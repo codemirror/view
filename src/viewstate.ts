@@ -257,8 +257,8 @@ export class ViewState {
     if (domRect.width && domRect.height) {
       let scaleX = domRect.width / dom.offsetWidth
       let scaleY = domRect.height / dom.offsetHeight
-      if (scaleX > 0.995 && scaleX < 1.005) scaleX = 1
-      if (scaleY > 0.995 && scaleY < 1.005) scaleY = 1
+      if (scaleX > 0.995 && scaleX < 1.005 || !isFinite(scaleX)) scaleX = 1
+      if (scaleY > 0.995 && scaleY < 1.005 || !isFinite(scaleY)) scaleY = 1
       if (this.scaleX != scaleX || this.scaleY != scaleY) {
         this.scaleX = scaleX; this.scaleY = scaleY
         result |= UpdateFlag.Geometry
