@@ -1,5 +1,5 @@
 import {tempView} from "./tempview.js"
-import {EditorView} from "@codemirror/view"
+import {EditorView, ViewPlugin} from "@codemirror/view"
 import {Prec, Compartment, StateEffect} from "@codemirror/state"
 import ist from "ist"
 
@@ -75,5 +75,17 @@ describe("EditorView events", () => {
     signal(cm, "y")
     signal(cm, "z")
     ist(log.toString(), "x-a x-b x-a y-c")
+  })
+
+  it("runs handlers with this bound to the plugin", () => {
+    let called, cm = tempView("", [
+      ViewPlugin.define(() => ({x: "!"}), {
+        eventHandlers: {
+          x() { called = "yes " + this?.x }
+        }
+      })
+    ])
+    signal(cm, "x")
+    ist(called, "yes !")
   })
 })
