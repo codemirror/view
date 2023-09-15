@@ -225,6 +225,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       tooltipView.dom.remove()
       tooltipView.destroy?.()
     }
+    if (this.parent) this.container.remove()
     this.intersectionObserver?.disconnect()
     clearTimeout(this.measureTimeout)
   }
