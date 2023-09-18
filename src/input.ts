@@ -66,7 +66,7 @@ export class InputState {
     this.handleEvent = this.handleEvent.bind(this)
     view.scrollDOM.addEventListener("mousedown", (event: MouseEvent) => {
       if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom) {
-        this.handleEvent(event)
+        this.runHandlers("mousedown", event)
         if (!event.defaultPrevented && event.button == 2) {
           // Make sure the content covers the entire scroller height, in order
           // to catch a native context menu click below it
@@ -78,7 +78,7 @@ export class InputState {
     })
     view.scrollDOM.addEventListener("drop", (event: DragEvent) => {
       if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom)
-        this.handleEvent(event)
+        this.runHandlers("drop", event)
     })
     this.notifiedFocused = view.hasFocus
     // On Safari adding an input event handler somehow prevents an
