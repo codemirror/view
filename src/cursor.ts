@@ -300,7 +300,7 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
   if (startPos == (forward ? view.state.doc.length : 0)) return EditorSelection.cursor(startPos, start.assoc)
   let goal = start.goalColumn, startY
   let rect = view.contentDOM.getBoundingClientRect()
-  let startCoords = view.coordsAtPos(startPos), docTop = view.documentTop
+  let startCoords = view.coordsAtPos(startPos, start.assoc || -1), docTop = view.documentTop
   if (startCoords) {
     if (goal == null) goal = startCoords.left - rect.left
     startY = dir < 0 ? startCoords.top : startCoords.bottom
@@ -314,8 +314,11 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
   for (let extra = 0;; extra += 10) {
     let curY = startY + (dist + extra) * dir
     let pos = posAtCoords(view, {x: resolvedGoal, y: curY}, false, dir)!
-    if (curY < rect.top || curY > rect.bottom || (dir < 0 ? pos < startPos : pos > startPos))
-      return EditorSelection.cursor(pos, start.assoc, undefined, goal)
+    if (curY < rect.top || curY > rect.bottom || (dir < 0 ? pos < startPos : pos > startPos)) {
+      let charRect = view.docView.coordsForChar(pos)
+      let assoc = !charRect || curY < charRect.top ? -1 : 1
+      return EditorSelection.cursor(pos, assoc, undefined, goal)
+    }
   }
 }
 
