@@ -1,3 +1,21 @@
+## 6.20.0 (2023-09-20)
+
+### Bug fixes
+
+Fix an issue that caused `repositionTooltips` to crash when it was called on an editor without tooltips.
+
+Fix an issue that caused the tooltip system to leave empty nodes in the DOM when an editor using the `parent` option to `tooltips` is destroyed.
+
+Fix a bug that regression mouse interaction with the area of a fixed-size editor that isn't covered by the content.
+
+Fix some issues with the way `moveVertically` behaved for positions on line wrap points.
+
+Fix a bug that could cause the document DOM to be incorrectly updated on some types of viewport changes.
+
+### New features
+
+The new `getDrawSelectionConfig` function returns the `drawSelection` configuration for a given state.
+
 ## 6.19.0 (2023-09-14)
 
 ### Bug fixes
