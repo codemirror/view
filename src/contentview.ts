@@ -292,7 +292,7 @@ export function replaceRange(parent: ContentView, fromI: number, fromOff: number
   if (toI < children.length) {
     let after = children[toI]
     // Make sure the end of the child after the update is preserved in `after`
-    if (after && toOff < after.length) {
+    if (after && (toOff < after.length || after.breakAfter && last?.breakAfter)) {
       // If we're splitting a child, separate part of it to avoid that
       // being mangled when updating the child before the update.
       if (fromI == toI) {
