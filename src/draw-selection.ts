@@ -53,6 +53,13 @@ export function drawSelection(config: SelectionConfig = {}): Extension {
   ]
 }
 
+/// Retrieve the [`drawSelection`](#view.drawSelection) configuration
+/// for this state. (Note that this will return a set of defaults even
+/// if `drawSelection` isn't enabled.)
+export function getDrawSelectionConfig(state: EditorState): SelectionConfig {
+  return state.facet(selectionConfig)
+}
+
 function configChanged(update: ViewUpdate) {
   return update.startState.facet(selectionConfig) != update.state.facet(selectionConfig)
 }

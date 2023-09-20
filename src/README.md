@@ -37,6 +37,8 @@ component that displays the editor state and allows text input.
 
 @drawSelection
 
+@getDrawSelectionConfig
+
 @dropCursor
 
 @highlightActiveLine
