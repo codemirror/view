@@ -1,3 +1,11 @@
+## 6.20.1 (2023-09-22)
+
+### Bug fixes
+
+Fix a crash in plugin event handlers after dynamic reconfiguration.
+
+Fix an issue where, on Chrome, tooltips would no longer use fixed positioning.
+
 ## 6.20.0 (2023-09-20)
 
 ### Bug fixes
