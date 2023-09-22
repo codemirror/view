@@ -233,13 +233,13 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   readMeasure(): Measured {
     let editor = this.view.dom.getBoundingClientRect()
     let scaleX = 1, scaleY = 1, makeAbsolute = false
-    if (this.position == "fixed") {
-      let views = this.manager.tooltipViews
-      // When the dialog's offset parent isn't the body, we are
-      // probably in a transformed container, and should use absolute
-      // positioning instead, since fixed positioning inside a
-      // transform works in a very broken way.
-      makeAbsolute = views.length > 0 && views[0].dom.offsetParent != this.container.ownerDocument.body
+    if (this.position == "fixed" && this.manager.tooltipViews.length) {
+      // When the dialog's offset parent isn't the body (Firefox) or
+      // null (Webkit), we are probably in a transformed container,
+      // and should use absolute positioning instead, since fixed
+      // positioning inside a transform works in a very broken way.
+      let {offsetParent} = this.manager.tooltipViews[0].dom
+      makeAbsolute = !!(offsetParent && offsetParent != this.container.ownerDocument.body)
     }
     if (makeAbsolute || this.position == "absolute") {
       if (this.parent) {
