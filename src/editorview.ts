@@ -373,11 +373,11 @@ export class EditorView {
       for (let plugin of this.plugins) if (plugin.mustUpdate != update) plugin.destroy(this)
       this.plugins = newPlugins
       this.pluginMap.clear()
-      this.inputState.ensureHandlers(this.plugins)
     } else {
       for (let p of this.plugins) p.mustUpdate = update
     }
     for (let i = 0; i < this.plugins.length; i++) this.plugins[i].update(this)
+    if (prevSpecs != specs) this.inputState.ensureHandlers(this.plugins)
   }
 
   /// @internal
