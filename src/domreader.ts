@@ -1,4 +1,5 @@
 import {ContentView} from "./contentview"
+import {domIndex, maxOffset} from "./dom"
 import {EditorState} from "@codemirror/state"
 
 export const LineBreakPlaceholder = "\uffff"
@@ -88,10 +89,19 @@ export class DOMReader {
         point.pos = this.text.length
   }
 
-  findPointInside(node: Node, maxLen: number) {
+  findPointInside(node: Node, length: number) {
     for (let point of this.points)
       if (node.nodeType == 3 ? point.node == node : node.contains(point.node))
-        point.pos = this.text.length + Math.min(maxLen, point.offset)
+        point.pos = this.text.length + (isAtEnd(node, point.node, point.offset) ? length : 0)
+  }
+}
+
+function isAtEnd(parent: Node, node: Node | null, offset: number) {
+  for (;;) {
+    if (!node || offset < maxOffset(node)) return false
+    if (node == parent) return true
+    offset = domIndex(node) + 1
+    node = node.parentNode
   }
 }
 
