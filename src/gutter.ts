@@ -245,13 +245,13 @@ class UpdateContext {
   }
 
   addElement(view: EditorView, block: BlockInfo, markers: readonly GutterMarker[]) {
-    let {gutter} = this, above = block.top - this.height
+    let {gutter} = this, above = (block.top - this.height) / view.scaleY, height = block.height / view.scaleY
     if (this.i == gutter.elements.length) {
-      let newElt = new GutterElement(view, block.height, above, markers)
+      let newElt = new GutterElement(view, height, above, markers)
       gutter.elements.push(newElt)
       gutter.dom.appendChild(newElt.dom)
     } else {
-      gutter.elements[this.i].update(view, block.height, above, markers)
+      gutter.elements[this.i].update(view, height, above, markers)
     }
     this.height = block.bottom
     this.i++
@@ -347,10 +347,10 @@ class GutterElement {
   update(view: EditorView, height: number, above: number, markers: readonly GutterMarker[]) {
     if (this.height != height) {
       this.height = height
-      this.dom.style.height = height / view.scaleY + "px"
+      this.dom.style.height = height + "px"
     }
     if (this.above != above)
-      this.dom.style.marginTop = (this.above = above) ? above / view.scaleY + "px" : ""
+      this.dom.style.marginTop = (this.above = above) ? above + "px" : ""
     if (!sameMarkers(this.markers, markers)) this.setMarkers(view, markers)
   }
 
