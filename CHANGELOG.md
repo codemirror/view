@@ -1,3 +1,11 @@
+## 6.20.2 (2023-09-25)
+
+### Bug fixes
+
+Fix an issue in the way the DOM selection is being read that could break backspacing of widgets on Android.
+
+Fix a bug where the editor could incorrectly computate its transform scale when it was small.
+
 ## 6.20.1 (2023-09-22)
 
 ### Bug fixes
