@@ -306,7 +306,7 @@ export function replaceRange(parent: ContentView, fromI: number, fromOff: number
       } else {
         // Remove the start of the after element, if necessary, and
         // add it to `content`.
-        if (toOff) after.merge(0, toOff, null, false, 0, openEnd)
+        if (toOff || after.children.length && !after.children[0].length) after.merge(0, toOff, null, false, 0, openEnd)
         insert.push(after)
       }
     } else if (after?.breakAfter) {
