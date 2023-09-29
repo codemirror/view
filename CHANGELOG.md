@@ -1,3 +1,13 @@
+## 6.21.0 (2023-09-29)
+
+### Bug fixes
+
+Fix a bug that could cause zero-length widgets at the start of a line to be left in the view even after they were removed.
+
+### New features
+
+`RectangleMarker`'s dimension properties are now public.
+
 ## 6.20.2 (2023-09-25)
 
 ### Bug fixes
