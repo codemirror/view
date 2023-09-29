@@ -30,8 +30,14 @@ export class RectangleMarker implements LayerMarker {
   /// Create a marker with the given class and dimensions. If `width`
   /// is null, the DOM element will get no width style.
   constructor(private className: string,
-              private left: number, private top: number,
-              private width: number | null, private height: number) {}
+              /// The left position of the marker (in pixels, document-relative).
+              readonly left: number,
+              /// The top position of the marker.
+              readonly top: number,
+              /// The width of the marker, or null if it shouldn't get a width assigned.
+              readonly width: number | null,
+              /// The height of the marker.
+              readonly height: number) {}
 
   draw() {
     let elt = document.createElement("div")
