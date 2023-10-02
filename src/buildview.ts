@@ -59,7 +59,9 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   finish(openEnd: number) {
     if (this.pendingBuffer && openEnd <= this.bufferMarks.length) this.flushBuffer()
     else this.pendingBuffer = Buf.No
-    if (!openEnd && !this.posCovered()) this.getLine()
+    if (!this.posCovered() &&
+        !(openEnd && this.content.length && this.content[this.content.length - 1] instanceof BlockWidgetView))
+      this.getLine()
   }
 
   buildText(length: number, active: readonly MarkDecoration[], openStart: number) {
