@@ -1,3 +1,9 @@
+## 6.21.1 (2023-10-02)
+
+### Bug fixes
+
+Fix a bug that could corrupt the DOM view for specific changes involving newlines and mark decorations.
+
 ## 6.21.0 (2023-09-29)
 
 ### Bug fixes
