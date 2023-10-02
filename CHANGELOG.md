@@ -1,3 +1,9 @@
+## 6.21.2 (2023-10-02)
+
+### Bug fixes
+
+Fix a regression that broke dragging text from inside the editor.
+
 ## 6.21.1 (2023-10-02)
 
 ### Bug fixes
