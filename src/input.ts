@@ -530,7 +530,7 @@ handlers.mousedown = (view, event: MouseEvent) => {
     let mouseSel = view.inputState.mouseSelection
     if (mouseSel) {
       mouseSel.start(event)
-      return !mouseSel.dragging
+      return mouseSel.dragging === false
     }
   }
   return false
