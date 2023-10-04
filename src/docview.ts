@@ -392,7 +392,11 @@ export class DocView extends ContentView {
     let end = findClusterBreak(child.text, off)
     if (end == off) return null
     let rects = textRange(child.dom as Text, off, end).getClientRects()
-    return !rects.length || rects[0].top >= rects[0].bottom ? null : rects[0]
+    for (let i = 0; i < rects.length; i++) {
+      let rect = rects[i]
+      if (i == rects.length - 1 || rect.top < rect.bottom && rect.left < rect.right) return rect
+    }
+    return null
   }
 
   measureVisibleLineHeights(viewport: {from: number, to: number}) {
