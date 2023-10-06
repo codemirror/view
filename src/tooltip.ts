@@ -36,7 +36,7 @@ class TooltipViewManager {
     this.tooltipViews = this.tooltips.map(createTooltipView)
   }
 
-  update(update: ViewUpdate) {
+  update(update: ViewUpdate, above?: boolean[]) {
     let input = update.state.facet(this.facet)
     let tooltips = input.filter(x => x) as Tooltip[]
     if (input === this.input) {
@@ -44,7 +44,7 @@ class TooltipViewManager {
       return false
     }
 
-    let tooltipViews = []
+    let tooltipViews = [], newAbove: boolean[] | null = above ? [] : null
     for (let i = 0; i < tooltips.length; i++) {
       let tip = tooltips[i], known = -1
       if (!tip) continue
@@ -54,14 +54,20 @@ class TooltipViewManager {
       }
       if (known < 0) {
         tooltipViews[i] = this.createTooltipView(tip)
+        if (newAbove) newAbove[i] = !!tip.above
       } else {
         let tooltipView = tooltipViews[i] = this.tooltipViews[known]
+        if (newAbove) newAbove[i] = above![known]
         if (tooltipView.update) tooltipView.update(update)
       }
     }
     for (let t of this.tooltipViews) if (tooltipViews.indexOf(t) < 0) {
       t.dom.remove()
       t.destroy?.()
+    }
+    if (above) {
+      newAbove!.forEach((val, i) => above[i] = val)
+      above.length = newAbove!.length
     }
 
     this.input = input
@@ -126,6 +132,7 @@ const knownHeight = new WeakMap<TooltipView, number>()
 
 const tooltipPlugin = ViewPlugin.fromClass(class {
   manager: TooltipViewManager
+  above: boolean[] = []
   measureReq: {read: () => Measured, write: (m: Measured) => void, key: any}
   inView = true
   position: "fixed" | "absolute"
@@ -183,7 +190,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
   update(update: ViewUpdate) {
     if (update.transactions.length) this.lastTransaction = Date.now()
-    let updated = this.manager.update(update)
+    let updated = this.manager.update(update, this.above)
     if (updated) this.observeIntersection()
     let shouldMeasure = updated || update.geometryChanged
     let newConfig = update.state.facet(tooltipConfig)
@@ -292,12 +299,12 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let left = size.width > space.right - space.left ? (ltr ? space.left : space.right - size.width)
         : ltr ? Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, space.right - width)
         : Math.max(space.left, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x)
-      let above = !!tooltip.above
+      let above = this.above[i]
       if (!tooltip.strictSide && (above
             ? pos.top - (size.bottom - size.top) - offset.y < space.top
             : pos.bottom + (size.bottom - size.top) + offset.y > space.bottom) &&
           above == (space.bottom - pos.bottom > pos.top - space.top))
-        above = !above
+        above = this.above[i] = !above
       let spaceVert = (above ? pos.top - space.top : space.bottom - pos.bottom) - arrowHeight
       if (spaceVert < height && tView.resize !== false) {
         if (spaceVert < this.view.defaultLineHeight) { dom.style.top = Outside; continue }
