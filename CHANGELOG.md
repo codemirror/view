@@ -1,3 +1,13 @@
+## 6.21.3 (2023-10-06)
+
+### Bug fixes
+
+Fix an issue that caused `coordsForChar` to return the wrong rectangle for characters after a line wrap in Safari.
+
+Make the context menu work when clicking below the content in a fixed-height editor.
+
+Tooltips that have been put below/above their target position because there is no room on their default side now stay there on further updates.
+
 ## 6.21.2 (2023-10-02)
 
 ### Bug fixes
