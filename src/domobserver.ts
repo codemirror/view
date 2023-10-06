@@ -371,7 +371,10 @@ export class DOMObserver {
     if (readSelection) this.readSelectionRange()
 
     let domChange = this.readChange()
-    if (!domChange) return false
+    if (!domChange) {
+      this.view.requestMeasure()
+      return false
+    }
     let startState = this.view.state
     let handled = applyDOMChange(this.view, domChange)
     // The view wasn't updated

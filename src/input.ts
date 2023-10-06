@@ -64,22 +64,6 @@ export class InputState {
 
   constructor(readonly view: EditorView) {
     this.handleEvent = this.handleEvent.bind(this)
-    view.scrollDOM.addEventListener("mousedown", (event: MouseEvent) => {
-      if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom) {
-        this.runHandlers("mousedown", event)
-        if (!event.defaultPrevented && event.button == 2) {
-          // Make sure the content covers the entire scroller height, in order
-          // to catch a native context menu click below it
-          let start = view.contentDOM.style.minHeight
-          view.contentDOM.style.minHeight = "100%"
-          setTimeout(() => view.contentDOM.style.minHeight = start, 200)
-        }
-      }
-    })
-    view.scrollDOM.addEventListener("drop", (event: DragEvent) => {
-      if (event.target == view.scrollDOM && event.clientY > view.contentDOM.getBoundingClientRect().bottom)
-        this.runHandlers("drop", event)
-    })
     this.notifiedFocused = view.hasFocus
     // On Safari adding an input event handler somehow prevents an
     // issue where the composition vanishes when you press enter.

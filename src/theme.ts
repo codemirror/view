@@ -59,6 +59,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     whiteSpace: "pre",
     wordWrap: "normal", // https://github.com/codemirror/dev/issues/456
     boxSizing: "border-box",
+    minHeight: "100%",
 
     padding: "4px 0",
     outline: "none",
