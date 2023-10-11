@@ -533,6 +533,26 @@ class HoverTooltipHost implements TooltipView {
   destroy() {
     for (let t of this.manager.tooltipViews) t.destroy?.()
   }
+
+  passProp<Key extends keyof TooltipView>(name: Key): TooltipView[Key] | undefined {
+    let value: TooltipView[Key] | undefined = undefined
+    for (let view of this.manager.tooltipViews) {
+      let given = view[name]
+      if (given !== undefined) {
+        if (value === undefined) value = given
+        else if (value !== given) return undefined
+      }
+    }
+    return value
+  }
+
+  get offset() { return this.passProp("offset") }
+
+  get getCoords() { return this.passProp("getCoords") }
+
+  get overlap() { return this.passProp("overlap") }
+
+  get resize() { return this.passProp("resize") }
 }
 
 const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
