@@ -1,3 +1,11 @@
+## 6.21.4 (2023-10-24)
+
+### Bug fixes
+
+Support the `offset`, `getCoords`, `overlap`, and `resize` properties on hover tooltips, as long as they aren't given conflicting values when there are multiple active hover tooltips.
+
+Fix a bug that caused tooltips in the default configuration to be positioned incorrectly on Chrome when the editor was transformed.
+
 ## 6.21.3 (2023-10-06)
 
 ### Bug fixes
