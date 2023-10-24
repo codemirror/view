@@ -221,6 +221,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     }
     tooltipView.dom.style.position = this.position
     tooltipView.dom.style.top = Outside
+    tooltipView.dom.style.left = "0px"
     this.container.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
     return tooltipView
@@ -241,12 +242,22 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     let editor = this.view.dom.getBoundingClientRect()
     let scaleX = 1, scaleY = 1, makeAbsolute = false
     if (this.position == "fixed" && this.manager.tooltipViews.length) {
-      // When the dialog's offset parent isn't the body (Firefox) or
-      // null (Webkit), we are probably in a transformed container,
-      // and should use absolute positioning instead, since fixed
-      // positioning inside a transform works in a very broken way.
-      let {offsetParent} = this.manager.tooltipViews[0].dom
-      makeAbsolute = !!(offsetParent && offsetParent != this.container.ownerDocument.body)
+      let {dom} = this.manager.tooltipViews[0]
+      if (browser.gecko) {
+        // Firefox sets the element's `offsetParent` to the
+        // transformed element when a transform interferes with fixed
+        // positioning.
+        makeAbsolute = dom.offsetParent != this.container.ownerDocument.body
+      } else {
+        // On other browsers, we have to awkwardly try and use other
+        // information to detect a transform.
+        if (this.view.scaleX != 1 || this.view.scaleY != 1) {
+          makeAbsolute = true
+        } else if (dom.style.top == Outside && dom.style.left == "0px") {
+          let rect = dom.getBoundingClientRect()
+          makeAbsolute = Math.abs(rect.top + 10000) > 1 || Math.abs(rect.left) > 1
+        }
+      }
     }
     if (makeAbsolute || this.position == "absolute") {
       if (this.parent) {
