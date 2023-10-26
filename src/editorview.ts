@@ -315,7 +315,10 @@ export class EditorView {
       this.viewState.mustMeasureContent = true
     if (redrawn || attrsChanged || scrollTarget || this.viewState.mustEnforceCursorAssoc || this.viewState.mustMeasureContent)
       this.requestMeasure()
-    if (!update.empty) for (let listener of this.state.facet(updateListener)) listener(update)
+    if (!update.empty) for (let listener of this.state.facet(updateListener)) {
+      try { listener(update) }
+      catch (e) { logException(this.state, e, "update listener") }
+    }
 
     if (dispatchFocus || domChange) Promise.resolve().then(() => {
       if (dispatchFocus && this.state == dispatchFocus.startState) this.dispatch(dispatchFocus)
