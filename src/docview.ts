@@ -514,11 +514,11 @@ export class DocView extends ContentView {
       left: rect.left - margins.left, top: rect.top - margins.top,
       right: rect.right + margins.right, bottom: rect.bottom + margins.bottom
     }
-    let sDOM = this.view.scrollDOM
+    let {offsetWidth, offsetHeight} = this.view.scrollDOM
     scrollRectIntoView(this.view.scrollDOM, targetRect, range.head < range.anchor ? -1 : 1,
                        target.x, target.y,
-                       Math.max(0, Math.min(target.xMargin, sDOM.offsetWidth)),
-                       Math.max(0, Math.min(target.yMargin, sDOM.offsetHeight)),
+                       Math.max(Math.min(target.xMargin, offsetWidth), -offsetWidth),
+                       Math.max(Math.min(target.yMargin, offsetHeight), -offsetHeight),
                        this.view.textDirection == Direction.LTR)
   }
 
