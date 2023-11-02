@@ -54,6 +54,9 @@ export class InputState {
   compositionPendingChange = false
 
   mouseSelection: MouseSelection | null = null
+  // When a drag from the editor is active, this points at the range
+  // being dragged.
+  draggedContent: SelectionRange | null = null
 
   notifiedFocused: boolean
 
@@ -169,6 +172,7 @@ export class InputState {
 
   update(update: ViewUpdate) {
     if (this.mouseSelection) this.mouseSelection.update(update)
+    if (this.draggedContent && update.docChanged) this.draggedContent = this.draggedContent.map(update.changes)
     if (update.transactions.length) this.lastKeyCode = this.lastSelectionTime = 0
   }
 
@@ -268,7 +272,7 @@ function dist(a: MouseEvent, b: MouseEvent) {
 }
 
 class MouseSelection {
-  dragging: null | false | SelectionRange
+  dragging: null | boolean
   extend: boolean
   multiple: boolean
   lastEvent: MouseEvent
@@ -331,7 +335,7 @@ class MouseSelection {
     let doc = this.view.contentDOM.ownerDocument!
     doc.removeEventListener("mousemove", this.move)
     doc.removeEventListener("mouseup", this.up)
-    this.view.inputState.mouseSelection = null
+    this.view.inputState.mouseSelection = this.view.inputState.draggedContent = null
   }
 
   setScrollSpeed(sx: number, sy: number) {
@@ -387,7 +391,6 @@ class MouseSelection {
   }
 
   update(update: ViewUpdate) {
-    if (update.docChanged && this.dragging) this.dragging = this.dragging.map(update.changes)
     if (this.style.update(update)) setTimeout(() => this.select(this.lastEvent), 20)
   }
 }
@@ -615,14 +618,27 @@ function removeRangeAround(sel: EditorSelection, pos: number) {
 }
 
 handlers.dragstart = (view, event: DragEvent) => {
-  let {selection: {main}} = view.state
-  let {mouseSelection} = view.inputState
-  if (mouseSelection) mouseSelection.dragging = main
+  let {selection: {main: range}} = view.state
+  if ((event.target as HTMLElement).draggable) {
+    let cView = view.docView.nearest(event.target as HTMLElement)
+    if (cView && cView.isWidget) {
+      let from = cView.posAtStart, to = from + cView.length
+      if (from >= range.to || to <= range.from) range = EditorSelection.range(from, to)
+    }
+  }
+  let {inputState} = view
+  if (inputState.mouseSelection) inputState.mouseSelection.dragging = true
+  inputState.draggedContent = range
 
   if (event.dataTransfer) {
-    event.dataTransfer.setData("Text", view.state.sliceDoc(main.from, main.to))
+    event.dataTransfer.setData("Text", view.state.sliceDoc(range.from, range.to))
     event.dataTransfer.effectAllowed = "copyMove"
   }
+  return false
+}
+
+handlers.dragend = view => {
+  view.inputState.draggedContent = null
   return false
 }
 
@@ -630,9 +646,9 @@ function dropText(view: EditorView, event: DragEvent, text: string, direct: bool
   if (!text) return
   let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
 
-  let {mouseSelection} = view.inputState
-  let del = direct && mouseSelection && mouseSelection.dragging && dragMovesSelection(view, event) ?
-    {from: mouseSelection.dragging.from, to: mouseSelection.dragging.to} : null
+  let {draggedContent} = view.inputState
+  let del = direct && draggedContent && dragMovesSelection(view, event)
+    ? {from: draggedContent.from, to: draggedContent.to} : null
   let ins = {from: dropPos, insert: text}
   let changes = view.state.changes(del ? [del, ins] : ins)
 
@@ -642,6 +658,7 @@ function dropText(view: EditorView, event: DragEvent, text: string, direct: bool
     selection: {anchor: changes.mapPos(dropPos, -1), head: changes.mapPos(dropPos, 1)},
     userEvent: del ? "move.drop" : "input.drop"
   })
+  view.inputState.draggedContent = null
 }
 
 handlers.drop = (view, event: DragEvent) => {
