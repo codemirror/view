@@ -843,9 +843,11 @@ export class EditorView {
     x?: ScrollStrategy,
     /// Extra vertical distance to add when moving something into
     /// view. Not used with the `"center"` strategy. Defaults to 5.
+    /// Must be less than the height of the editor.
     yMargin?: number,
     /// Extra horizontal distance to add. Not used with the `"center"`
-    /// strategy. Defaults to 5.
+    /// strategy. Defaults to 5. Must be less than the width of the
+    /// editor.
     xMargin?: number,
   } = {}): StateEffect<unknown> {
     return scrollIntoView.of(new ScrollTarget(typeof pos == "number" ? EditorSelection.cursor(pos) : pos,
