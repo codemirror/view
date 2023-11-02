@@ -344,7 +344,7 @@ describe("Composition", () => {
   })
 
   it("applies compositions at secondary cursors", () => {
-    let cm = requireFocus(tempView("one\ntwo"))
+    let cm = requireFocus(tempView("one\ntwo", EditorState.allowMultipleSelections.of(true)))
     cm.dispatch({selection: EditorSelection.create([EditorSelection.cursor(3), EditorSelection.cursor(7)], 0)})
     compose(cm, () => up(cm.domAtPos(2).node as Text, "·"), [
       n => up(n, "-", 3, 4),
@@ -354,7 +354,7 @@ describe("Composition", () => {
   })
 
   it("applies compositions at secondary cursors even when the change is before the cursor", () => {
-    let cm = requireFocus(tempView("one\ntwo"))
+    let cm = requireFocus(tempView("one\ntwo", EditorState.allowMultipleSelections.of(true)))
     cm.dispatch({selection: EditorSelection.create([EditorSelection.cursor(3), EditorSelection.cursor(7)], 0)})
     compose(cm, () => up(cm.domAtPos(2).node as Text, "X"), [
       n => up(n, "Y"),
