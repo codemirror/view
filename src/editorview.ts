@@ -42,6 +42,10 @@ export interface EditorViewConfig extends EditorStateConfig {
   /// not this option, the editor will automatically look up a root
   /// from the parent.
   root?: Document | ShadowRoot,
+  /// Pass an effect created with
+  /// [`EditorView.scrollIntoView`](#view.EditorView^scrollIntoView)
+  /// here to set an initial scroll position.
+  scrollTo?: StateEffect<any>,
   /// Override the way transactions are
   /// [dispatched](#view.EditorView.dispatch) for this editor view.
   /// Your implementation, if provided, should probably call the
@@ -193,6 +197,8 @@ export class EditorView {
     this._root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
 
     this.viewState = new ViewState(config.state || EditorState.create(config))
+    if (config.scrollTo && config.scrollTo.is(scrollIntoView))
+      this.viewState.scrollTarget = config.scrollTo.value
     this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec))
     for (let plugin of this.plugins) plugin.update(this)
     this.observer = new DOMObserver(this)
