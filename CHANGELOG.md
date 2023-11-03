@@ -1,3 +1,19 @@
+## 6.22.0 (2023-11-03)
+
+### Bug fixes
+
+Exceptions raised by update listeners are now routed to the configured exception sink, if any.
+
+Fix an issue where passing large scroll margins to `scrollIntoView` would cause the measure loop to fail to terminate.
+
+Widgets that are draggable (and allow drag events through in their `ignoreEvent` implementation) can now use the editor's built-in drag/drop behavior.
+
+### New features
+
+The new `scrollTo` option to `EditorView` allows an initial scroll position to be provided.
+
+The new `EditorView.scrollSnapshot` method returns an effect that can be used to reset to a previous scroll position.
+
 ## 6.21.4 (2023-10-24)
 
 ### Bug fixes
