@@ -1,5 +1,5 @@
 import {EditorState, Transaction, ChangeSet, ChangeDesc, Facet,
-        StateEffect, Extension, SelectionRange, RangeSet} from "@codemirror/state"
+        StateEffect, Extension, SelectionRange, RangeSet, EditorSelection} from "@codemirror/state"
 import {StyleModule} from "style-mod"
 import {DecorationSet, Decoration} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
@@ -45,10 +45,23 @@ export class ScrollTarget {
     readonly x: ScrollStrategy = "nearest",
     readonly yMargin: number = 5,
     readonly xMargin: number = 5,
+    // This data structure is abused to also store precise scroll
+    // snapshots, instead of a `scrollIntoView` request. When this
+    // flag is `true`, `range` points at a position in the reference
+    // line, `yMargin` holds the difference between the top of that
+    // line and the top of the editor, and `xMargin` holds the
+    // editor's `scrollLeft`.
+    readonly isSnapshot = false
   ) {}
 
   map(changes: ChangeDesc) {
-    return changes.empty ? this : new ScrollTarget(this.range.map(changes), this.y, this.x, this.yMargin, this.xMargin)
+    return changes.empty ? this :
+      new ScrollTarget(this.range.map(changes), this.y, this.x, this.yMargin, this.xMargin, this.isSnapshot)
+  }
+
+  clip(state: EditorState) {
+    return this.range.to <= state.doc.length ? this :
+      new ScrollTarget(EditorSelection.cursor(state.doc.length), this.y, this.x, this.yMargin, this.xMargin, this.isSnapshot)
   }
 }
 

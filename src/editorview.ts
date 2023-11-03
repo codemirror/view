@@ -43,7 +43,8 @@ export interface EditorViewConfig extends EditorStateConfig {
   /// from the parent.
   root?: Document | ShadowRoot,
   /// Pass an effect created with
-  /// [`EditorView.scrollIntoView`](#view.EditorView^scrollIntoView)
+  /// [`EditorView.scrollIntoView`](#view.EditorView^scrollIntoView) or
+  /// [`EditorView.scrollSnapshot`](#view.EditorView.scrollSnapshot)
   /// here to set an initial scroll position.
   scrollTo?: StateEffect<any>,
   /// Override the way transactions are
@@ -198,7 +199,7 @@ export class EditorView {
 
     this.viewState = new ViewState(config.state || EditorState.create(config))
     if (config.scrollTo && config.scrollTo.is(scrollIntoView))
-      this.viewState.scrollTarget = config.scrollTo.value
+      this.viewState.scrollTarget = config.scrollTo.value.clip(this.viewState.state)
     this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec))
     for (let plugin of this.plugins) plugin.update(this)
     this.observer = new DOMObserver(this)
@@ -303,7 +304,7 @@ export class EditorView {
             main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1))
         }
         for (let e of tr.effects)
-          if (e.is(scrollIntoView)) scrollTarget = e.value
+          if (e.is(scrollIntoView)) scrollTarget = e.value.clip(this.state)
       }
       this.viewState.update(update, scrollTarget)
       this.bidiCache = CachedOrder.update(this.bidiCache, update.changes)
@@ -858,6 +859,23 @@ export class EditorView {
   } = {}): StateEffect<unknown> {
     return scrollIntoView.of(new ScrollTarget(typeof pos == "number" ? EditorSelection.cursor(pos) : pos,
                                               options.y, options.x, options.yMargin, options.xMargin))
+  }
+
+  /// Return an effect that resets the editor to its current (at the
+  /// time this method was called) scroll position. Note that this
+  /// only affects the editor's own scrollable element, not parents.
+  /// See also
+  /// [`EditorViewConfig.scrollTo`](#view.EditorViewConfig.scrollTo).
+  ///
+  /// The effect should be used with a document identical to the one
+  /// it was created for. Failing to do so is not an error, but may
+  /// not scroll to the expected position. You can
+  /// [map](#state.StateEffect.map) the effect to account for changes.
+  scrollSnapshot() {
+    let {scrollTop, scrollLeft} = this.scrollDOM
+    let ref = this.viewState.scrollAnchorAt(scrollTop)
+    return scrollIntoView.of(new ScrollTarget(EditorSelection.cursor(ref.from), "start", "start",
+                                              ref.top - scrollTop, scrollLeft, true))
   }
 
   /// Facet to add a [style

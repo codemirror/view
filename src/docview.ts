@@ -502,6 +502,13 @@ export class DocView extends ContentView {
   }
 
   scrollIntoView(target: ScrollTarget) {
+    if (target.isSnapshot) {
+      let ref = this.view.viewState.lineBlockAt(target.range.head)
+      this.view.scrollDOM.scrollTop = ref.top - target.yMargin
+      this.view.scrollDOM.scrollLeft = target.xMargin
+      return
+    }
+
     let {range} = target
     let rect = this.coordsAt(range.head, range.empty ? range.assoc : range.head > range.anchor ? -1 : 1), other
     if (!rect) return

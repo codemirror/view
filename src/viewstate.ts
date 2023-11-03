@@ -333,7 +333,7 @@ export class ViewState {
 
     let viewportChange = !this.viewportIsAppropriate(this.viewport, bias) ||
       this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from ||
-      this.scrollTarget.range.head > this.viewport.to)
+                            this.scrollTarget.range.head > this.viewport.to)
     if (viewportChange) this.viewport = this.getViewport(bias, this.scrollTarget)
     this.updateForViewport()
     if ((result & UpdateFlag.Height) || viewportChange) this.updateViewportLines()
