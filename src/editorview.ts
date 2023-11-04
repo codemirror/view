@@ -356,6 +356,7 @@ export class EditorView {
       this.plugins = newState.facet(viewPlugin).map(spec => new PluginInstance(spec))
       this.pluginMap.clear()
       for (let plugin of this.plugins) plugin.update(this)
+      this.docView.destroy()
       this.docView = new DocView(this)
       this.inputState.ensureHandlers(this.plugins)
       this.mountStyles()
@@ -828,6 +829,7 @@ export class EditorView {
     for (let plugin of this.plugins) plugin.destroy(this)
     this.plugins = []
     this.inputState.destroy()
+    this.docView.destroy()
     this.dom.remove()
     this.observer.destroy()
     if (this.measureScheduled > -1) this.win.cancelAnimationFrame(this.measureScheduled)

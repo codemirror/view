@@ -353,6 +353,16 @@ describe("EditorView decoration", () => {
       ist(destroyed.sort().join(), "A,B,B")
     })
 
+    it("calls the destroy method widgets when the editor is destroyed", () => {
+      let destroyed: string[] = []
+      class W extends WordWidget {
+        destroy() { destroyed.push(this.word) }
+      }
+      let cm = tempView("abcde", [decos(Decoration.set([w(1, new W("A")), w(2, new W("B"))]))])
+      cm.destroy()
+      ist(destroyed.sort().join(), "A,B")
+    })
+
     it("calls destroy on updated widgets", () => {
       let destroyed: string[] = []
       class W extends WordWidget {

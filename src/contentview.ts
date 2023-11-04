@@ -247,6 +247,7 @@ export abstract class ContentView {
   getSide() { return 0 }
 
   destroy() {
+    for (let child of this.children) child.destroy()
     this.parent = null
   }
 }
