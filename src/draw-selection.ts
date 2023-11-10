@@ -114,5 +114,9 @@ const themeSpec = {
     "&::selection": {backgroundColor: "transparent !important"}
   }
 }
-if (CanHidePrimary) (themeSpec as any)[".cm-content"].caretColor = "transparent !important"
+if (CanHidePrimary) {
+  let anySpec = (themeSpec as any)
+  anySpec[".cm-content"].caretColor = "transparent !important"
+  anySpec[".cm-line"].caretColor = "transparent !important"
+}
 const hideNativeSelection = Prec.highest(EditorView.theme(themeSpec))
