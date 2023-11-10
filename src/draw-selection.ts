@@ -1,4 +1,5 @@
 import {EditorSelection, Extension, Facet, combineConfig, Prec, EditorState} from "@codemirror/state"
+import {StyleSpec} from "style-mod"
 import {ViewUpdate, nativeSelectionHidden} from "./extension"
 import {EditorView} from "./editorview"
 import {layer, RectangleMarker} from "./layer"
@@ -108,11 +109,14 @@ const selectionLayer = layer({
   class: "cm-selectionLayer"
 })
 
-const themeSpec = {
+const themeSpec: {[selector: string]: StyleSpec} = {
   ".cm-line": {
     "& ::selection": {backgroundColor: "transparent !important"},
     "&::selection": {backgroundColor: "transparent !important"}
   }
 }
-if (CanHidePrimary) (themeSpec as any)[".cm-content, .cm-line"].caretColor = "transparent !important"
+if (CanHidePrimary) {
+  themeSpec[".cm-line"].caretColor = "transparent !important"
+  themeSpec[".cm-content"] = {caretColor: "transparent !important"}
+}
 const hideNativeSelection = Prec.highest(EditorView.theme(themeSpec))
