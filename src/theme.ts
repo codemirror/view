@@ -140,6 +140,14 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     display: "block"
   },
 
+  ".cm-announced": {
+    position: "fixed",
+    top: "-10000px"
+  },
+  "@media print": {
+    ".cm-announced": { display: "none" }
+  },
+
   "&light .cm-activeLine": { backgroundColor: "#cceeff44" },
   "&dark .cm-activeLine": { backgroundColor: "#99eeff33" },
 
