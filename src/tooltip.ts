@@ -672,8 +672,22 @@ class HoverPlugin {
   mouseleave(e: MouseEvent) {
     clearTimeout(this.hoverTimeout)
     this.hoverTimeout = -1
-    if (this.active && !isInTooltip(e.relatedTarget as HTMLElement))
-      this.view.dispatch({effects: this.setHover.of(null)})
+    if (this.active) {
+      let tooltip = isInTooltip(e.relatedTarget as HTMLElement)
+      if (!tooltip)
+        this.view.dispatch({effects: this.setHover.of(null)})
+      else
+        this.watchTooltipLeave(tooltip)
+    }
+  }
+
+  watchTooltipLeave(tooltip: HTMLElement) {
+    let watch = (event: MouseEvent) => {
+      tooltip.removeEventListener("mouseleave", watch)
+      if (this.active && !this.view.dom.contains(event.relatedTarget as HTMLElement))
+        this.view.dispatch({effects: this.setHover.of(null)})
+    }
+    tooltip.addEventListener("mouseleave", watch)
   }
 
   destroy() {
@@ -683,10 +697,10 @@ class HoverPlugin {
   }
 }
 
-function isInTooltip(elt: HTMLElement) {
+function isInTooltip(elt: HTMLElement): HTMLElement | undefined {
   for (let cur: Node | null = elt; cur; cur = cur.parentNode)
-    if (cur.nodeType == 1 && (cur as HTMLElement).classList.contains("cm-tooltip")) return true
-  return false
+    if (cur.nodeType == 1 && (cur as HTMLElement).classList.contains("cm-tooltip"))
+      return cur as HTMLElement
 }
 
 function isOverRange(view: EditorView, from: number, to: number, x: number, y: number, margin: number) {
