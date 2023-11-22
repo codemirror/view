@@ -572,7 +572,7 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
 
   return {
     pos: Math.min(...tooltips.map(t => t.pos)),
-    end: Math.max(...tooltips.filter(t => t.end != null).map(t => t.end!)),
+    end: Math.max(...tooltips.map(t => t.end ?? t.pos)),
     create: HoverTooltipHost.create,
     above: tooltips[0].above,
     arrow: tooltips.some(t => t.arrow),
@@ -655,12 +655,18 @@ class HoverPlugin {
     }
   }
 
+  get tooltip() {
+    let plugin = this.view.plugin(tooltipPlugin)
+    let index = plugin ? plugin.manager.tooltips.findIndex(t => t.create == HoverTooltipHost.create) : -1
+    return index > -1 ? plugin!.manager.tooltipViews[index] : null
+  }
+
   mousemove(event: MouseEvent) {
     this.lastMove = {x: event.clientX, y: event.clientY, target: event.target as HTMLElement, time: Date.now()}
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime)
-    let tooltip = this.active
-    if (tooltip && !isInTooltip(this.lastMove.target) || this.pending) {
-      let {pos} = tooltip || this.pending!, end = tooltip?.end ?? pos
+    let {active, tooltip} = this
+    if (tooltip && !isInTooltip(tooltip.dom, event) || this.pending) {
+      let {pos} = active || this.pending!, end = active?.end ?? pos
       if ((pos == end ? this.view.posAtCoords(this.lastMove) != pos
            : !isOverRange(this.view, pos, end, event.clientX, event.clientY, Hover.MaxDist))) {
         this.view.dispatch({effects: this.setHover.of(null)})
@@ -669,15 +675,17 @@ class HoverPlugin {
     }
   }
 
-  mouseleave(e: MouseEvent) {
+  mouseleave(event: MouseEvent) {
     clearTimeout(this.hoverTimeout)
     this.hoverTimeout = -1
-    if (this.active) {
-      let tooltip = isInTooltip(e.relatedTarget as HTMLElement)
-      if (!tooltip)
+    let {active} = this
+    if (active) {
+      let {tooltip} = this
+      let inTooltip = tooltip && tooltip.dom.contains(event.relatedTarget as HTMLElement)
+      if (!inTooltip)
         this.view.dispatch({effects: this.setHover.of(null)})
       else
-        this.watchTooltipLeave(tooltip)
+        this.watchTooltipLeave(tooltip!.dom)
     }
   }
 
@@ -697,10 +705,12 @@ class HoverPlugin {
   }
 }
 
-function isInTooltip(elt: HTMLElement): HTMLElement | undefined {
-  for (let cur: Node | null = elt; cur; cur = cur.parentNode)
-    if (cur.nodeType == 1 && (cur as HTMLElement).classList.contains("cm-tooltip"))
-      return cur as HTMLElement
+const tooltipMargin = 4
+
+function isInTooltip(tooltip: HTMLElement, event: MouseEvent) {
+  let rect = tooltip.getBoundingClientRect()
+  return event.clientX >= rect.left - tooltipMargin && event.clientX <= rect.right + tooltipMargin &&
+    event.clientY >= rect.top - tooltipMargin && event.clientY <= rect.bottom + tooltipMargin
 }
 
 function isOverRange(view: EditorView, from: number, to: number, x: number, y: number, margin: number) {
