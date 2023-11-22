@@ -665,7 +665,7 @@ class HoverPlugin {
     this.lastMove = {x: event.clientX, y: event.clientY, target: event.target as HTMLElement, time: Date.now()}
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime)
     let {active, tooltip} = this
-    if (tooltip && !isInTooltip(tooltip.dom, event) || this.pending) {
+    if (active && tooltip && !isInTooltip(tooltip.dom, event) || this.pending) {
       let {pos} = active || this.pending!, end = active?.end ?? pos
       if ((pos == end ? this.view.posAtCoords(this.lastMove) != pos
            : !isOverRange(this.view, pos, end, event.clientX, event.clientY, Hover.MaxDist))) {
