@@ -197,7 +197,7 @@ export abstract class ContentView {
     this.markDirty()
     for (let i = from; i < to; i++) {
       let child = this.children[i]
-      if (child.parent == this) child.destroy()
+      if (child.parent == this && children.indexOf(child) < 0) child.destroy()
     }
     this.children.splice(from, to - from, ...children)
     for (let i = 0; i < children.length; i++) children[i].setParent(this)
