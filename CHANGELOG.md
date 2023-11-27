@@ -1,3 +1,17 @@
+## 6.22.1 (2023-11-27)
+
+### Bug fixes
+
+Call widget `destroy` methods when the entire editor is destroyed or reset.
+
+Work around an issue on Safari on macOS Sonoma that made the native cursor visible even when `drawSelection` is enabled.
+
+Fix an issue where, on some browsers, the screenreader announced text ended up in the printed document.
+
+Fix a bug where a hover tooltip could stick around even though the pointer was no longer on the editor when it was moved out over the tooltip.
+
+Fix an issue where hover tooltips could close when moving the mouse onto them due to mouse position rounding issues.
+
 ## 6.22.0 (2023-11-03)
 
 ### Bug fixes
