@@ -1,5 +1,5 @@
 import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} from "@codemirror/state"
-import {Rect, isScrolledToBottom} from "./dom"
+import {Rect, isScrolledToBottom, getScale} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
 import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
         contentAttributes} from "./extension"
@@ -255,10 +255,7 @@ export class ViewState {
     let result = 0, bias = 0
 
     if (domRect.width && domRect.height) {
-      let scaleX = domRect.width / dom.offsetWidth
-      let scaleY = domRect.height / dom.offsetHeight
-      if (scaleX > 0.995 && scaleX < 1.005 || !isFinite(scaleX) || Math.abs(domRect.width - dom.offsetWidth) < 1) scaleX = 1
-      if (scaleY > 0.995 && scaleY < 1.005 || !isFinite(scaleY) || Math.abs(domRect.height - dom.offsetHeight) < 1) scaleY = 1
+      let {scaleX, scaleY} = getScale(dom, domRect)
       if (this.scaleX != scaleX || this.scaleY != scaleY) {
         this.scaleX = scaleX; this.scaleY = scaleY
         result |= UpdateFlag.Geometry

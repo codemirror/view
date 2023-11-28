@@ -100,6 +100,14 @@ function windowRect(win: Window): Rect {
 
 export type ScrollStrategy = "nearest" | "start" | "end" | "center"
 
+export function getScale(elt: HTMLElement, rect: DOMRect) {
+  let scaleX = rect.width / elt.offsetWidth
+  let scaleY = rect.height / elt.offsetHeight
+  if (scaleX > 0.995 && scaleX < 1.005 || !isFinite(scaleX) || Math.abs(rect.width - elt.offsetWidth) < 1) scaleX = 1
+  if (scaleY > 0.995 && scaleY < 1.005 || !isFinite(scaleY) || Math.abs(rect.height - elt.offsetHeight) < 1) scaleY = 1
+  return {scaleX, scaleY}
+}
+
 export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
                                    x: ScrollStrategy, y: ScrollStrategy,
                                    xMargin: number, yMargin: number, ltr: boolean) {
@@ -118,8 +126,7 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
           continue
         }
         let rect = cur.getBoundingClientRect()
-        scaleX = rect.width / cur.offsetWidth
-        scaleY = rect.height / cur.offsetHeight
+        ;({scaleX, scaleY} = getScale(cur, rect))
         // Make sure scrollbar width isn't included in the rectangle
         bounding = {left: rect.left, right: rect.left + cur.clientWidth * scaleX,
                     top: rect.top, bottom: rect.top + cur.clientHeight * scaleY}

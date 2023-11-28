@@ -462,6 +462,7 @@ export class EditorView {
             if (this.viewState.scrollTarget) {
               this.docView.scrollIntoView(this.viewState.scrollTarget)
               this.viewState.scrollTarget = null
+              scrollAnchorHeight = -1
               continue
             } else {
               let newAnchorHeight = scrollAnchorPos < 0 ? this.viewState.heightMap.height :
