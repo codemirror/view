@@ -62,9 +62,8 @@ function charType(ch: number) {
     0x590 <= ch && ch <= 0x5f4 ? T.R :
     0x600 <= ch && ch <= 0x6f9 ? ArabicTypes[ch - 0x600] :
     0x6ee <= ch && ch <= 0x8ac ? T.AL :
-    0x2000 <= ch && ch <= 0x200b ? T.NI :
-    0xfb50 <= ch && ch <= 0xfdff ? T.AL :
-    ch == 0x200c ? T.NI : T.L
+    0x2000 <= ch && ch <= 0x200c ? T.NI :
+    0xfb50 <= ch && ch <= 0xfdff ? T.AL : T.L
 }
 
 const BidiRE = /[\u0590-\u05f4\u0600-\u06ff\u0700-\u08ac\ufb50-\ufdff]/
@@ -436,7 +435,7 @@ export function moveVisually(line: Line, order: readonly BidiSpan[], dir: Direct
   let nextIndex = findClusterBreak(line.text, startIndex, indexForward)
   movedOver = line.text.slice(Math.min(startIndex, nextIndex), Math.max(startIndex, nextIndex))
 
-  if (nextIndex != span.side(forward, dir))
+  if (nextIndex > span.from && nextIndex < span.to)
     return EditorSelection.cursor(nextIndex + line.from, indexForward ? -1 : 1, span.level)
   let nextSpan = spanI == (forward ? order.length - 1 : 0) ? null : order[spanI + (forward ? 1 : -1)]
   if (!nextSpan && span.level != dir)

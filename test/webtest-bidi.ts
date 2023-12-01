@@ -1,7 +1,7 @@
 import {tempView} from "./tempview.js"
 import ist from "ist"
 import {__test, BidiSpan, Direction, Decoration, DecorationSet, EditorView} from "@codemirror/view"
-import {Text, EditorSelection, Range, StateField, Extension} from "@codemirror/state"
+import {Text, EditorSelection, SelectionRange, Range, StateField, Extension} from "@codemirror/state"
 
 function queryBrowserOrder(strings: readonly string[]) {
   let scratch = document.body.appendChild(document.createElement("div"))
@@ -102,6 +102,21 @@ function tests(dir: Direction) {
       for (let i = 1; i < points.length; i++) {
         ist(__test.moveVisually(line, order, Direction.LTR, EditorSelection.cursor(points[i - 1], 0, 0), true)!.from, points[i])
         ist(__test.moveVisually(line, order, Direction.LTR, EditorSelection.cursor(points[i], 0, 0), false)!.from, points[i - 1])
+      }
+    })
+
+    it("handles a misplaced non-joiner without going in a loop", () => {
+      let doc = "ءAB\u200cء", line = Text.of([doc]).line(1)
+      let order = __test.computeOrder(doc, Direction.RTL, [])
+      for (let pos: SelectionRange | null = EditorSelection.cursor(0), count = 0; count++;) {
+        ist(count, 6, "<")
+        pos = __test.moveVisually(line, order, Direction.RTL, pos, true)
+        if (!pos) break
+      }
+      for (let pos: SelectionRange | null = EditorSelection.cursor(doc.length), count = 0; count++;) {
+        ist(count, 6, "<")
+        pos = __test.moveVisually(line, order, Direction.RTL, pos, false)
+        if (!pos) break
       }
     })
   })
