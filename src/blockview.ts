@@ -29,7 +29,7 @@ export class LineView extends ContentView implements BlockView {
       if (!this.dom) source.transferDOM(this) // Reuse source.dom when appropriate
     }
     if (hasStart) this.setDeco(source ? source.attrs : null)
-    mergeChildrenInto(this, from, to, source ? source.children : [], openStart, openEnd)
+    mergeChildrenInto(this, from, to, source ? source.children.slice() : [], openStart, openEnd)
     return true
   }
 

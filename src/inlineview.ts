@@ -106,7 +106,7 @@ export class MarkView extends ContentView {
     if (source && (!(source instanceof MarkView && source.mark.eq(this.mark)) ||
                    (from && openStart <= 0) || (to < this.length && openEnd <= 0)))
       return false
-    mergeChildrenInto(this, from, to, source ? source.children : [], openStart - 1, openEnd - 1)
+    mergeChildrenInto(this, from, to, source ? source.children.slice() : [], openStart - 1, openEnd - 1)
     this.markDirty()
     return true
   }
