@@ -1,3 +1,11 @@
+## 6.22.2 (2023-12-08)
+
+### Bug fixes
+
+Fix an issue in the bidirectional motion that could cause the cursor to get stuck in a loop when a zero-width non-joiner char was placed on a direction boundary.
+
+Fix a bug that corrupts the editor's internal view tree data structure on some types of edits, putting the editor in a broken state.
+
 ## 6.22.1 (2023-11-27)
 
 ### Bug fixes
