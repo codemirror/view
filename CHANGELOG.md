@@ -1,3 +1,11 @@
+## 6.22.3 (2023-12-13)
+
+### Bug fixes
+
+Fix a bug that could cause tooltips to be unnecessarily be positioned absolutely.
+
+Make sure that, when an editor creates tooltips immediately on initialization, the editor is attached to the document when their `mount` callback is called.
+
 ## 6.22.2 (2023-12-08)
 
 ### Bug fixes
