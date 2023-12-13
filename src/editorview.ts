@@ -190,6 +190,8 @@ export class EditorView {
     this.dom.appendChild(this.announceDOM)
     this.dom.appendChild(this.scrollDOM)
 
+    if (config.parent) config.parent.appendChild(this.dom)
+
     let {dispatch} = config
     this.dispatchTransactions = config.dispatchTransactions ||
       (dispatch && ((trs: readonly Transaction[]) => trs.forEach(tr => dispatch!(tr, this)))) ||
@@ -212,8 +214,6 @@ export class EditorView {
     this.updateState = UpdateState.Idle
 
     this.requestMeasure()
-
-    if (config.parent) config.parent.appendChild(this.dom)
   }
 
   /// All regular editor state updates should go through this. It
