@@ -248,15 +248,11 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         // transformed element when a transform interferes with fixed
         // positioning.
         makeAbsolute = dom.offsetParent != this.container.ownerDocument.body
-      } else {
+      } else if (dom.style.top == Outside && dom.style.left == "0px") {
         // On other browsers, we have to awkwardly try and use other
         // information to detect a transform.
-        if (this.view.scaleX != 1 || this.view.scaleY != 1) {
-          makeAbsolute = true
-        } else if (dom.style.top == Outside && dom.style.left == "0px") {
-          let rect = dom.getBoundingClientRect()
-          makeAbsolute = Math.abs(rect.top + 10000) > 1 || Math.abs(rect.left) > 1
-        }
+        let rect = dom.getBoundingClientRect()
+        makeAbsolute = Math.abs(rect.top + 10000) > 1 || Math.abs(rect.left) > 1
       }
     }
     if (makeAbsolute || this.position == "absolute") {
