@@ -555,6 +555,8 @@ class BlockGapWidget extends WidgetType {
     return true
   }
 
+  get editable() { return true }
+
   get estimatedHeight() { return this.height }
 }
 

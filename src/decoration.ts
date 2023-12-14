@@ -152,6 +152,9 @@ export abstract class WidgetType {
   /// @internal
   get isHidden() { return false }
 
+  /// @internal
+  get editable() { return false }
+
   /// This is called when the an instance of the widget is removed
   /// from the editor view.
   destroy(dom: HTMLElement) {}

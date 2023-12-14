@@ -182,7 +182,7 @@ export class WidgetView extends ContentView {
       if (this.dom && this.prevWidget) this.prevWidget.destroy(this.dom)
       this.prevWidget = null
       this.setDOM(this.widget.toDOM(view))
-      this.dom!.contentEditable = "false"
+      if (!this.widget.editable) this.dom!.contentEditable = "false"
     }
   }
 
