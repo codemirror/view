@@ -37,6 +37,14 @@ export class DOMChange {
         !contains(view.contentDOM, domSel.anchorNode)
         ? view.state.selection.main.anchor
         : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
+      // iOS will refuse to select the block gaps when doing select-all
+      if (browser.ios && view.state.selection.main.empty && head != anchor) {
+        let offFrom = view.viewport.from - Math.min(head, anchor), offTo = view.viewport.to - Math.max(head, anchor)
+        if ((offFrom == 0 || offFrom == 1) && (offTo == 0 || offTo == -1)) {
+          head = 0
+          anchor = view.state.doc.length
+        }
+      }
       this.newSel = EditorSelection.single(anchor, head)
     }
   }
