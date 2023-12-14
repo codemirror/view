@@ -544,6 +544,7 @@ class BlockGapWidget extends WidgetType {
 
   toDOM() {
     let elt = document.createElement("div")
+    elt.className = "cm-gap"
     this.updateDOM(elt)
     return elt
   }

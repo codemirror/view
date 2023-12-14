@@ -7,7 +7,8 @@ function domText(view: EditorView) {
   let text = "", eol = false
   function scan(node: Node) {
     if (node.nodeType == 1) {
-      if (node.nodeName == "BR" || (node as HTMLElement).contentEditable == "false") return
+      if (node.nodeName == "BR" || (node as HTMLElement).contentEditable == "false" ||
+          (node as HTMLElement).className == "cm-gap") return
       if (eol) { text += "\n"; eol = false }
       for (let ch = node.firstChild as (Node | null); ch; ch = ch.nextSibling) scan(ch)
       eol = true
