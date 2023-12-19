@@ -7,7 +7,7 @@ import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, addRange, MarkDecoration} from "./decoration"
 import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
-        getSelection, hasSelection, textRange} from "./dom"
+        getSelection, hasSelection, textRange, DOMSelectionState} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet,
         ChangedRange, ScrollTarget, getScrollMargins} from "./extension"
 import {EditorView} from "./editorview"
@@ -237,9 +237,10 @@ export class DocView extends ContentView {
 
     let domSel = this.view.observer.selectionRange
     // If the selection is already here, or in an equivalent position, don't touch it
-    if (force || !domSel.focusNode ||
-        !isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) ||
-        !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) {
+    if (force || !domSel.focusNode || (
+          !isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) ||
+          !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)
+        ) && !this.suppressWidgetCursorChange(domSel, main)) {
       this.view.observer.ignore(() => {
         // Chrome Android will hide the virtual keyboard when tapping
         // inside an uneditable node, and not bring it back when we
@@ -294,6 +295,15 @@ export class DocView extends ContentView {
 
     this.impreciseAnchor = anchor.precise ? null : new DOMPos(domSel.anchorNode!, domSel.anchorOffset)
     this.impreciseHead = head.precise ? null: new DOMPos(domSel.focusNode!, domSel.focusOffset)
+  }
+
+  // If a zero-length widget is inserted next to the cursor during
+  // composition, avoid moving it across it and disrupting the
+  // composition.
+  suppressWidgetCursorChange(sel: DOMSelectionState, cursor: SelectionRange) {
+    return this.hasComposition && cursor.empty &&
+      isEquivalentPosition(sel.focusNode!, sel.focusOffset, sel.anchorNode, sel.anchorOffset) &&
+      this.posFromDOM(sel.focusNode!, sel.focusOffset) == cursor.head
   }
 
   enforceCursorAssoc() {
