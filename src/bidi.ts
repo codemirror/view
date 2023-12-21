@@ -426,9 +426,11 @@ export function moveVisually(line: Line, order: readonly BidiSpan[], dir: Direct
 
   if (spanI < 0) spanI = BidiSpan.find(order, startIndex, start.bidiLevel ?? -1, start.assoc)
   let span = order[spanI]
-  // End of span. (But not end of line--that was checked for above.)
+  // End of span
   if (startIndex == span.side(forward, dir)) {
-    span = order[spanI += forward ? 1 : -1]
+    let nextI = spanI += forward ? 1 : -1
+    if (nextI < 0 || nextI >= order.length) return null
+    span = order[spanI = nextI]
     startIndex = span.side(!forward, dir)
   }
   let indexForward = forward == (span.dir == dir)
