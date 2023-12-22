@@ -273,7 +273,7 @@ export function moveByChar(view: EditorView, start: SelectionRange, forward: boo
       char = "\n"
       line = view.state.doc.line(line.number + (forward ? 1 : -1))
       spans = view.bidiSpans(line)
-      next = EditorSelection.cursor(forward ? line.from : line.to)
+      next = view.visualLineSide(line, !forward)
     }
     if (!check) {
       if (!by) return next
