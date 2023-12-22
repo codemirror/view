@@ -79,16 +79,18 @@ function tests(dir: Direction) {
         it(cases[i] + (forward ? " forward" : " backward"), () => {
           let order = __test.computeOrder(cases[i], dir, [])
           let line = Text.of([cases[i]]).line(1)
-          let seen = []
-          for (let p = EditorSelection.cursor(forward ? 0 : line.length);;) {
-            ist(!seen[p.from])
-            seen[p.from] = true
-            let next = __test.moveVisually(line, order, dir, p, forward)
+          let seen = new Set<number>()
+          let span = order[forward ? 0 : order.length - 1]
+          let pos = EditorSelection.cursor(span.side(!forward, dir), span.forward(forward, dir) ? 1 : -1)
+          for (;;) {
+            let id = pos.head * (pos.assoc < 0 ? -1 : 1)
+            ist(!seen.has(id))
+            seen.add(id)
+            let next = __test.moveVisually(line, order, dir, pos, forward)
             if (!next) break
-            p = next
+            pos = next
           }
-          ist(seen.length, cases[i].length + 1)
-          for (let i = 0; i < seen.length; i++) ist(seen[i])
+          ist(seen.size, cases[i].length + 1)
         })
         if (!forward) break
       }

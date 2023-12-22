@@ -92,6 +92,9 @@ export class BidiSpan {
   side(end: boolean, dir: Direction) { return (this.dir == dir) == end ? this.to : this.from }
 
   /// @internal
+  forward(forward: boolean, dir: Direction) { return forward == (this.dir == dir) }
+
+  /// @internal
   static find(order: readonly BidiSpan[], index: number, level: number, assoc: number) {
     let maybe = -1
     for (let i = 0; i < order.length; i++) {
@@ -406,43 +409,40 @@ export function trivialOrder(length: number) {
 
 export let movedOver = ""
 
+// This implementation moves strictly visually, without concern for a
+// traversal visiting every logical position in the string. It will
+// still do so for simple input, but situations like multiple isolates
+// with the same level next to each other, or text going against the
+// main dir at the end of the line, will make some positions
+// unreachable with this motion. Each visible cursor position will
+// correspond to the lower-level bidi span that touches it.
+//
+// The alternative would be to solve an order globally for a given
+// line, making sure that it includes every position, but that would
+// require associating non-canonical (higher bidi span level)
+// positions with a given visual position, which is likely to confuse
+// people. (And would generally be a lot more complicated.)
 export function moveVisually(line: Line, order: readonly BidiSpan[], dir: Direction,
                              start: SelectionRange, forward: boolean) {
-  let startIndex = start.head - line.from, spanI = -1
-  if (startIndex == 0) {
-    if (!forward || !line.length) return null
-    if (order[0].level != dir) {
-      startIndex = order[0].side(false, dir)
-      spanI = 0
-    }
-  } else if (startIndex == line.length) {
-    if (forward) return null
-    let last = order[order.length - 1]
-    if (last.level != dir) {
-      startIndex = last.side(true, dir)
-      spanI = order.length - 1
-    }
-  }
-
-  if (spanI < 0) spanI = BidiSpan.find(order, startIndex, start.bidiLevel ?? -1, start.assoc)
-  let span = order[spanI]
+  let startIndex = start.head - line.from
+  let spanI = BidiSpan.find(order, startIndex, start.bidiLevel ?? -1, start.assoc)
+  let span = order[spanI], spanEnd = span.side(forward, dir)
   // End of span
-  if (startIndex == span.side(forward, dir)) {
+  if (startIndex == spanEnd) {
     let nextI = spanI += forward ? 1 : -1
     if (nextI < 0 || nextI >= order.length) return null
     span = order[spanI = nextI]
     startIndex = span.side(!forward, dir)
+    spanEnd = span.side(forward, dir)
   }
-  let indexForward = forward == (span.dir == dir)
-  let nextIndex = findClusterBreak(line.text, startIndex, indexForward)
+  let nextIndex = findClusterBreak(line.text, startIndex, span.forward(forward, dir))
+  if (nextIndex < span.from || nextIndex > span.to) nextIndex = spanEnd
   movedOver = line.text.slice(Math.min(startIndex, nextIndex), Math.max(startIndex, nextIndex))
 
-  if (nextIndex > span.from && nextIndex < span.to)
-    return EditorSelection.cursor(nextIndex + line.from, indexForward ? -1 : 1, span.level)
   let nextSpan = spanI == (forward ? order.length - 1 : 0) ? null : order[spanI + (forward ? 1 : -1)]
-  if (!nextSpan && span.level != dir)
-    return EditorSelection.cursor(forward ? line.to : line.from, forward ? -1 : 1, dir)
-  if (nextSpan && nextSpan.level < span.level)
-    return EditorSelection.cursor(nextSpan.side(!forward, dir) + line.from, forward ? 1 : -1, nextSpan.level)
-  return EditorSelection.cursor(nextIndex + line.from, forward ? -1 : 1, span.level)
+  if (nextSpan && nextIndex == spanEnd && nextSpan.level + (forward ? 0 : 1) < span.level)
+    return EditorSelection.cursor(nextSpan.side(!forward, dir) + line.from,
+                                  nextSpan.forward(forward, dir) ? 1 : -1,
+                                  nextSpan.level)
+  return EditorSelection.cursor(nextIndex + line.from, span.forward(forward, dir) ? -1 : 1, span.level)
 }
