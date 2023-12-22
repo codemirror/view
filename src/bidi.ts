@@ -446,3 +446,12 @@ export function moveVisually(line: Line, order: readonly BidiSpan[], dir: Direct
                                   nextSpan.level)
   return EditorSelection.cursor(nextIndex + line.from, span.forward(forward, dir) ? -1 : 1, span.level)
 }
+
+export function autoDirection(text: string, from: number, to: number) {
+  for (let i = from; i < to; i++) {
+    let type = charType(text.charCodeAt(i))
+    if (type == T.L) return LTR
+    if (type == T.R || type == T.AL) return RTL
+  }
+  return LTR
+}

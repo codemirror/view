@@ -785,10 +785,10 @@ export class EditorView {
     let dir = this.textDirectionAt(line.from), isolates: readonly Isolate[] | undefined
     for (let entry of this.bidiCache) {
       if (entry.from == line.from && entry.dir == dir &&
-          (entry.fresh || isolatesEq(entry.isolates, isolates = getIsolatedRanges(this, line.from, line.to))))
+          (entry.fresh || isolatesEq(entry.isolates, isolates = getIsolatedRanges(this, line))))
         return entry.order
     }
-    if (!isolates) isolates = getIsolatedRanges(this, line.from, line.to)
+    if (!isolates) isolates = getIsolatedRanges(this, line)
     let order = computeOrder(line.text, dir, isolates)
     this.bidiCache.push(new CachedOrder(line.from, line.to, dir, isolates, true, order))
     return order

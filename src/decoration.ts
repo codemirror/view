@@ -27,8 +27,11 @@ interface MarkDecorationSpec {
   tagName?: string
   /// When using sets of decorations in
   /// [`bidiIsolatedRanges`](##view.EditorView^bidiIsolatedRanges),
-  /// this property provides the direction of the isolates.
-  bidiIsolate?: Direction
+  /// this property provides the direction of the isolates. When null
+  /// or not given, it indicates the range has `dir=auto`, and its
+  /// direction should be derived from the first strong directional
+  /// character in it.
+  bidiIsolate?: Direction | null
   /// Decoration specs allow extra properties, which can be retrieved
   /// through the decoration's [`spec`](#view.Decoration.spec)
   /// property.

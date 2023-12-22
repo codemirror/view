@@ -1,10 +1,10 @@
-import {EditorState, Transaction, ChangeSet, ChangeDesc, Facet,
+import {EditorState, Transaction, ChangeSet, ChangeDesc, Facet, Line,
         StateEffect, Extension, SelectionRange, RangeSet, EditorSelection} from "@codemirror/state"
 import {StyleModule} from "style-mod"
 import {DecorationSet, Decoration} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {Attrs} from "./attributes"
-import {Isolate} from "./bidi"
+import {Isolate, autoDirection} from "./bidi"
 import {Rect, ScrollStrategy} from "./dom"
 import {MakeSelectionStyle} from "./input"
 
@@ -251,24 +251,25 @@ export const atomicRanges = Facet.define<(view: EditorView) => RangeSet<any>>()
 
 export const bidiIsolatedRanges = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
 
-export function getIsolatedRanges(view: EditorView, from: number, to: number): readonly Isolate[] {
+export function getIsolatedRanges(view: EditorView, line: Line): readonly Isolate[] {
   let isolates = view.state.facet(bidiIsolatedRanges)
   if (!isolates.length) return isolates as any[]
   let sets = isolates.map<DecorationSet>(i => i instanceof Function ? i(view) : i)
   let result: Isolate[] = []
-  RangeSet.spans(sets, from, to, {
+  RangeSet.spans(sets, line.from, line.to, {
     point() {},
     span(from, to, active, open) {
       let level = result
       for (let i = active.length - 1; i >= 0; i--, open--) {
-        let iso = active[i].spec.bidiIsolate, update
-        if (iso == null) continue
+        let direction = active[i].spec.bidiIsolate, update
+        if (direction == null)
+          direction = autoDirection(line.text, from - line.from, to - line.from)
         if (open > 0 && level.length &&
-            (update = level[level.length - 1]).to == from && update.direction == iso) {
+            (update = level[level.length - 1]).to == from && update.direction == direction) {
           update.to = to
           level = update.inner as Isolate[]
         } else {
-          let add = {from, to, direction: iso, inner: []}
+          let add = {from, to, direction, inner: []}
           level.push(add)
           level = add.inner
         }
