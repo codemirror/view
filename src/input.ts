@@ -381,8 +381,7 @@ class MouseSelection {
 
   select(event: MouseEvent) {
     let {view} = this, selection = this.skipAtoms(this.style.get(event, this.extend, this.multiple))
-    if (this.mustSelect || !selection.eq(view.state.selection) ||
-        selection.main.assoc != view.state.selection.main.assoc && this.dragging === false)
+    if (this.mustSelect || !selection.eq(view.state.selection, this.dragging === false))
       this.view.dispatch({
         selection,
         userEvent: "select.pointer"

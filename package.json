@@ -26,7 +26,7 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
-    "@codemirror/state": "^6.1.4",
+    "@codemirror/state": "^6.4.0",
     "style-mod": "^4.1.0",
     "w3c-keyname": "^2.2.4"
   },
