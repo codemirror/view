@@ -140,6 +140,10 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     display: "block"
   },
 
+  ".cm-iso": {
+    unicodeBidi: "isolate"
+  },
+
   ".cm-announced": {
     position: "fixed",
     top: "-10000px"
