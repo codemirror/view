@@ -152,6 +152,17 @@ describe("EditorView decoration", () => {
     ist(b[0].parentNode, a[0])
   })
 
+  it("draws outer decorations around others", () => {
+    let cm = tempView("abcde", [
+      decos(Decoration.set([d(1, 2, {class: "a"}), d(3, 4, {class: "a"})])),
+      EditorView.outerDecorations.of(Decoration.set(Decoration.mark({tagName: "strong"}).range(1, 4))),
+      EditorView.outerDecorations.of(Decoration.set(Decoration.mark({tagName: "var"}).range(0, 5))),
+      EditorView.outerDecorations.of(Decoration.set(Decoration.mark({tagName: "em"}).range(2, 3)))
+    ])
+    ist((cm.contentDOM.firstChild as HTMLElement).innerHTML,
+        `<var>a<strong><span class="a">b</span><em>c</em><span class="a">d</span></strong>e</var>`)
+  })
+
   it("properly updates the viewport gap when changes fall inside it", () => {
     let doc = "a\n".repeat(500)
     let cm = decoEditor(doc, [d(600, 601, "x")])

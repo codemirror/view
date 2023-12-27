@@ -247,6 +247,8 @@ export const contentAttributes = Facet.define<AttrSource>()
 // Provide decorations
 export const decorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
 
+export const outerDecorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
+
 export const atomicRanges = Facet.define<(view: EditorView) => RangeSet<any>>()
 
 export const bidiIsolatedRanges = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()

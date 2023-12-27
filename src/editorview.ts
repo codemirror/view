@@ -14,7 +14,7 @@ import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, AttrSource,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
-        viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, atomicRanges,
+        viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, outerDecorations, atomicRanges,
         scrollMargins, MeasureRequest, editable, inputHandler, focusChangeEffect, perLineTextDirection,
         scrollIntoView, UpdateFlag, ScrollTarget, bidiIsolatedRanges, getIsolatedRanges} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
@@ -995,6 +995,15 @@ export class EditorView {
   /// containing the decorations to
   /// [`EditorView.atomicRanges`](#view.EditorView^atomicRanges).
   static decorations = decorations
+
+  /// Facet that works much like
+  /// [`decorations`](#view.EditorView^decorations), but puts its
+  /// inputs at the very bottom of the precedence stack, meaning mark
+  /// decorations provided here will only be split by other, partially
+  /// overlapping \`outerDecorations\` ranges, and wrap around all
+  /// regular decorations. Use this for mark elements that should, as
+  /// much as possible, remain in one piece.
+  static outerDecorations = outerDecorations
 
   /// Used to provide ranges that should be treated as atoms as far as
   /// cursor motion is concerned. This causes methods like

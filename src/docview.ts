@@ -8,7 +8,7 @@ import {Decoration, DecorationSet, WidgetType, addRange, MarkDecoration} from ".
 import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState} from "./dom"
-import {ViewUpdate, decorations as decorationsFacet,
+import {ViewUpdate, decorations as decorationsFacet, outerDecorations,
         ChangedRange, ScrollTarget, getScrollMargins} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
@@ -503,6 +503,15 @@ export class DocView extends ContentView {
       let dynamic = this.dynamicDecorationMap[i] = typeof d == "function"
       return dynamic ? (d as (view: EditorView) => DecorationSet)(this.view) : d as DecorationSet
     })
+    let dynamicOuter = false, outerDeco = this.view.state.facet(outerDecorations).map((d, i) => {
+      let dynamic = typeof d == "function"
+      if (dynamic) dynamicOuter = true
+      return dynamic ? (d as (view: EditorView) => DecorationSet)(this.view) : d as DecorationSet
+    })
+    if (outerDeco.length) {
+      this.dynamicDecorationMap[allDeco.length] = dynamicOuter
+      allDeco.push(RangeSet.join(outerDeco))
+    }
     for (let i = allDeco.length; i < allDeco.length + 3; i++) this.dynamicDecorationMap[i] = false
     return this.decorations = [
       ...allDeco,
