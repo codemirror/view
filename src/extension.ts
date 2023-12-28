@@ -260,12 +260,13 @@ export function getIsolatedRanges(view: EditorView, line: Line): readonly Isolat
   let result: Isolate[] = []
   RangeSet.spans(sets, line.from, line.to, {
     point() {},
-    span(from, to, active, open) {
+    span(fromDoc, toDoc, active, open) {
+      let from = fromDoc - line.from, to = toDoc - line.from
       let level = result
       for (let i = active.length - 1; i >= 0; i--, open--) {
         let direction = active[i].spec.bidiIsolate, update
         if (direction == null)
-          direction = autoDirection(line.text, from - line.from, to - line.from)
+          direction = autoDirection(line.text, from, to)
         if (open > 0 && level.length &&
             (update = level[level.length - 1]).to == from && update.direction == direction) {
           update.to = to
