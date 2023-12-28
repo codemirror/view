@@ -1,3 +1,25 @@
+## 6.23.0 (2023-12-28)
+
+### Bug fixes
+
+Work around odd iOS Safari behavior when doing select all.
+
+Fix a composition interruption when an widget is inserted next to the cursor.
+
+Fix a crash in bidirectional cursor motion.
+
+Simplify visual motion through bidirectional text, fix several corner cases where it would work badly.
+
+Fix a bug that broke some bidi isolates not on the first line of the document.
+
+### New features
+
+`EditorView.bidiIsolatedRanges` now supports automatically determining the direction of the range if not provided by the decoration.
+
+`EditorView.visualLineSide` can be used to find the visual end or start of a line with bidirectional text.
+
+The new `EditorView.outerDecorations` facet can be used to provide decorations that should always be at the bottom of the precedence stack.
+
 ## 6.22.3 (2023-12-13)
 
 ### Bug fixes
