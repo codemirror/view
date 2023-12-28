@@ -234,7 +234,7 @@ export interface MeasureRequest<T> {
   /// do anything that triggers DOM layout.
   write?(measure: T, view: EditorView): void
   /// When multiple requests with the same key are scheduled, only the
-  /// last one will actually be ran.
+  /// last one will actually be run.
   key?: any
 }
 
