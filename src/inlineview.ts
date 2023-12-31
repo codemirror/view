@@ -273,9 +273,10 @@ export class WidgetBufferView extends ContentView {
 
   sync() {
     if (!this.dom) {
-      let dom = document.createElement("img")
-      dom.className = "cm-widgetBuffer"
-      dom.setAttribute("aria-hidden", "true")
+      let dom = document.createElement("span");
+      dom.className = "cm-widgetBuffer";
+      dom.setAttribute("aria-hidden", "true");
+      dom.style.whiteSpace = "nowrap";
       this.setDOM(dom)
     }
   }
