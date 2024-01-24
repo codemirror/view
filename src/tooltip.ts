@@ -152,6 +152,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.createContainer()
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
+    this.above = this.manager.tooltips.map(t => !!t.above)
     this.intersectionObserver = typeof IntersectionObserver == "function" ? new IntersectionObserver(entries => {
       if (Date.now() > this.lastTransaction - 50 &&
           entries.length > 0 && entries[entries.length - 1].intersectionRatio < 1)
