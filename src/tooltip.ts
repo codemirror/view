@@ -29,7 +29,8 @@ class TooltipViewManager {
   constructor(
     view: EditorView,
     private readonly facet: Facet<Tooltip | null>,
-    private readonly createTooltipView: (tooltip: Tooltip) => TooltipView
+    private readonly createTooltipView: (tooltip: Tooltip) => TooltipView,
+    private readonly removeTooltipView: (tooltipView: TooltipView) => void
   ) {
     this.input = view.state.facet(facet)
     this.tooltips = this.input.filter(t => t) as Tooltip[]
@@ -62,7 +63,7 @@ class TooltipViewManager {
       }
     }
     for (let t of this.tooltipViews) if (tooltipViews.indexOf(t) < 0) {
-      t.dom.remove()
+      this.removeTooltipView(t)
       t.destroy?.()
     }
     if (above) {
@@ -141,6 +142,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   container!: HTMLElement
   classes: string
   intersectionObserver: IntersectionObserver | null
+  resizeObserver: ResizeObserver | null
   lastTransaction = 0
   measureTimeout = -1
 
@@ -151,7 +153,11 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.classes = view.themeClasses
     this.createContainer()
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
-    this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t))
+    this.resizeObserver = typeof ResizeObserver == "function" ? new ResizeObserver(() => this.measureSoon()) : null
+    this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t), t => {
+      if (this.resizeObserver) this.resizeObserver.unobserve(t.dom)
+      t.dom.remove()
+    })
     this.above = this.manager.tooltips.map(t => !!t.above)
     this.intersectionObserver = typeof IntersectionObserver == "function" ? new IntersectionObserver(entries => {
       if (Date.now() > this.lastTransaction - 50 &&
@@ -225,6 +231,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     tooltipView.dom.style.left = "0px"
     this.container.appendChild(tooltipView.dom)
     if (tooltipView.mount) tooltipView.mount(this.view)
+    if (this.resizeObserver) this.resizeObserver.observe(tooltipView.dom)
     return tooltipView
   }
 
@@ -235,6 +242,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       tooltipView.destroy?.()
     }
     if (this.parent) this.container.remove()
+    this.resizeObserver?.disconnect()
     this.intersectionObserver?.disconnect()
     clearTimeout(this.measureTimeout)
   }
@@ -509,7 +517,7 @@ class HoverTooltipHost implements TooltipView {
   private constructor(readonly view: EditorView) {
     this.dom = document.createElement("div")
     this.dom.classList.add("cm-tooltip-hover")
-    this.manager = new TooltipViewManager(view, showHoverTooltip, t => this.createHostedView(t))
+    this.manager = new TooltipViewManager(view, showHoverTooltip, t => this.createHostedView(t), t => t.dom.remove())
   }
 
   createHostedView(tooltip: Tooltip) {
