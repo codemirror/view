@@ -1,3 +1,11 @@
+## 6.23.1 (2024-01-24)
+
+### Bug fixes
+
+Fix a bug that caused `Tooltip.above` to not take effect for tooltips that were already present when the tooltip plugin is initialized.
+
+Automatically reposition tooltips when their size changes.
+
 ## 6.23.0 (2023-12-28)
 
 ### Bug fixes
