@@ -578,6 +578,8 @@ class BlockGapWidget extends WidgetType {
   get editable() { return true }
 
   get estimatedHeight() { return this.height }
+
+  ignoreEvent() { return false }
 }
 
 export function findCompositionNode(view: EditorView, headPos: number): {from: number, to: number, node: Text} | null {

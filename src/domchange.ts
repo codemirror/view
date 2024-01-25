@@ -37,12 +37,16 @@ export class DOMChange {
         !contains(view.contentDOM, domSel.anchorNode)
         ? view.state.selection.main.anchor
         : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
-      // iOS will refuse to select the block gaps when doing select-all
+      // iOS will refuse to select the block gaps when doing
+      // select-all.
+      // Chrome will put the selection *inside* them, confusing
+      // posFromDOM
       let vp = view.viewport
-      if (browser.ios && view.state.selection.main.empty && head != anchor &&
+      if ((browser.ios || browser.chrome) && view.state.selection.main.empty && head != anchor &&
           (vp.from > 0 || vp.to < view.state.doc.length)) {
-        let offFrom = vp.from - Math.min(head, anchor), offTo = vp.to - Math.max(head, anchor)
-        if ((offFrom == 0 || offFrom == 1) && (offTo == 0 || offTo == -1)) {
+        let from = Math.min(head, anchor), to = Math.max(head, anchor)
+        let offFrom = vp.from - from, offTo = vp.to - to
+        if ((offFrom == 0 || offFrom == 1 || from == 0) && (offTo == 0 || offTo == -1 || to == view.state.doc.length)) {
           head = 0
           anchor = view.state.doc.length
         }
