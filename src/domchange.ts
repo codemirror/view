@@ -127,8 +127,9 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
         ((change.from == sel.from && change.to == sel.to &&
           change.insert.length == 1 && change.insert.lines == 2 &&
           dispatchKey(view.contentDOM, "Enter", 13)) ||
-         // Emitted by GBoard when pressing enter just after accepting
-         // a keyboard autosuggestion (#1312):
+         // This case handles events emitted by GBoard when the user
+         // presses enter just after accepting a keyboard
+         // autosuggestion (#1312):
          (change.from == sel.from - 1 && change.to == sel.to &&
           change.insert.length == 1 && change.insert.lines == 2 &&
           dispatchKey(view.contentDOM, "Enter", 13)) ||
