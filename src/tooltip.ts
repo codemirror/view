@@ -29,12 +29,13 @@ class TooltipViewManager {
   constructor(
     view: EditorView,
     private readonly facet: Facet<Tooltip | null>,
-    private readonly createTooltipView: (tooltip: Tooltip) => TooltipView,
+    private readonly createTooltipView: (tooltip: Tooltip, after: TooltipView | null) => TooltipView,
     private readonly removeTooltipView: (tooltipView: TooltipView) => void
   ) {
     this.input = view.state.facet(facet)
     this.tooltips = this.input.filter(t => t) as Tooltip[]
-    this.tooltipViews = this.tooltips.map(createTooltipView)
+    let prev: TooltipView | null = null
+    this.tooltipViews = this.tooltips.map(t => prev = createTooltipView(t, prev))
   }
 
   update(update: ViewUpdate, above?: boolean[]) {
@@ -45,7 +46,7 @@ class TooltipViewManager {
       return false
     }
 
-    let tooltipViews = [], newAbove: boolean[] | null = above ? [] : null
+    let tooltipViews: TooltipView[] = [], newAbove: boolean[] | null = above ? [] : null
     for (let i = 0; i < tooltips.length; i++) {
       let tip = tooltips[i], known = -1
       if (!tip) continue
@@ -54,7 +55,7 @@ class TooltipViewManager {
         if (other && other.create == tip.create) known = i
       }
       if (known < 0) {
-        tooltipViews[i] = this.createTooltipView(tip)
+        tooltipViews[i] = this.createTooltipView(tip, i ? tooltipViews[i - 1] : null)
         if (newAbove) newAbove[i] = !!tip.above
       } else {
         let tooltipView = tooltipViews[i] = this.tooltipViews[known]
@@ -154,7 +155,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     this.createContainer()
     this.measureReq = {read: this.readMeasure.bind(this), write: this.writeMeasure.bind(this), key: this}
     this.resizeObserver = typeof ResizeObserver == "function" ? new ResizeObserver(() => this.measureSoon()) : null
-    this.manager = new TooltipViewManager(view, showTooltip, t => this.createTooltip(t), t => {
+    this.manager = new TooltipViewManager(view, showTooltip, (t, p) => this.createTooltip(t, p), t => {
       if (this.resizeObserver) this.resizeObserver.unobserve(t.dom)
       t.dom.remove()
     })
@@ -218,18 +219,19 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     if (shouldMeasure) this.maybeMeasure()
   }
 
-  createTooltip(tooltip: Tooltip) {
+  createTooltip(tooltip: Tooltip, prev: TooltipView | null) {
     let tooltipView = tooltip.create(this.view)
+    let before = prev ? prev.dom : null
     tooltipView.dom.classList.add("cm-tooltip")
     if (tooltip.arrow && !tooltipView.dom.querySelector(".cm-tooltip > .cm-tooltip-arrow")) {
       let arrow = document.createElement("div")
       arrow.className = "cm-tooltip-arrow"
-      tooltipView.dom.appendChild(arrow)
+      tooltipView.dom.insertBefore(arrow, before)
     }
     tooltipView.dom.style.position = this.position
     tooltipView.dom.style.top = Outside
     tooltipView.dom.style.left = "0px"
-    this.container.appendChild(tooltipView.dom)
+    this.container.insertBefore(tooltipView.dom, before)
     if (tooltipView.mount) tooltipView.mount(this.view)
     if (this.resizeObserver) this.resizeObserver.observe(tooltipView.dom)
     return tooltipView
@@ -517,13 +519,13 @@ class HoverTooltipHost implements TooltipView {
   private constructor(readonly view: EditorView) {
     this.dom = document.createElement("div")
     this.dom.classList.add("cm-tooltip-hover")
-    this.manager = new TooltipViewManager(view, showHoverTooltip, t => this.createHostedView(t), t => t.dom.remove())
+    this.manager = new TooltipViewManager(view, showHoverTooltip, (t, p) => this.createHostedView(t, p), t => t.dom.remove())
   }
 
-  createHostedView(tooltip: Tooltip) {
+  createHostedView(tooltip: Tooltip, prev: TooltipView | null) {
     let hostedView = tooltip.create(this.view)
     hostedView.dom.classList.add("cm-tooltip-section")
-    this.dom.appendChild(hostedView.dom)
+    this.dom.insertBefore(hostedView.dom, prev ? prev.dom.nextSibling : this.dom.firstChild)
     if (this.mounted && hostedView.mount)
       hostedView.mount(this.view)
     return hostedView
