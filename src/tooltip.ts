@@ -1,5 +1,5 @@
 import {EditorState, Transaction, StateEffect, StateEffectType,
-        Facet, StateField, Extension, MapMode} from "@codemirror/state"
+        Facet, StateField, Extension, MapMode, FacetReader} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate, logException} from "./extension"
 import {Direction} from "./bidi"
@@ -28,7 +28,7 @@ class TooltipViewManager {
 
   constructor(
     view: EditorView,
-    private readonly facet: Facet<Tooltip | null>,
+    private readonly facet: FacetReader<readonly (Tooltip | null)[]>,
     private readonly createTooltipView: (tooltip: Tooltip, after: TooltipView | null) => TooltipView,
     private readonly removeTooltipView: (tooltipView: TooltipView) => void
   ) {
@@ -504,7 +504,9 @@ export const showTooltip = Facet.define<Tooltip | null>({
   enables: [tooltipPlugin, baseTheme]
 })
 
-const showHoverTooltip = Facet.define<Tooltip | null>()
+const showHoverTooltip = Facet.define<readonly Tooltip[], readonly Tooltip[]>({
+  combine: inputs => inputs.reduce((a, i) => a.concat(i), [])
+})
 
 class HoverTooltipHost implements TooltipView {
   private readonly manager: TooltipViewManager
@@ -574,7 +576,7 @@ class HoverTooltipHost implements TooltipView {
 }
 
 const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
-  let tooltips = state.facet(showHoverTooltip).filter(t => t) as Tooltip[]
+  let tooltips = state.facet(showHoverTooltip)
   if (tooltips.length === 0) return null
 
   return {
@@ -588,6 +590,8 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
 
 const enum Hover { Time = 300, MaxDist = 6 }
 
+type HoverSource = (view: EditorView, pos: number, side: -1 | 1) => Tooltip | readonly Tooltip[] | null | Promise<Tooltip | readonly Tooltip[] | null>
+
 class HoverPlugin {
   lastMove: {x: number, y: number, target: HTMLElement, time: number}
   hoverTimeout = -1
@@ -595,9 +599,9 @@ class HoverPlugin {
   pending: {pos: number} | null = null
 
   constructor(readonly view: EditorView,
-              readonly source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
-              readonly field: StateField<Tooltip | null>,
-              readonly setHover: StateEffectType<Tooltip | null>,
+              readonly source: HoverSource,
+              readonly field: StateField<readonly Tooltip[]>,
+              readonly setHover: StateEffectType<readonly Tooltip[]>,
               readonly hoverTime: number) {
     this.lastMove = {x: 0, y: 0, target: view.dom, time: 0}
     this.checkHover = this.checkHover.bind(this)
@@ -619,7 +623,7 @@ class HoverPlugin {
 
   checkHover() {
     this.hoverTimeout = -1
-    if (this.active) return
+    if (this.active.length) return
     let hovered = Date.now() - this.lastMove.time
     if (hovered < this.hoverTime)
       this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime - hovered)
@@ -654,11 +658,12 @@ class HoverPlugin {
       ;(open as Promise<Tooltip | null>).then(result => {
         if (this.pending == pending) {
           this.pending = null
-          if (result) view.dispatch({effects: this.setHover.of(result)})
+          if (result && !(Array.isArray(result) && !result.length))
+            view.dispatch({effects: this.setHover.of(Array.isArray(result) ? result : [result])})
         }
       }, e => logException(view.state, e, "hover tooltip"))
-    } else if (open) {
-      view.dispatch({effects: this.setHover.of(open as Tooltip)})
+    } else if (open && !(Array.isArray(open) && !open.length)) {
+      view.dispatch({effects: this.setHover.of(Array.isArray(open) ? open : [open])})
     }
   }
 
@@ -672,11 +677,11 @@ class HoverPlugin {
     this.lastMove = {x: event.clientX, y: event.clientY, target: event.target as HTMLElement, time: Date.now()}
     if (this.hoverTimeout < 0) this.hoverTimeout = setTimeout(this.checkHover, this.hoverTime)
     let {active, tooltip} = this
-    if (active && tooltip && !isInTooltip(tooltip.dom, event) || this.pending) {
-      let {pos} = active || this.pending!, end = active?.end ?? pos
+    if (active.length && tooltip && !isInTooltip(tooltip.dom, event) || this.pending) {
+      let {pos} = active[0] || this.pending!, end = active[0]?.end ?? pos
       if ((pos == end ? this.view.posAtCoords(this.lastMove) != pos
            : !isOverRange(this.view, pos, end, event.clientX, event.clientY, Hover.MaxDist))) {
-        this.view.dispatch({effects: this.setHover.of(null)})
+        this.view.dispatch({effects: this.setHover.of([])})
         this.pending = null
       }
     }
@@ -686,11 +691,11 @@ class HoverPlugin {
     clearTimeout(this.hoverTimeout)
     this.hoverTimeout = -1
     let {active} = this
-    if (active) {
+    if (active.length) {
       let {tooltip} = this
       let inTooltip = tooltip && tooltip.dom.contains(event.relatedTarget as HTMLElement)
       if (!inTooltip)
-        this.view.dispatch({effects: this.setHover.of(null)})
+        this.view.dispatch({effects: this.setHover.of([])})
       else
         this.watchTooltipLeave(tooltip!.dom)
     }
@@ -699,8 +704,8 @@ class HoverPlugin {
   watchTooltipLeave(tooltip: HTMLElement) {
     let watch = (event: MouseEvent) => {
       tooltip.removeEventListener("mouseleave", watch)
-      if (this.active && !this.view.dom.contains(event.relatedTarget as HTMLElement))
-        this.view.dispatch({effects: this.setHover.of(null)})
+      if (this.active.length && !this.view.dom.contains(event.relatedTarget as HTMLElement))
+        this.view.dispatch({effects: this.setHover.of([])})
     }
     tooltip.addEventListener("mouseleave", watch)
   }
@@ -740,7 +745,7 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
 /// container element. This allows multiple tooltips over the same
 /// range to be "merged" together without overlapping.
 export function hoverTooltip(
-  source: (view: EditorView, pos: number, side: -1 | 1) => Tooltip | null | Promise<Tooltip | null>,
+  source: HoverSource,
   options: {
     /// Controls whether a transaction hides the tooltip. The default
     /// is to not hide.
@@ -753,25 +758,30 @@ export function hoverTooltip(
     hoverTime?: number
   } = {}
 ): Extension {
-  let setHover = StateEffect.define<Tooltip | null>()
-  let hoverState = StateField.define<Tooltip | null>({
-    create() { return null },
+  let setHover = StateEffect.define<readonly Tooltip[]>()
+  let hoverState = StateField.define<readonly Tooltip[]>({
+    create() { return [] },
 
     update(value, tr) {
-      if (value && (options.hideOnChange && (tr.docChanged || tr.selection) ||
-                    options.hideOn && options.hideOn(tr, value)))
-        return null
-      if (value && tr.docChanged) {
-        let newPos = tr.changes.mapPos(value.pos, -1, MapMode.TrackDel)
-        if (newPos == null) return null
-        let copy: Tooltip = Object.assign(Object.create(null), value)
-        copy.pos = newPos
-        if (value.end != null) copy.end = tr.changes.mapPos(value.end)
-        value = copy
+      if (value.length) {
+        if (options.hideOnChange && (tr.docChanged || tr.selection)) value = []
+        else if (options.hideOn) value = value.filter(v => !options.hideOn!(tr, v))
+        if (tr.docChanged) {
+          let mapped = []
+          for (let tooltip of value) {
+            let newPos = tr.changes.mapPos(tooltip.pos, -1, MapMode.TrackDel)
+            if (newPos != null) {
+              let copy: Tooltip = Object.assign(Object.create(null), tooltip)
+              copy.pos = newPos
+              if (copy.end != null) copy.end = tr.changes.mapPos(copy.end)
+              mapped.push(copy)
+            }
+          }
+        }
       }
       for (let effect of tr.effects) {
         if (effect.is(setHover)) value = effect.value
-        if (effect.is(closeHoverTooltipEffect)) value = null
+        if (effect.is(closeHoverTooltipEffect)) value = []
       }
       return value
     },
