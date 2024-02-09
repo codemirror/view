@@ -1,3 +1,15 @@
+## 6.24.0 (2024-02-09)
+
+### Bug fixes
+
+Fix an issue that broke context-menu select-all on Chrome when the viewport didn't cover the whole document.
+
+Make sure tooltips are ordered by extension precedence in the DOM.
+
+### New features
+
+Hover tooltip sources may now return multiple tooltips.
+
 ## 6.23.1 (2024-01-24)
 
 ### Bug fixes
