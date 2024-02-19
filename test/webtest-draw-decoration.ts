@@ -309,6 +309,18 @@ describe("EditorView decoration", () => {
       ist(cm.contentDOM.querySelectorAll(".b").length, 1)
     })
 
+    it("includes negative-side widgets in marks that end at their position", () => {
+      let cm = tempView("123", [decos(Decoration.set([w(2, new WordWidget("x"), -1)])),
+                                decos(Decoration.set([d(0, 2, {tagName: "em", inclusive: true})]))])
+      ist(cm.contentDOM.querySelector("em")!.textContent, "12x")
+    })
+
+    it("includes positive-side widgets in marks that start at their position", () => {
+      let cm = tempView("123", [decos(Decoration.set([w(1, new WordWidget("x"), 1)])),
+                                decos(Decoration.set([d(1, 3, {tagName: "em", inclusive: true})]))])
+      ist(cm.contentDOM.querySelector("em")!.textContent, "x23")
+    })
+
     it("wraps widgets even when the mark starts at the same offset", () => {
       let repl = Decoration.replace({widget: new WordWidget("X"),
                                      inclusive: false})
