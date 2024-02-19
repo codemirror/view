@@ -777,6 +777,7 @@ export function hoverTooltip(
               mapped.push(copy)
             }
           }
+          value = mapped
         }
       }
       for (let effect of tr.effects) {
