@@ -1,3 +1,9 @@
+## 6.24.1 (2024-02-19)
+
+### Bug fixes
+
+Fix a crash that happens when hover tooltips are active during changes, introduced in 6.24.0.
+
 ## 6.24.0 (2024-02-09)
 
 ### Bug fixes
