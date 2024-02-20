@@ -111,9 +111,9 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     if (deco instanceof PointDecoration) {
       if (deco.block) {
         if (deco.startSide > 0 && !this.posCovered()) this.getLine()
-        this.addBlockWidget(new BlockWidgetView(deco.widget || new NullWidget("div"), len, deco))
+        this.addBlockWidget(new BlockWidgetView(deco.widget || NullWidget.block, len, deco))
       } else {
-        let view = WidgetView.create(deco.widget || new NullWidget("span"), len, len ? 0 : deco.startSide)
+        let view = WidgetView.create(deco.widget || NullWidget.inline, len, len ? 0 : deco.startSide)
         let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length &&
           (from < to || deco.startSide > 0)
         let cursorAfter = !view.isEditable && (from < to || openStart > active.length || deco.startSide <= 0)
@@ -162,10 +162,12 @@ function wrapMarks(view: ContentView, active: readonly MarkDecoration[]) {
   return view
 }
 
-class NullWidget extends WidgetType {
+export class NullWidget extends WidgetType {
   constructor(readonly tag: string) { super() }
   eq(other: NullWidget) { return other.tag == this.tag }
   toDOM() { return document.createElement(this.tag) }
   updateDOM(elt: HTMLElement) { return elt.nodeName.toLowerCase() == this.tag }
   get isHidden() { return true }
+  static inline = new NullWidget("span")
+  static block = new NullWidget("div")
 }

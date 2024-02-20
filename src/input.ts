@@ -811,6 +811,10 @@ observers.compositionstart = observers.compositionupdate = view => {
   if (view.inputState.composing < 0) {
     // FIXME possibly set a timeout to clear it again on Android
     view.inputState.composing = 0
+    if (view.docView.maybeCreateCompositionBarrier()) {
+      view.update([])
+      view.docView.clearCompositionBarrier()
+    }
   }
 }
 
