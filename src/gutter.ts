@@ -146,7 +146,9 @@ const gutterView = ViewPlugin.fromClass(class {
       let vpOverlap = Math.min(vpA.to, vpB.to) - Math.max(vpA.from, vpB.from)
       this.syncGutters(vpOverlap < (vpB.to - vpB.from) * 0.8)
     }
-    if (update.geometryChanged) this.dom.style.minHeight = this.view.contentHeight + "px"
+    if (update.geometryChanged) {
+      this.dom.style.minHeight = (this.view.contentHeight / this.view.scaleY) + "px"
+    }
     if (this.view.state.facet(unfixGutters) != !this.fixed) {
       this.fixed = !this.fixed
       this.dom.style.position = this.fixed ? "sticky" : ""
