@@ -198,6 +198,9 @@ interface LayerConfig {
   /// Called on every view update. Returning true triggers a marker
   /// update (a call to `markers` and drawing of those markers).
   update(update: ViewUpdate, layer: HTMLElement): boolean
+  /// Whether to update this layer every time the document view
+  /// changes. Defaults to true.
+  updateOnDocViewUpdate: boolean
   /// Build a set of markers for this layer, and measure their
   /// dimensions.
   markers(view: EditorView): readonly LayerMarker[]
@@ -239,6 +242,10 @@ class LayerView {
       this.scale()
       update.view.requestMeasure(this.measureReq)
     }
+  }
+
+  docViewUpdate(view: EditorView) {
+    if (this.layer.updateOnDocViewUpdate !== false) view.requestMeasure(this.measureReq)
   }
 
   setOrder(state: EditorState) {
