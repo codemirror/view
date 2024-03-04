@@ -1,3 +1,21 @@
+## 6.25.0 (2024-03-04)
+
+### Bug fixes
+
+Properly recognize Android GBoard enter presses that strip a space at the end of the line as enter.
+
+Fix a bug that caused the gutter to have the wrong height when the editor was scaled after construction.
+
+When starting a composition after a non-inclusive mark decoration, temporarily insert a widget that prevents the composed text from inheriting that mark's styles.
+
+Make sure the selection is repositioned when a transaction changes decorations without changing the document.
+
+### New features
+
+View plugins can now provide a `docViewUpdate` method that is called whenever the document view is updated.
+
+Layers now take a `updateOnDocUpdate` option that controls whether they are automatically updated when the document view changes.
+
 ## 6.24.1 (2024-02-19)
 
 ### Bug fixes
