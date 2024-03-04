@@ -322,6 +322,7 @@ export class EditorView {
       this.viewState.mustMeasureContent = true
     if (redrawn || attrsChanged || scrollTarget || this.viewState.mustEnforceCursorAssoc || this.viewState.mustMeasureContent)
       this.requestMeasure()
+    if (redrawn) this.docViewUpdate()
     if (!update.empty) for (let listener of this.state.facet(updateListener)) {
       try { listener(update) }
       catch (e) { logException(this.state, e, "update listener") }
@@ -391,6 +392,16 @@ export class EditorView {
     if (prevSpecs != specs) this.inputState.ensureHandlers(this.plugins)
   }
 
+  private docViewUpdate() {
+    for (let plugin of this.plugins) {
+      let val = plugin.value
+      if (val && val.docViewUpdate) {
+        try { val.docViewUpdate(this) }
+        catch(e) { logException(this.state, e, "doc view update listener") }
+      }
+    }
+  }
+
   /// @internal
   measure(flush = true) {
     if (this.destroyed) return
@@ -449,6 +460,7 @@ export class EditorView {
           this.inputState.update(update)
           this.updateAttrs()
           redrawn = this.docView.update(update)
+          if (redrawn) this.docViewUpdate()
         }
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {
           try {

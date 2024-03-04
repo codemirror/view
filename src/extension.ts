@@ -99,6 +99,12 @@ export interface PluginValue extends Object {
   /// your code in a DOM reading phase if you need to.
   update?(update: ViewUpdate): void
 
+  /// Called when the document view is updated (due to content,
+  /// decoration, or viewport changes). Should not try to immediately
+  /// start another view update. Often useful for calling
+  /// [`requestMeasure`](#view.EditorView.requestMeasure).
+  docViewUpdate?(view: EditorView): void
+
   /// Called when the plugin is no longer going to be used. Should
   /// revert any changes the plugin made to the DOM.
   destroy?(): void
