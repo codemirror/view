@@ -1,3 +1,9 @@
+## 6.25.1 (2024-03-06)
+
+### Bug fixes
+
+Fix accidental non-optional field in layer config objects.
+
 ## 6.25.0 (2024-03-04)
 
 ### Bug fixes
