@@ -116,7 +116,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
   }
 
   if (change) {
-    if (browser.ios && view.inputState.flushIOSKey()) return true
+    if (browser.ios && view.inputState.flushIOSKey(change)) return true
     // Android browsers don't fire reasonable key events for enter,
     // backspace, or delete. So this detects changes that look like
     // they're caused by those keys, and reinterprets them as key

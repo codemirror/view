@@ -283,6 +283,7 @@ export function textRange(node: Text, from: number, to = from) {
 }
 
 export function dispatchKey(elt: HTMLElement, name: string, code: number): boolean {
+  console.log("dispatch", name)
   let options = {key: name, code: name, keyCode: code, which: code, cancelable: true}
   let down = new KeyboardEvent("keydown", options)
   ;(down as any).synthetic = true

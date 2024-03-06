@@ -1,4 +1,4 @@
-import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation} from "@codemirror/state"
+import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation, Text} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
@@ -142,9 +142,11 @@ export class InputState {
     return false
   }
 
-  flushIOSKey() {
+  flushIOSKey(change?: {from: number, to: number, insert: Text}) {
     let key = this.pendingIOSKey
     if (!key) return false
+    // This looks like an autocorrection before Enter
+    if (key.key == "Enter" && change && change.from < change.to && /^\S+$/.test(change.insert.toString())) return false
     this.pendingIOSKey = undefined
     return dispatchKey(this.view.contentDOM, key.key, key.keyCode)
   }
