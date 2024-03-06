@@ -9,7 +9,7 @@ import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet, outerDecorations,
-        ChangedRange, ScrollTarget, getScrollMargins, requestMeasureOnDocUpdate} from "./extension"
+        ChangedRange, ScrollTarget, getScrollMargins} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 

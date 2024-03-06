@@ -200,7 +200,7 @@ interface LayerConfig {
   update(update: ViewUpdate, layer: HTMLElement): boolean
   /// Whether to update this layer every time the document view
   /// changes. Defaults to true.
-  updateOnDocViewUpdate: boolean
+  updateOnDocViewUpdate?: boolean
   /// Build a set of markers for this layer, and measure their
   /// dimensions.
   markers(view: EditorView): readonly LayerMarker[]
