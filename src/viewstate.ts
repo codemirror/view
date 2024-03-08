@@ -256,7 +256,8 @@ export class ViewState {
 
     if (domRect.width && domRect.height) {
       let {scaleX, scaleY} = getScale(dom, domRect)
-      if (this.scaleX != scaleX || this.scaleY != scaleY) {
+      if (scaleX > .005 && Math.abs(this.scaleX - scaleX) > .005 ||
+          scaleY > .005 && Math.abs(this.scaleY - scaleY) > .005) {
         this.scaleX = scaleX; this.scaleY = scaleY
         result |= UpdateFlag.Geometry
         refresh = measureContent = true
