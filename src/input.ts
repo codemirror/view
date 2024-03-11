@@ -20,7 +20,7 @@ export class InputState {
   // On iOS, some keys need to have their default behavior happen
   // (after which we retroactively handle them and reset the DOM) to
   // avoid messing up the virtual keyboard state.
-  pendingIOSKey: undefined | {key: string, keyCode: number} = undefined
+  pendingIOSKey: undefined | {key: string, keyCode: number} | KeyboardEvent = undefined
 
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
@@ -148,7 +148,7 @@ export class InputState {
     // This looks like an autocorrection before Enter
     if (key.key == "Enter" && change && change.from < change.to && /^\S+$/.test(change.insert.toString())) return false
     this.pendingIOSKey = undefined
-    return dispatchKey(this.view.contentDOM, key.key, key.keyCode)
+    return dispatchKey(this.view.contentDOM, key.key, key.keyCode, key instanceof KeyboardEvent ? key : undefined)
   }
 
   ignoreDuringComposition(event: Event): boolean {
