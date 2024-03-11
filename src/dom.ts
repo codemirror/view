@@ -94,6 +94,11 @@ export function flattenRect(rect: Rect, left: boolean) {
 }
 
 function windowRect(win: Window): Rect {
+  let vp = win.visualViewport
+  if (vp) return {
+    left: 0, right: vp.width,
+    top: 0, bottom: vp.height
+  }
   return {left: 0, right: win.innerWidth,
           top: 0, bottom: win.innerHeight}
 }
