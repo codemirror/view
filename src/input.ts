@@ -871,6 +871,12 @@ handlers.beforeinput = (view, event) => {
       }, 100)
     }
   }
+  if (browser.ios && event.inputType == "deleteContentForward") {
+    // For some reason, DOM changes (and beforeinput) happen _before_
+    // the key event for ctrl-d on iOS when using an external
+    // keyboard.
+    view.observer.flushSoon()
+  }
   return false
 }
 
