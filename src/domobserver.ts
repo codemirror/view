@@ -50,6 +50,7 @@ export class DOMObserver {
   intersecting: boolean = false
   gapIntersection: IntersectionObserver | null = null
   gaps: readonly HTMLElement[] = []
+  printQuery: MediaQueryList | null = null
 
   // Timeout for scheduling check of the parents that need scroll handlers
   parentCheck = -1
@@ -88,6 +89,7 @@ export class DOMObserver {
     this.onPrint = this.onPrint.bind(this)
     this.onScroll = this.onScroll.bind(this)
 
+    if (window.matchMedia) this.printQuery = window.matchMedia("print")
     if (typeof ResizeObserver == "function") {
       this.resizeScroll = new ResizeObserver(() => {
         if (this.view.docView?.lastUpdate < Date.now() - 75) this.onResize()
@@ -134,7 +136,8 @@ export class DOMObserver {
     }, 50)
   }
 
-  onPrint() {
+  onPrint(event: Event) {
+    if (event.type == "change" && !(event as MediaQueryListEvent).matches) return
     this.view.viewState.printing = true
     this.view.measure()
     setTimeout(() => {
@@ -407,7 +410,8 @@ export class DOMObserver {
 
   addWindowListeners(win: Window) {
     win.addEventListener("resize", this.onResize)
-    win.addEventListener("beforeprint", this.onPrint)
+    if (this.printQuery) this.printQuery.addEventListener("change", this.onPrint)
+    else win.addEventListener("beforeprint", this.onPrint)
     win.addEventListener("scroll", this.onScroll)
     win.document.addEventListener("selectionchange", this.onSelectionChange)
   }
@@ -415,7 +419,8 @@ export class DOMObserver {
   removeWindowListeners(win: Window) {
     win.removeEventListener("scroll", this.onScroll)
     win.removeEventListener("resize", this.onResize)
-    win.removeEventListener("beforeprint", this.onPrint)
+    if (this.printQuery) this.printQuery.removeEventListener("change", this.onPrint)
+    else win.removeEventListener("beforeprint", this.onPrint)
     win.document.removeEventListener("selectionchange", this.onSelectionChange)
   }
 
