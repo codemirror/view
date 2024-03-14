@@ -1,3 +1,25 @@
+## 6.26.0 (2024-03-14)
+
+### Bug fixes
+
+Avoid the editor getting confused when iOS autocorrects on pressing Enter and does the correction and the break insertion in two different events.
+
+Fix the pasting of copied URIs in iOS.
+
+Fix a bug where a scaled editor could keep performing unnecessary updates due to tiny differences in geometry values returned by the browser.
+
+Fix a bug where, on iOS with a physical keyboard, the modifiers for some keys weren't being passed to the keymaps.
+
+Work around the fact that Mobile Safari makes DOM changes before firing a key event when typing ctrl-d on an external keyboard.
+
+Fix an issue where some commands didn't properly scroll the cursor into view on Mobile Safari.
+
+Re-measure the document when print settings are changed on Chrome.
+
+### New features
+
+The `EditorView.scrollHandler` facet can be used to override or extend the behavior of the editor when things are scrolled into view.
+
 ## 6.25.1 (2024-03-06)
 
 ### Bug fixes
