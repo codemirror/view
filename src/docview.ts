@@ -9,7 +9,7 @@ import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet, outerDecorations,
-        ChangedRange, ScrollTarget, getScrollMargins} from "./extension"
+        ChangedRange, ScrollTarget, scrollHandler, getScrollMargins, logException} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 
@@ -556,6 +556,11 @@ export class DocView extends ContentView {
       this.view.scrollDOM.scrollTop = ref.top - target.yMargin
       this.view.scrollDOM.scrollLeft = target.xMargin
       return
+    }
+
+    for (let handler of this.view.state.facet(scrollHandler)) {
+      try { if (handler(this.view, target.range, target)) return true }
+      catch(e) { logException(this.view.state, e, "scroll handler") }
     }
 
     let {range} = target

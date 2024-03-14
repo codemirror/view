@@ -16,7 +16,7 @@ import {ViewUpdate, styleModule,
         exceptionSink, updateListener, logException,
         viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, outerDecorations, atomicRanges,
         scrollMargins, MeasureRequest, editable, inputHandler, focusChangeEffect, perLineTextDirection,
-        scrollIntoView, UpdateFlag, ScrollTarget, bidiIsolatedRanges, getIsolatedRanges} from "./extension"
+        scrollIntoView, UpdateFlag, ScrollTarget, bidiIsolatedRanges, getIsolatedRanges, scrollHandler} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -944,6 +944,12 @@ export class EditorView {
   /// that would be applied for this input. This can be useful when
   /// dispatching the custom behavior as a separate transaction.
   static inputHandler = inputHandler
+
+  /// Scroll handlers can override how things are scrolled into view.
+  /// If they return `true`, no further handling happens for the
+  /// scrolling. If they return false, the default scroll behavior is
+  /// applied. Scroll handlers should never initiate editor updates.
+  static scrollHandler = scrollHandler
 
   /// This facet can be used to provide functions that create effects
   /// to be dispatched when the editor's focus state changes.

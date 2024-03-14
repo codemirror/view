@@ -38,6 +38,12 @@ export const nativeSelectionHidden = Facet.define<boolean, boolean>({
   combine: values => values.some(x => x)
 })
 
+export const scrollHandler = Facet.define<(
+  view: EditorView,
+  range: SelectionRange,
+  options: {x: ScrollStrategy, y: ScrollStrategy, xMargin: number, yMargin: number}
+) => boolean>()
+
 export class ScrollTarget {
   constructor(
     readonly range: SelectionRange,
