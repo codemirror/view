@@ -877,6 +877,11 @@ handlers.beforeinput = (view, event) => {
     // keyboard.
     view.observer.flushSoon()
   }
+  // Safari will occasionally forget to fire compositionend at the end of a dead-key composition
+  if (browser.safari && event.inputType == "insertText" && view.inputState.composing >= 0) {
+    setTimeout(() => observers.compositionend(view, event), 20)
+  }
+
   return false
 }
 
