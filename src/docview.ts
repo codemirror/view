@@ -6,8 +6,9 @@ import {ContentBuilder, NullWidget} from "./buildview"
 import browser from "./browser"
 import {Decoration, DecorationSet, WidgetType, addRange, MarkDecoration} from "./decoration"
 import {getAttrs} from "./attributes"
-import {clientRectsFor, isEquivalentPosition, maxOffset, Rect, scrollRectIntoView,
-        getSelection, hasSelection, textRange, DOMSelectionState} from "./dom"
+import {clientRectsFor, isEquivalentPosition, Rect, scrollRectIntoView,
+        getSelection, hasSelection, textRange, DOMSelectionState,
+        textNodeBefore, textNodeAfter} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet, outerDecorations,
         ChangedRange, ScrollTarget, scrollHandler, getScrollMargins, logException} from "./extension"
 import {EditorView} from "./editorview"
@@ -29,6 +30,7 @@ export class DocView extends ContentView {
   hasComposition: {from: number, to: number} | null = null
   markedForComposition: Set<ContentView> = new Set
   compositionBarrier = Decoration.none
+  lastCompositionAfterCursor = false
 
   // Track a minimum width for the editor. When measuring sizes in
   // measureVisibleLineHeights, this is updated to point at the width
@@ -260,7 +262,7 @@ export class DocView extends ContentView {
           if (browser.gecko) {
             let nextTo = nextToUneditable(anchor.node, anchor.offset)
             if (nextTo && nextTo != (NextTo.Before | NextTo.After)) {
-              let text = nearbyTextNode(anchor.node, anchor.offset, nextTo == NextTo.Before ? 1 : -1)
+              let text = (nextTo == NextTo.Before ? textNodeBefore : textNodeAfter)(anchor.node, anchor.offset)
               if (text) anchor = new DOMPos(text.node, text.offset)
             }
           }
@@ -621,7 +623,22 @@ class BlockGapWidget extends WidgetType {
 
 export function findCompositionNode(view: EditorView, headPos: number): {from: number, to: number, node: Text} | null {
   let sel = view.observer.selectionRange
-  let textNode = sel.focusNode && nearbyTextNode(sel.focusNode, sel.focusOffset, 0)
+  if (!sel.focusNode) return null
+  let textBefore = textNodeBefore(sel.focusNode, sel.focusOffset)
+  let textAfter = textNodeAfter(sel.focusNode, sel.focusOffset)
+  let textNode = textBefore || textAfter
+  if (textAfter && textBefore && textAfter.node != textBefore.node) {
+    let descAfter = ContentView.get(textAfter.node)
+    if (!descAfter || descAfter instanceof TextView && descAfter.text != textAfter.node.nodeValue) {
+      textNode = textAfter
+    } else if (view.docView.lastCompositionAfterCursor) {
+      let descBefore = ContentView.get(textBefore.node)
+      if (!(!descBefore || descBefore instanceof TextView && descBefore.text != textBefore.node.nodeValue))
+        textNode = textAfter
+    }
+  }
+  view.docView.lastCompositionAfterCursor = textNode != textBefore
+
   if (!textNode) return null
   let from = headPos - textNode.offset
   return {from, to: from + textNode.node.nodeValue!.length, node: textNode.node}
@@ -653,28 +670,6 @@ function findCompositionRange(view: EditorView, changes: ChangeSet, headPos: num
     else
       return null
   }
-}
-
-function nearbyTextNode(startNode: Node, startOffset: number, side: number): {node: Text, offset: number} | null {
-  if (side <= 0) for (let node = startNode, offset = startOffset;;) {
-    if (node.nodeType == 3) return {node: node as Text, offset: offset}
-    if (node.nodeType == 1 && offset > 0) {
-      node = node.childNodes[offset - 1]
-      offset = maxOffset(node)
-    } else {
-      break
-    }
-  }
-  if (side >= 0) for (let node = startNode, offset = startOffset;;) {
-    if (node.nodeType == 3) return {node: node as Text, offset: offset}
-    if (node.nodeType == 1 && offset < node.childNodes.length && side >= 0) {
-      node = node.childNodes[offset]
-      offset = 0
-    } else {
-      break
-    }
-  }
-  return null
 }
 
 const enum NextTo { Before = 1, After = 2 }

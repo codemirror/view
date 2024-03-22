@@ -1,5 +1,5 @@
 import {ContentView} from "./contentview"
-import {domIndex, maxOffset} from "./dom"
+import {domIndex, maxOffset, isBlockElement} from "./dom"
 import {EditorState} from "@codemirror/state"
 
 export const LineBreakPlaceholder = "\uffff"
@@ -103,10 +103,6 @@ function isAtEnd(parent: Node, node: Node | null, offset: number) {
     offset = domIndex(node) + 1
     node = node.parentNode
   }
-}
-
-function isBlockElement(node: Node): boolean {
-  return node.nodeType == 1 && /^(DIV|P|LI|UL|OL|BLOCKQUOTE|DD|DT|H\d|SECTION|PRE)$/.test(node.nodeName)
 }
 
 export class DOMPoint {

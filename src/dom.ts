@@ -57,6 +57,10 @@ export function domIndex(node: Node): number {
   }
 }
 
+export function isBlockElement(node: Node): boolean {
+  return node.nodeType == 1 && /^(DIV|P|LI|UL|OL|BLOCKQUOTE|DD|DT|H\d|SECTION|PRE)$/.test(node.nodeName)
+}
+
 function scanFor(node: Node, off: number, targetNode: Node, targetOff: number, dir: -1 | 1): boolean {
   for (;;) {
     if (node == targetNode && off == targetOff) return true
@@ -335,4 +339,38 @@ export function atElementStart(doc: HTMLElement, selection: SelectionRange) {
 
 export function isScrolledToBottom(elt: HTMLElement) {
   return elt.scrollTop > Math.max(1, elt.scrollHeight - elt.clientHeight - 4)
+}
+
+export function textNodeBefore(startNode: Node, startOffset: number): {node: Text, offset: number} | null {
+  for (let node = startNode, offset = startOffset;;) {
+    if (node.nodeType == 3 && offset > 0) {
+      return {node: node as Text, offset: offset}
+    } else if (node.nodeType == 1 && offset > 0) {
+      if ((node as HTMLElement).contentEditable == "false") return null
+      node = node.childNodes[offset - 1]
+      offset = maxOffset(node)
+    } else if (node.parentNode && !isBlockElement(node)) {
+      offset = domIndex(node)
+      node = node.parentNode
+    } else {
+      return null
+    }
+  }
+}
+
+export function textNodeAfter(startNode: Node, startOffset: number): {node: Text, offset: number} | null {
+  for (let node = startNode, offset = startOffset;;) {
+    if (node.nodeType == 3 && offset < node.nodeValue!.length) {
+      return {node: node as Text, offset: offset}
+    } else if (node.nodeType == 1 && offset < node.childNodes.length) {
+      if ((node as HTMLElement).contentEditable == "false") return null
+      node = node.childNodes[offset]
+      offset = 0
+    } else if (node.parentNode && !isBlockElement(node)) {
+      offset = domIndex(node) + 1
+      node = node.parentNode
+    } else {
+      return null
+    }
+  }
 }
