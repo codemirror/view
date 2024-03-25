@@ -329,7 +329,8 @@ class HeightMapGap extends HeightMap {
   blockAt(height: number, oracle: HeightOracle, top: number, offset: number) {
     let {firstLine, lastLine, perLine, perChar} = this.heightMetrics(oracle, offset)
     if (oracle.lineWrapping) {
-      let guess = offset + Math.round(Math.max(0, Math.min(1, (height - top) / this.height)) * this.length)
+      let guess = offset + (height < oracle.lineHeight ? 0
+        : Math.round(Math.max(0, Math.min(1, (height - top) / this.height)) * this.length))
       let line = oracle.doc.lineAt(guess), lineHeight = perLine + line.length * perChar
       let lineTop = Math.max(top, height - lineHeight / 2)
       return new BlockInfo(line.from, line.length, lineTop, lineHeight, 0)
