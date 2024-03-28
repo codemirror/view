@@ -1,3 +1,13 @@
+## 6.26.1 (2024-03-28)
+
+### Bug fixes
+
+Fix the editor getting stuck in composition when Safari fails to fire a compositionend event for a dead key composition.
+
+Fix an issue where, with IME systems that kept the cursor at the start of the composed text, the editor misidentified the target node and disrupted composition.
+
+Fix a bug where in a line-wrapped editor, with some content, the initial scroll position would be off from the top of the document.
+
 ## 6.26.0 (2024-03-14)
 
 ### Bug fixes
