@@ -184,9 +184,11 @@ export class DOMObserver {
     let {view} = this
     // The Selection object is broken in shadow roots in Safari. See
     // https://github.com/codemirror/dev/issues/414
+    let selection = getSelection(view.root)
+    if (!selection) return false
     let range = browser.safari && (view.root as any).nodeType == 11 &&
       deepActiveElement(this.dom.ownerDocument) == this.dom &&
-      safariSelectionRangeHack(this.view) || getSelection(view.root)
+      safariSelectionRangeHack(this.view, selection) || selection
     if (!range || this.selectionRange.eq(range)) return false
     let local = hasSelection(this.dom, range)
     // Detect the situation where the browser has, on focus, moved the
@@ -448,8 +450,25 @@ function findChild(cView: ContentView, dom: Node | null, dir: number): ContentVi
   return null
 }
 
+function buildSelectionRangeFromRange(view: EditorView, range: StaticRange) {
+  let anchorNode = range.startContainer, anchorOffset = range.startOffset
+  let focusNode = range.endContainer, focusOffset = range.endOffset
+  let curAnchor = view.docView.domAtPos(view.state.selection.main.anchor)
+  // Since such a range doesn't distinguish between anchor and head,
+  // use a heuristic that flips it around if its end matches the
+  // current anchor.
+  if (isEquivalentPosition(curAnchor.node, curAnchor.offset, focusNode, focusOffset))
+    [anchorNode, anchorOffset, focusNode, focusOffset] = [focusNode, focusOffset, anchorNode, anchorOffset]
+  return {anchorNode, anchorOffset, focusNode, focusOffset}
+}
+
 // Used to work around a Safari Selection/shadow DOM bug (#414)
-function safariSelectionRangeHack(view: EditorView) {
+function safariSelectionRangeHack(view: EditorView, selection: Selection) {
+  if ((selection as any).getComposedRanges) {
+    let range = (selection as any).getComposedRanges(view.root)[0] as StaticRange
+    if (range) return buildSelectionRangeFromRange(view, range)
+  }
+
   let found = null as null | StaticRange
   // Because Safari (at least in 2018-2021) doesn't provide regular
   // access to the selection inside a shadowroot, we have to perform a
@@ -464,14 +483,5 @@ function safariSelectionRangeHack(view: EditorView) {
   view.contentDOM.addEventListener("beforeinput", read, true)
   view.dom.ownerDocument.execCommand("indent")
   view.contentDOM.removeEventListener("beforeinput", read, true)
-  if (!found) return null
-  let anchorNode = found!.startContainer, anchorOffset = found!.startOffset
-  let focusNode = found!.endContainer, focusOffset = found!.endOffset
-  let curAnchor = view.docView.domAtPos(view.state.selection.main.anchor)
-  // Since such a range doesn't distinguish between anchor and head,
-  // use a heuristic that flips it around if its end matches the
-  // current anchor.
-  if (isEquivalentPosition(curAnchor.node, curAnchor.offset, focusNode, focusOffset))
-    [anchorNode, anchorOffset, focusNode, focusOffset] = [focusNode, focusOffset, anchorNode, anchorOffset]
-  return {anchorNode, anchorOffset, focusNode, focusOffset}
+  return found ? buildSelectionRangeFromRange(view, found) : null
 }
