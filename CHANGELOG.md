@@ -1,3 +1,13 @@
+## 6.26.2 (2024-04-09)
+
+### Bug fixes
+
+Improve behavior of `scrollPastEnd` in a scaled editor.
+
+When available, use `Selection.getComposedRanges` on Safari to find the selection inside a shadow DOM.
+
+Remove the workaround that avoided inappropriate styling on composed text after a decoration again, since it breaks the stock Android virtual keyboard.
+
 ## 6.26.1 (2024-03-28)
 
 ### Bug fixes
