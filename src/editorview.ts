@@ -496,7 +496,8 @@ export class EditorView {
       this.measureScheduled = -1
     }
 
-    if (updated && !updated.empty) for (let listener of this.state.facet(updateListener)) listener(updated)
+    if (updated && !updated.empty)
+      for (let listener of this.state.facet(updateListener)) listener(updated)
   }
 
   /// Get the CSS classes for the currently active editor themes.
