@@ -1,4 +1,4 @@
-import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
+import {ChangeSet, RangeSet, Range, findClusterBreak, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {TextView, MarkView} from "./inlineview"
@@ -9,8 +9,8 @@ import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState,
         textNodeBefore, textNodeAfter} from "./dom"
-import {ViewUpdate, decorations as decorationsFacet, outerDecorations,
-        ChangedRange, ScrollTarget, scrollHandler, getScrollMargins, logException} from "./extension"
+import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRange,
+        ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 
@@ -25,10 +25,11 @@ export class DocView extends ContentView {
   children!: BlockView[]
 
   decorations: readonly DecorationSet[] = []
-  dynamicDecorationMap: boolean[] = []
+  dynamicDecorationMap: boolean[] = [false]
   domChanged: {newSel: SelectionRange | null} | null = null
   hasComposition: {from: number, to: number} | null = null
   markedForComposition: Set<ContentView> = new Set
+  editContextFormatting = Decoration.none
   lastCompositionAfterCursor = false
 
   // Track a minimum width for the editor. When measuring sizes in
@@ -77,8 +78,10 @@ export class DocView extends ContentView {
       }
     }
 
+    this.updateEditContextFormatting(update)
+
     let readCompositionAt = -1
-    if (this.view.inputState.composing >= 0) {
+    if (this.view.inputState.composing >= 0 && !this.view.observer.editContext) {
       if (this.domChanged?.newSel)
         readCompositionAt = this.domChanged.newSel.head
       else if (!touchesComposition(update.changes, this.hasComposition) && !update.selectionSet)
@@ -184,6 +187,20 @@ export class DocView extends ContentView {
       replaceRange(this, fromI, fromOff, toI, toOff, content, breakAtStart, openStart, openEnd)
     }
     if (composition) this.fixCompositionDOM(composition)
+  }
+
+  private updateEditContextFormatting(update: ViewUpdate) {
+    this.editContextFormatting = this.editContextFormatting.map(update.changes)
+    for (let tr of update.transactions) for (let effect of tr.effects) if (effect.is(setEditContextFormatting)) {
+      this.editContextFormatting = Decoration.set(effect.value.map(format => {
+        let lineStyle = format.underlineStyle, thickness = format.underlineThickness
+        if (lineStyle == "None" || thickness == "None") return null
+        let style = `text-decoration: underline ${
+          lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""
+        }${thickness == "Thin" ? 1 : 2}px`
+        return Decoration.mark({attributes: {style}}).range(format.rangeStart, format.rangeEnd)
+      }).filter(x => x) as Range<Decoration>[])
+    }
   }
 
   private compositionView(composition: Composition) {
@@ -504,7 +521,7 @@ export class DocView extends ContentView {
   }
 
   updateDeco() {
-    let i = 0
+    let i = 1
     let allDeco = this.view.state.facet(decorationsFacet).map(d => {
       let dynamic = this.dynamicDecorationMap[i++] = typeof d == "function"
       return dynamic ? (d as (view: EditorView) => DecorationSet)(this.view) : d as DecorationSet
@@ -519,6 +536,7 @@ export class DocView extends ContentView {
       allDeco.push(RangeSet.join(outerDeco))
     }
     this.decorations = [
+      this.editContextFormatting,
       ...allDeco,
       this.computeBlockGapDeco(),
       this.view.viewState.lineGapDeco

@@ -118,35 +118,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
   }
 
   if (change) {
-    if (browser.ios && view.inputState.flushIOSKey(change)) return true
-    // Android browsers don't fire reasonable key events for enter,
-    // backspace, or delete. So this detects changes that look like
-    // they're caused by those keys, and reinterprets them as key
-    // events. (Some of these keys are also handled by beforeinput
-    // events and the pendingAndroidKey mechanism, but that's not
-    // reliable in all situations.)
-    if (browser.android &&
-        ((change.to == sel.to &&
-          // GBoard will sometimes remove a space it just inserted
-          // after a completion when you press enter
-          (change.from == sel.from || change.from == sel.from - 1 && view.state.sliceDoc(change.from, sel.from) == " ") &&
-          change.insert.length == 1 && change.insert.lines == 2 &&
-          dispatchKey(view.contentDOM, "Enter", 13)) ||
-         ((change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 ||
-           lastKey == 8 && change.insert.length < change.to - change.from && change.to > sel.head) &&
-          dispatchKey(view.contentDOM, "Backspace", 8)) ||
-         (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
-          dispatchKey(view.contentDOM, "Delete", 46))))
-      return true
-
-    let text = change.insert.toString()
-    if (view.inputState.composing >= 0) view.inputState.composing++
-
-    let defaultTr: Transaction | null
-    let defaultInsert = () => defaultTr || (defaultTr = applyDefaultInsert(view, change!, newSel))
-    if (!view.state.facet(inputHandler).some(h => h(view, change!.from, change!.to, text, defaultInsert)))
-      view.dispatch(defaultInsert())
-    return true
+    return applyDOMChangeInner(view, change, newSel, lastKey)
   } else if (newSel && !newSel.main.eq(sel)) {
     let scrollIntoView = false, userEvent = "select"
     if (view.inputState.lastSelectionTime > Date.now() - 50) {
@@ -158,6 +130,44 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
   } else {
     return false
   }
+}
+
+export function applyDOMChangeInner(
+  view: EditorView,
+  change: {from: number, to: number, insert: Text},
+  newSel: EditorSelection | null,
+  lastKey: number = -1
+): boolean {
+  if (browser.ios && view.inputState.flushIOSKey(change)) return true
+  let sel = view.state.selection.main
+  // Android browsers don't fire reasonable key events for enter,
+  // backspace, or delete. So this detects changes that look like
+  // they're caused by those keys, and reinterprets them as key
+  // events. (Some of these keys are also handled by beforeinput
+  // events and the pendingAndroidKey mechanism, but that's not
+  // reliable in all situations.)
+  if (browser.android &&
+    ((change.to == sel.to &&
+      // GBoard will sometimes remove a space it just inserted
+      // after a completion when you press enter
+      (change.from == sel.from || change.from == sel.from - 1 && view.state.sliceDoc(change.from, sel.from) == " ") &&
+      change.insert.length == 1 && change.insert.lines == 2 &&
+      dispatchKey(view.contentDOM, "Enter", 13)) ||
+      ((change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 ||
+        lastKey == 8 && change.insert.length < change.to - change.from && change.to > sel.head) &&
+        dispatchKey(view.contentDOM, "Backspace", 8)) ||
+      (change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 &&
+        dispatchKey(view.contentDOM, "Delete", 46))))
+    return true
+
+  let text = change.insert.toString()
+  if (view.inputState.composing >= 0) view.inputState.composing++
+
+  let defaultTr: Transaction | null
+  let defaultInsert = () => defaultTr || (defaultTr = applyDefaultInsert(view, change!, newSel))
+  if (!view.state.facet(inputHandler).some(h => h(view, change!.from, change!.to, text, defaultInsert)))
+    view.dispatch(defaultInsert())
+  return true
 }
 
 function applyDefaultInsert(view: EditorView, change: {from: number, to: number, insert: Text},

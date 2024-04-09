@@ -1,10 +1,12 @@
 import browser from "./browser"
 import {ContentView, ViewFlag} from "./contentview"
 import {EditorView} from "./editorview"
-import {editable} from "./extension"
+import {editable, ViewUpdate, setEditContextFormatting, MeasureRequest} from "./extension"
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition,
         deepActiveElement, dispatchKey, atElementStart} from "./dom"
-import {DOMChange, applyDOMChange} from "./domchange"
+import {DOMChange, applyDOMChange, applyDOMChangeInner} from "./domchange"
+import type {EditContext, TextUpdateEvent} from "./editcontext"
+import {Text, EditorSelection} from "@codemirror/state"
 
 const observeOptions = {
   childList: true,
@@ -24,6 +26,9 @@ export class DOMObserver {
 
   observer: MutationObserver
   active: boolean = false
+
+  editContext: EditContext | null = null
+  editContextMeasure: MeasureRequest<void> | null = null
 
   // The known selection. Kept in our own object, as opposed to just
   // directly accessing the selection because:
@@ -76,6 +81,9 @@ export class DOMObserver {
         this.flush()
     })
 
+    if (window.EditContext)
+      view.contentDOM.editContext = this.editContext = this.createEditContext()
+
     if (useCharData)
       this.onCharData = (event: MutationEvent) => {
         this.queue.push({target: event.target,
@@ -119,6 +127,41 @@ export class DOMObserver {
     this.readSelectionRange()
   }
 
+  createEditContext() {
+    let {view} = this
+    let context = new window.EditContext({
+      text: view.state.doc.toString(), // FIXME window?
+      selectionStart: view.state.selection.main.anchor,
+      selectionEnd: view.state.selection.main.head
+    })
+    context.addEventListener("textupdate", e => this.onTextUpdate(e))
+    context.addEventListener("characterboundsupdate", e => {
+      let rects: DOMRect[] = [], prev: DOMRect | null = null
+      for (let i = e.rangeStart; i < e.rangeEnd; i++) {
+        let rect = view.coordsForChar(i)
+        prev = (rect && new DOMRect(rect.left, rect.right, rect.right - rect.left, rect.bottom - rect.top))
+          || prev || new DOMRect
+        rects.push(prev)
+      }
+      context.updateCharacterBounds(e.rangeStart, rects)
+    })
+    context.addEventListener("textformatupdate", e => {
+      this.view.dispatch({effects: setEditContextFormatting.of(e.getTextFormats())})
+    })
+    context.addEventListener("compositionstart", () => {
+      if (view.inputState.composing < 0) view.inputState.composing = 0
+    })
+    context.addEventListener("compositionend", () => view.inputState.composing = -1)
+
+    this.editContextMeasure = {read: view => {
+      this.editContext!.updateControlBounds(view.contentDOM.getBoundingClientRect())
+      let sel = getSelection(view.root)
+      if (sel && sel.rangeCount)
+        this.editContext!.updateSelectionBounds(sel.getRangeAt(0).getBoundingClientRect())
+    }}
+    return context
+  }
+
   onScrollChanged(e: Event) {
     this.view.inputState.runHandlers("scroll", e)
     if (this.intersecting) this.view.measure()
@@ -126,6 +169,7 @@ export class DOMObserver {
 
   onScroll(e: Event) {
     if (this.intersecting) this.flush(false)
+    if (this.editContext) this.view.requestMeasure(this.editContextMeasure!)
     this.onScrollChanged(e)
   }
 
@@ -236,6 +280,16 @@ export class DOMObserver {
       for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
       for (let dom of this.scrollTargets = changed) dom.addEventListener("scroll", this.onScroll)
     }
+  }
+
+  onTextUpdate(e: TextUpdateEvent) {
+    let change = {from: e.updateRangeStart, to: e.updateRangeEnd, insert: Text.of(e.text.split("\n"))}
+    // Undo the change in the edit context right away so that we can
+    // safely apply our transaction (which may make a different
+    // change, more changes, or no changes at all) to it later.
+    this.editContext!.updateText(change.from, change.from + change.insert.length,
+                                 this.view.state.doc.sliceString(change.from, change.to))
+    applyDOMChangeInner(this.view, change, EditorSelection.single(e.selectionStart, e.selectionEnd))
   }
 
   ignore<T>(f: () => T): T {
@@ -426,6 +480,22 @@ export class DOMObserver {
     if (this.printQuery) this.printQuery.removeEventListener("change", this.onPrint)
     else win.removeEventListener("beforeprint", this.onPrint)
     win.document.removeEventListener("selectionchange", this.onSelectionChange)
+  }
+
+  update(update: ViewUpdate) {
+    if (this.editContext) {
+      for (let tr of update.transactions) {
+        tr.changes.iterChanges((fromA, toA, fromB, toB, insert) => {
+          this.editContext!.updateText(fromA, toA, insert.toString())
+        })
+      }
+      if (update.docChanged || update.selectionSet) {
+        let {main} = update.state.selection
+        this.editContext.updateSelection(main.anchor, main.head)
+      }
+    }
+    if (this.editContext && (update.geometryChanged || update.docChanged || update.selectionSet))
+      this.view.requestMeasure(this.editContextMeasure!)
   }
 
   destroy() {

@@ -181,6 +181,7 @@ export class InputState {
   }
 
   update(update: ViewUpdate) {
+    this.view.observer.update(update)
     if (this.mouseSelection) this.mouseSelection.update(update)
     if (this.draggedContent && update.docChanged) this.draggedContent = this.draggedContent.map(update.changes)
     if (update.transactions.length) this.lastKeyCode = this.lastSelectionTime = 0
@@ -823,6 +824,7 @@ observers.blur = view => {
 }
 
 observers.compositionstart = observers.compositionupdate = view => {
+  if (view.observer.editContext) return // Composition handled by edit context
   if (view.inputState.compositionFirstChange == null)
     view.inputState.compositionFirstChange = true
   if (view.inputState.composing < 0) {
@@ -832,6 +834,8 @@ observers.compositionstart = observers.compositionupdate = view => {
 }
 
 observers.compositionend = view => {
+  if (view.observer.editContext) return // Composition handled by edit context
+  // FIXME check if any of these hacks are needed with edit context
   view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
   view.inputState.compositionPendingKey = true
