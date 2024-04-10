@@ -7,7 +7,6 @@ import {Attrs} from "./attributes"
 import {Isolate, autoDirection} from "./bidi"
 import {Rect, ScrollStrategy} from "./dom"
 import {MakeSelectionStyle} from "./input"
-import {TextFormat} from "./editcontext"
 
 /// Command functions are used in key bindings and other types of user
 /// actions. Given an editor view, they check whether their effect can
@@ -74,7 +73,7 @@ export class ScrollTarget {
 
 export const scrollIntoView = StateEffect.define<ScrollTarget>({map: (t, ch) => t.map(ch)})
 
-export const setEditContextFormatting = StateEffect.define<readonly TextFormat[]>()
+export const setEditContextFormatting = StateEffect.define<DecorationSet>()
 
 /// Log or report an unhandled exception in client code. Should
 /// probably only be used by extension code that allows client code to
