@@ -5,8 +5,9 @@ import {editable, ViewUpdate, setEditContextFormatting, MeasureRequest} from "./
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition,
         deepActiveElement, dispatchKey, atElementStart} from "./dom"
 import {DOMChange, applyDOMChange, applyDOMChangeInner} from "./domchange"
-import type {EditContext, TextUpdateEvent} from "./editcontext"
-import {Text, EditorSelection} from "@codemirror/state"
+import type {EditContext} from "./editcontext"
+import {Decoration} from "./decoration"
+import {Text, EditorSelection, EditorState} from "@codemirror/state"
 
 const observeOptions = {
   childList: true,
@@ -27,8 +28,7 @@ export class DOMObserver {
   observer: MutationObserver
   active: boolean = false
 
-  editContext: EditContext | null = null
-  editContextMeasure: MeasureRequest<void> | null = null
+  editContext: EditContextManager | null = null
 
   // The known selection. Kept in our own object, as opposed to just
   // directly accessing the selection because:
@@ -81,8 +81,10 @@ export class DOMObserver {
         this.flush()
     })
 
-    if (window.EditContext)
-      view.contentDOM.editContext = this.editContext = this.createEditContext()
+    if (window.EditContext) {
+      this.editContext = new EditContextManager(view)
+      view.contentDOM.editContext = this.editContext.editContext
+    }
 
     if (useCharData)
       this.onCharData = (event: MutationEvent) => {
@@ -127,41 +129,6 @@ export class DOMObserver {
     this.readSelectionRange()
   }
 
-  createEditContext() {
-    let {view} = this
-    let context = new window.EditContext({
-      text: view.state.doc.toString(), // FIXME window?
-      selectionStart: view.state.selection.main.anchor,
-      selectionEnd: view.state.selection.main.head
-    })
-    context.addEventListener("textupdate", e => this.onTextUpdate(e))
-    context.addEventListener("characterboundsupdate", e => {
-      let rects: DOMRect[] = [], prev: DOMRect | null = null
-      for (let i = e.rangeStart; i < e.rangeEnd; i++) {
-        let rect = view.coordsForChar(i)
-        prev = (rect && new DOMRect(rect.left, rect.right, rect.right - rect.left, rect.bottom - rect.top))
-          || prev || new DOMRect
-        rects.push(prev)
-      }
-      context.updateCharacterBounds(e.rangeStart, rects)
-    })
-    context.addEventListener("textformatupdate", e => {
-      this.view.dispatch({effects: setEditContextFormatting.of(e.getTextFormats())})
-    })
-    context.addEventListener("compositionstart", () => {
-      if (view.inputState.composing < 0) view.inputState.composing = 0
-    })
-    context.addEventListener("compositionend", () => view.inputState.composing = -1)
-
-    this.editContextMeasure = {read: view => {
-      this.editContext!.updateControlBounds(view.contentDOM.getBoundingClientRect())
-      let sel = getSelection(view.root)
-      if (sel && sel.rangeCount)
-        this.editContext!.updateSelectionBounds(sel.getRangeAt(0).getBoundingClientRect())
-    }}
-    return context
-  }
-
   onScrollChanged(e: Event) {
     this.view.inputState.runHandlers("scroll", e)
     if (this.intersecting) this.view.measure()
@@ -169,7 +136,7 @@ export class DOMObserver {
 
   onScroll(e: Event) {
     if (this.intersecting) this.flush(false)
-    if (this.editContext) this.view.requestMeasure(this.editContextMeasure!)
+    if (this.editContext) this.view.requestMeasure(this.editContext.measureReq)
     this.onScrollChanged(e)
   }
 
@@ -280,16 +247,6 @@ export class DOMObserver {
       for (let dom of this.scrollTargets) dom.removeEventListener("scroll", this.onScroll)
       for (let dom of this.scrollTargets = changed) dom.addEventListener("scroll", this.onScroll)
     }
-  }
-
-  onTextUpdate(e: TextUpdateEvent) {
-    let change = {from: e.updateRangeStart, to: e.updateRangeEnd, insert: Text.of(e.text.split("\n"))}
-    // Undo the change in the edit context right away so that we can
-    // safely apply our transaction (which may make a different
-    // change, more changes, or no changes at all) to it later.
-    this.editContext!.updateText(change.from, change.from + change.insert.length,
-                                 this.view.state.doc.sliceString(change.from, change.to))
-    applyDOMChangeInner(this.view, change, EditorSelection.single(e.selectionStart, e.selectionEnd))
   }
 
   ignore<T>(f: () => T): T {
@@ -483,19 +440,7 @@ export class DOMObserver {
   }
 
   update(update: ViewUpdate) {
-    if (this.editContext) {
-      for (let tr of update.transactions) {
-        tr.changes.iterChanges((fromA, toA, fromB, toB, insert) => {
-          this.editContext!.updateText(fromA, toA, insert.toString())
-        })
-      }
-      if (update.docChanged || update.selectionSet) {
-        let {main} = update.state.selection
-        this.editContext.updateSelection(main.anchor, main.head)
-      }
-    }
-    if (this.editContext && (update.geometryChanged || update.docChanged || update.selectionSet))
-      this.view.requestMeasure(this.editContextMeasure!)
+    if (this.editContext) this.editContext.update(update)
   }
 
   destroy() {
@@ -556,4 +501,137 @@ function safariSelectionRangeHack(view: EditorView, selection: Selection) {
   view.dom.ownerDocument.execCommand("indent")
   view.contentDOM.removeEventListener("beforeinput", read, true)
   return found ? buildSelectionRangeFromRange(view, found) : null
+}
+
+const enum CxVp {
+  Margin = 10000,
+  MaxSize = Margin * 3,
+  MinMargin = 500
+}
+
+class EditContextManager {
+  editContext: EditContext
+  measureReq: MeasureRequest<void>
+  // The document window for which the text in the context is
+  // maintained. For large documents, this may be smaller than the
+  // editor document. This window always includes the selection head.
+  from: number = 0
+  to: number = 0
+
+  constructor(view: EditorView) {
+    this.resetRange(view.state)
+
+    let context = this.editContext = new window.EditContext({
+      text: view.state.doc.sliceString(this.from, this.to),
+      selectionStart: this.toContextPos(Math.max(this.from, Math.min(this.to, view.state.selection.main.anchor))),
+      selectionEnd: this.toContextPos(view.state.selection.main.head)
+    })
+    context.addEventListener("textupdate", e => {
+      let {anchor} = view.state.selection.main
+      let change = {from: this.toEditorPos(e.updateRangeStart),
+                    to: this.toEditorPos(e.updateRangeEnd),
+                    insert: Text.of(e.text.split("\n"))}
+      // If the window doesn't include the anchor, assume changes
+      // adjacent to a side go up to the anchor.
+      if (change.from == this.from && anchor < this.from) change.from = anchor
+      else if (change.to == this.to && anchor > this.to) change.to = anchor
+      // Undo the change in the edit context right away so that we can
+      // safely apply our transaction (which may make a different
+      // change, more changes, or no changes at all) to it later.
+      this.editContext.updateText(e.updateRangeStart, e.updateRangeStart + change.insert.length,
+                                  view.state.doc.sliceString(change.from, change.to))
+      applyDOMChangeInner(view, change, EditorSelection.single(this.toEditorPos(e.selectionStart),
+                                                               this.toEditorPos(e.selectionEnd)))
+    })
+    context.addEventListener("characterboundsupdate", e => {
+      let rects: DOMRect[] = [], prev: DOMRect | null = null
+      for (let i = this.toEditorPos(e.rangeStart), end = this.toEditorPos(e.rangeEnd); i < end; i++) {
+        let rect = view.coordsForChar(i)
+        prev = (rect && new DOMRect(rect.left, rect.right, rect.right - rect.left, rect.bottom - rect.top))
+          || prev || new DOMRect
+        rects.push(prev)
+      }
+      context.updateCharacterBounds(e.rangeStart, rects)
+    })
+    context.addEventListener("textformatupdate", e => {
+      let deco = []
+      for (let format of e.getTextFormats()) {
+        let lineStyle = format.underlineStyle, thickness = format.underlineThickness
+        if (lineStyle != "None" && thickness != "None") {
+          let style = `text-decoration: underline ${
+            lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""
+          }${thickness == "Thin" ? 1 : 2}px`
+          deco.push(Decoration.mark({attributes: {style}})
+            .range(this.toEditorPos(format.rangeStart), this.toEditorPos(format.rangeEnd)))
+        }
+      }
+      view.dispatch({effects: setEditContextFormatting.of(Decoration.set(deco))})
+    })
+    context.addEventListener("compositionstart", () => {
+      if (view.inputState.composing < 0) view.inputState.composing = 0
+    })
+    context.addEventListener("compositionend", () => view.inputState.composing = -1)
+
+    this.measureReq = {read: view => {
+      this.editContext!.updateControlBounds(view.contentDOM.getBoundingClientRect())
+      let sel = getSelection(view.root)
+      if (sel && sel.rangeCount)
+        this.editContext!.updateSelectionBounds(sel.getRangeAt(0).getBoundingClientRect())
+    }}
+  }
+
+  applyEdits(update: ViewUpdate) {
+    let off = 0, abort = false
+    update.changes.iterChanges((fromA, toA, _fromB, _toB, insert) => {
+      if (abort) return
+      let dLen = insert.length - (toA - fromA)
+      fromA += off; toA += off
+      if (toA <= this.from) { // Before the window
+        this.from += dLen; this.to += dLen
+      } else if (fromA < this.to) { // Overlaps with window
+        if (fromA < this.from || toA > this.to || (this.to - this.from) + insert.length > CxVp.MaxSize) {
+          abort = true
+          return
+        } 
+        this.editContext!.updateText(this.toContextPos(fromA), this.toContextPos(toA), insert.toString())
+        this.to += dLen
+      }
+      off += dLen
+    })
+    return !abort
+  }
+
+  update(update: ViewUpdate) {
+    if (!this.applyEdits(update) || !this.rangeIsValid(update.state)) {
+      this.resetRange(update.state)
+      this.editContext.updateText(0, this.editContext.text.length, update.state.doc.sliceString(this.from, this.to))
+      this.setSelection(update.state)
+    } else if (update.docChanged || update.selectionSet) {
+      this.setSelection(update.state)
+    }
+    if (update.geometryChanged || update.docChanged || update.selectionSet)
+      update.view.requestMeasure(this.measureReq)
+  }
+
+  resetRange(state: EditorState) {
+    let {head} = state.selection.main
+    this.from = Math.max(0, head - CxVp.Margin)
+    this.to = Math.min(state.doc.length, head + CxVp.Margin)
+  }
+
+  setSelection(state: EditorState) {
+    let {main} = state.selection
+    this.editContext.updateSelection(this.toContextPos(Math.max(this.from, Math.min(this.to, main.anchor))),
+                                     this.toContextPos(main.head))
+  }
+
+  rangeIsValid(state: EditorState) {
+    let {head} = state.selection.main
+    return !(this.from > 0 && head - this.from < CxVp.MinMargin ||
+             this.to < state.doc.length && this.to - head < CxVp.MinMargin ||
+             this.to - this.from > CxVp.Margin * 3)
+  }
+
+  toEditorPos(contextPos: number) { return contextPos + this.from }
+  toContextPos(editorPos: number) { return editorPos - this.from }
 }

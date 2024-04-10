@@ -1,4 +1,4 @@
-import {ChangeSet, RangeSet, Range, findClusterBreak, SelectionRange} from "@codemirror/state"
+import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
 import {BlockView, LineView, BlockWidgetView} from "./blockview"
 import {TextView, MarkView} from "./inlineview"
@@ -192,14 +192,7 @@ export class DocView extends ContentView {
   private updateEditContextFormatting(update: ViewUpdate) {
     this.editContextFormatting = this.editContextFormatting.map(update.changes)
     for (let tr of update.transactions) for (let effect of tr.effects) if (effect.is(setEditContextFormatting)) {
-      this.editContextFormatting = Decoration.set(effect.value.map(format => {
-        let lineStyle = format.underlineStyle, thickness = format.underlineThickness
-        if (lineStyle == "None" || thickness == "None") return null
-        let style = `text-decoration: underline ${
-          lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""
-        }${thickness == "Thin" ? 1 : 2}px`
-        return Decoration.mark({attributes: {style}}).range(format.rangeStart, format.rangeEnd)
-      }).filter(x => x) as Range<Decoration>[])
+      this.editContextFormatting = effect.value
     }
   }
 
