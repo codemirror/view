@@ -114,7 +114,7 @@ export class ViewState {
   editorHeight = 0 // scrollDOM.clientHeight, unscaled
   editorWidth = 0 // scrollDOM.clientWidth, unscaled
   scrollTop = 0 // Last seen scrollDOM.scrollTop, scaled
-  scrolledToBottom = true
+  scrolledToBottom = false
   // The CSS-transformation scale of the editor (transformed size /
   // concrete size)
   scaleX = 1
