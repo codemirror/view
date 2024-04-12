@@ -1,3 +1,11 @@
+## 6.26.3 (2024-04-12)
+
+### Bug fixes
+
+Fix an issue where dispatching an update to an editor before it measured itself for the first time could cause the scroll position to incorrectly move.
+
+Fix a crash when multiple tooltips with arrows are shown.
+
 ## 6.26.2 (2024-04-09)
 
 ### Bug fixes
