@@ -226,7 +226,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     if (tooltip.arrow && !tooltipView.dom.querySelector(".cm-tooltip > .cm-tooltip-arrow")) {
       let arrow = document.createElement("div")
       arrow.className = "cm-tooltip-arrow"
-      tooltipView.dom.insertBefore(arrow, before)
+      tooltipView.dom.appendChild(arrow)
     }
     tooltipView.dom.style.position = this.position
     tooltipView.dom.style.top = Outside
