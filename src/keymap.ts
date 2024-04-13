@@ -110,10 +110,10 @@ function modifiers(name: string, event: KeyboardEvent, shift: boolean) {
 type Binding = {
   preventDefault: boolean,
   stopPropagation: boolean,
-  run: ((view: EditorView, event: KeyboardEvent) => boolean)[]
+  run: ((view: EditorView) => boolean)[]
 }
 
-// In each scope, the `_all` property is used for bindings that apply
+// In each scope, the `_any` property is used for bindings that apply
 // to all keys.
 type Keymap = {[scope: string]: {[key: string]: Binding}}
 
@@ -199,7 +199,8 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
     if (b.any) for (let scope of scopes) {
       let scopeObj = bound[scope] || (bound[scope] = Object.create(null))
       if (!scopeObj._any) scopeObj._any = {preventDefault: false, stopPropagation: false, run: []}
-      for (let key in scopeObj) scopeObj[key].run.push(b.any)
+      let {any} = b
+      for (let key in scopeObj) scopeObj[key].run.push(view => any(view, currentKeyEvent!))
     }
     let name = b[platform] || b.key
     if (!name) continue
@@ -211,7 +212,10 @@ function buildKeymap(bindings: readonly KeyBinding[], platform = currentPlatform
   return bound
 }
 
+let currentKeyEvent: KeyboardEvent | null = null
+
 function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope: string): boolean {
+  currentKeyEvent = event
   let name = keyName(event)
   let charCode = codePointAt(name, 0), isChar = codePointSize(charCode) == name.length && name != " "
   let prefix = "", handled = false, prevented = false, stopPropagation = false
@@ -228,7 +232,7 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
     if (binding) {
       for (let cmd of binding.run) if (!ran.has(cmd)) {
         ran.add(cmd)
-        if (cmd(view, event)) {
+        if (cmd(view)) {
           if (binding.stopPropagation) stopPropagation = true
           return true
         }
@@ -264,5 +268,6 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
 
   if (prevented) handled = true
   if (handled && stopPropagation) event.stopPropagation()
+  currentKeyEvent = null
   return handled
 }
