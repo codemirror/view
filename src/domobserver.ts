@@ -515,6 +515,12 @@ class EditContextManager {
   // editor document. This window always includes the selection head.
   from: number = 0
   to: number = 0
+  // When applying a transaction, this is used to compare the change
+  // made to the context content to the change in the transaction in
+  // order to make the minimal changes to the context (since touching
+  // that sometimes breaks series of multiple edits made for a single
+  // user action on some Android keyboards)
+  pendingContextChange: {from: number, to: number, insert: Text} | null = null
 
   constructor(view: EditorView) {
     this.resetRange(view.state)
@@ -533,13 +539,16 @@ class EditContextManager {
       // adjacent to a side go up to the anchor.
       if (change.from == this.from && anchor < this.from) change.from = anchor
       else if (change.to == this.to && anchor > this.to) change.to = anchor
-      // Undo the change in the edit context right away so that we can
-      // safely apply our transaction (which may make a different
-      // change, more changes, or no changes at all) to it later.
-      this.editContext.updateText(e.updateRangeStart, e.updateRangeStart + change.insert.length,
-                                  view.state.doc.sliceString(change.from, change.to))
+
+      // Edit context sometimes fire empty changes
+      if (change.from == change.to && !change.insert.length) return
+
+      this.pendingContextChange = change
       applyDOMChangeInner(view, change, EditorSelection.single(this.toEditorPos(e.selectionStart),
                                                                this.toEditorPos(e.selectionEnd)))
+      // If the transaction didn't flush our change, revert it so
+      // that the context is in sync with the editor state again.
+      if (this.pendingContextChange) this.revertPending(view.state)
     })
     context.addEventListener("characterboundsupdate", e => {
       let rects: DOMRect[] = [], prev: DOMRect | null = null
@@ -579,10 +588,22 @@ class EditContextManager {
   }
 
   applyEdits(update: ViewUpdate) {
-    let off = 0, abort = false
+    let off = 0, abort = false, pending = this.pendingContextChange
     update.changes.iterChanges((fromA, toA, _fromB, _toB, insert) => {
       if (abort) return
+
       let dLen = insert.length - (toA - fromA)
+      if (pending && toA >= pending.to) {
+        if (pending.from == fromA && pending.to == toA && pending.insert.eq(insert)) {
+          pending = this.pendingContextChange = null // Match
+          off += dLen
+          return
+        } else { // Mismatch, revert
+          pending = null
+          this.revertPending(update.state)
+        }
+      }
+
       fromA += off; toA += off
       if (toA <= this.from) { // Before the window
         this.from += dLen; this.to += dLen
@@ -596,11 +617,13 @@ class EditContextManager {
       }
       off += dLen
     })
+    if (pending && !abort) this.revertPending(update.state)
     return !abort
   }
 
   update(update: ViewUpdate) {
     if (!this.applyEdits(update) || !this.rangeIsValid(update.state)) {
+      this.pendingContextChange = null
       this.resetRange(update.state)
       this.editContext.updateText(0, this.editContext.text.length, update.state.doc.sliceString(this.from, this.to))
       this.setSelection(update.state)
@@ -617,10 +640,20 @@ class EditContextManager {
     this.to = Math.min(state.doc.length, head + CxVp.Margin)
   }
 
+  revertPending(state: EditorState) {
+    let pending = this.pendingContextChange!
+    this.pendingContextChange = null
+    this.editContext.updateText(this.toContextPos(pending.from),
+                                this.toContextPos(pending.to + pending.insert.length),
+                                state.doc.sliceString(pending.from, pending.to))
+  }
+
   setSelection(state: EditorState) {
     let {main} = state.selection
-    this.editContext.updateSelection(this.toContextPos(Math.max(this.from, Math.min(this.to, main.anchor))),
-                                     this.toContextPos(main.head))
+    let start = this.toContextPos(Math.max(this.from, Math.min(this.to, main.anchor)))
+    let end = this.toContextPos(main.head)
+    if (this.editContext.selectionStart != start || this.editContext.selectionEnd != end)
+      this.editContext.updateSelection(start, end)
   }
 
   rangeIsValid(state: EditorState) {
