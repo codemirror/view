@@ -220,7 +220,7 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
   }
   let userEvent = "input.type"
   if (view.composing ||
-    view.inputState.compositionPendingChange && view.inputState.compositionEndedAt > Date.now() - 50) {
+      view.inputState.compositionPendingChange && view.inputState.compositionEndedAt > Date.now() - 50) {
     view.inputState.compositionPendingChange = false
     userEvent += ".compose"
     if (view.inputState.compositionFirstChange) {

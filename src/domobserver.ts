@@ -575,9 +575,15 @@ class EditContextManager {
       view.dispatch({effects: setEditContextFormatting.of(Decoration.set(deco))})
     })
     context.addEventListener("compositionstart", () => {
-      if (view.inputState.composing < 0) view.inputState.composing = 0
+      if (view.inputState.composing < 0) {
+        view.inputState.composing = 0
+        view.inputState.compositionFirstChange = true
+      }
     })
-    context.addEventListener("compositionend", () => view.inputState.composing = -1)
+    context.addEventListener("compositionend", () => {
+      view.inputState.composing = -1
+      view.inputState.compositionFirstChange = null
+    })
 
     this.measureReq = {read: view => {
       this.editContext!.updateControlBounds(view.contentDOM.getBoundingClientRect())

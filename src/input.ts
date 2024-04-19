@@ -820,7 +820,6 @@ observers.compositionstart = observers.compositionupdate = view => {
 
 observers.compositionend = view => {
   if (view.observer.editContext) return // Composition handled by edit context
-  // FIXME check if any of these hacks are needed with edit context
   view.inputState.composing = -1
   view.inputState.compositionEndedAt = Date.now()
   view.inputState.compositionPendingKey = true
