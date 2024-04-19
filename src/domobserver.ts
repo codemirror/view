@@ -588,10 +588,10 @@ class EditContextManager {
     })
 
     this.measureReq = {read: view => {
-      this.editContext!.updateControlBounds(view.contentDOM.getBoundingClientRect())
+      this.editContext.updateControlBounds(view.contentDOM.getBoundingClientRect())
       let sel = getSelection(view.root)
       if (sel && sel.rangeCount)
-        this.editContext!.updateSelectionBounds(sel.getRangeAt(0).getBoundingClientRect())
+        this.editContext.updateSelectionBounds(sel.getRangeAt(0).getBoundingClientRect())
     }}
   }
 
@@ -620,7 +620,7 @@ class EditContextManager {
           abort = true
           return
         } 
-        this.editContext!.updateText(this.toContextPos(fromA), this.toContextPos(toA), insert.toString())
+        this.editContext.updateText(this.toContextPos(fromA), this.toContextPos(toA), insert.toString())
         this.to += dLen
       }
       off += dLen
