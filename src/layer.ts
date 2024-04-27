@@ -1,4 +1,4 @@
-import {Extension, Facet, EditorState, EditorSelection, SelectionRange} from "@codemirror/state"
+import {Extension, Facet, EditorState, SelectionRange} from "@codemirror/state"
 import {ViewPlugin, ViewUpdate} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
@@ -87,11 +87,15 @@ function getBase(view: EditorView) {
   return {left: left - view.scrollDOM.scrollLeft * view.scaleX, top: rect.top - view.scrollDOM.scrollTop * view.scaleY}
 }
 
-function wrappedLine(view: EditorView, pos: number, inside: {from: number, to: number}) {
-  let range = EditorSelection.cursor(pos)
-  return {from: Math.max(inside.from, view.moveToLineBoundary(range, false, true).from),
-          to: Math.min(inside.to, view.moveToLineBoundary(range, true, true).from),
-          type: BlockType.Text}
+function wrappedLine(view: EditorView, pos: number, side: 1 | -1, inside: {from: number, to: number}) {
+  let coords = view.coordsAtPos(pos, side * 2 as any)
+  if (!coords) return inside
+  let editorRect = view.dom.getBoundingClientRect()
+  let y = (coords.top + coords.bottom) / 2
+  let left = view.posAtCoords({x: editorRect.left + 1, y})
+  let right = view.posAtCoords({x: editorRect.right - 1, y})
+  if (left == null || right == null) return inside
+  return {from: Math.max(inside.from, Math.min(left, right)), to: Math.min(inside.to, Math.max(left, right))}
 }
 
 // Added to range rectangle's vertical extent to prevent rounding
@@ -113,10 +117,10 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
   let visualStart: {from: number, to: number} | null = startBlock.type == BlockType.Text ? startBlock : null
   let visualEnd: {from: number, to: number} | null = endBlock.type == BlockType.Text ? endBlock : null
   if (visualStart && (view.lineWrapping || startBlock.widgetLineBreaks))
-    visualStart = wrappedLine(view, from, visualStart)
+    visualStart = wrappedLine(view, from, 1, visualStart)
   if (visualEnd && (view.lineWrapping || endBlock.widgetLineBreaks))
-    visualEnd = wrappedLine(view, to, visualEnd)
-  if (visualStart && visualEnd && visualStart.from == visualEnd.from) {
+    visualEnd = wrappedLine(view, to, -1, visualEnd)
+  if (visualStart && visualEnd && visualStart.from == visualEnd.from && visualStart.to == visualEnd.to) {
     return pieces(drawForLine(range.from, range.to, visualStart))
   } else {
     let top = visualStart ? drawForLine(range.from, null, visualStart) : drawForWidget(startBlock, false)
