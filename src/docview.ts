@@ -383,6 +383,9 @@ export class DocView extends ContentView {
           (!best || child instanceof LineView && !(best instanceof LineView && side >= 0))) {
         best = child
         bestPos = start
+      } else if (best && start == pos && end == pos && child instanceof BlockWidgetView && Math.abs(side) < 2) {
+        if (child.deco.startSide < 0) break
+        else if (i) best = null
       }
       off = start
     }
