@@ -111,12 +111,17 @@ const selectionLayer = layer({
 
 const themeSpec: {[selector: string]: StyleSpec} = {
   ".cm-line": {
-    "& ::selection": {backgroundColor: "transparent !important"},
-    "&::selection": {backgroundColor: "transparent !important"}
+    "& ::selection, &::selection": {backgroundColor: "transparent !important"},
+  },
+  ".cm-content": {
+    "& :focus": {
+      caretColor: "initial !important",
+      "&::selection, & ::selection": {
+        backgroundColor: "Highlight !important"
+      }
+    }
   }
 }
-if (CanHidePrimary) {
-  themeSpec[".cm-line"].caretColor = "transparent !important"
-  themeSpec[".cm-content"] = {caretColor: "transparent !important"}
-}
+if (CanHidePrimary)
+  themeSpec[".cm-line"].caretColor = themeSpec[".cm-content"].caretColor = "transparent !important"
 const hideNativeSelection = Prec.highest(EditorView.theme(themeSpec))
