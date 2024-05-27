@@ -195,7 +195,7 @@ export class ViewState {
     this.viewportLines = []
     this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.heightOracle.setDoc(this.state.doc),
                                0, 0, block => {
-      this.viewportLines.push(this.scaler.scale == 1 ? block : scaleBlock(block, this.scaler))
+      this.viewportLines.push(scaleBlock(block, this.scaler))
     })
   }
 
@@ -227,8 +227,10 @@ export class ViewState {
     let updateLines = !update.changes.empty || (update.flags & UpdateFlag.Height) ||
       viewport.from != this.viewport.from || viewport.to != this.viewport.to
     this.viewport = viewport
+    let vpCount = this.viewports.length
     this.updateForViewport()
-    if (updateLines) this.updateViewportLines()
+    if (updateLines || this.scaler.scale != 1 && this.viewports.length != vpCount)
+      this.updateViewportLines()
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > (LG.Margin << 1))
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
     update.flags |= this.computeVisibleRanges()
@@ -334,7 +336,8 @@ export class ViewState {
                             this.scrollTarget.range.head > this.viewport.to)
     if (viewportChange) this.viewport = this.getViewport(bias, this.scrollTarget)
     this.updateForViewport()
-    if ((result & UpdateFlag.Height) || viewportChange) this.updateViewportLines()
+    if ((result & UpdateFlag.Height) || viewportChange)
+      this.updateViewportLines()
 
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > (LG.Margin << 1))
       this.updateLineGaps(this.ensureLineGaps(refresh ? [] : this.lineGaps, view))
@@ -523,12 +526,16 @@ export class ViewState {
   }
 
   lineBlockAt(pos: number): BlockInfo {
-    return (pos >= this.viewport.from && pos <= this.viewport.to && this.viewportLines.find(b => b.from <= pos && b.to >= pos)) ||
+    return (pos >= this.viewport.from && pos <= this.viewport.to &&
+            this.viewportLines.find(b => b.from <= pos && b.to >= pos)) ||
       scaleBlock(this.heightMap.lineAt(pos, QueryType.ByPos, this.heightOracle, 0, 0), this.scaler)
   }
 
   lineBlockAtHeight(height: number): BlockInfo {
-    return scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height), QueryType.ByHeight, this.heightOracle, 0, 0), this.scaler)
+    return (height >= this.viewportLines[0].top && height <= this.viewportLines[this.viewportLines.length - 1].bottom &&
+            this.viewportLines.find(l => l.top <= height && l.bottom >= height)) ||
+      scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height), QueryType.ByHeight, this.heightOracle, 0, 0),
+                 this.scaler)
   }
 
   scrollAnchorAt(scrollTop: number) {
