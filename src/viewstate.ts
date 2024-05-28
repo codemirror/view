@@ -187,8 +187,10 @@ export class ViewState {
     }
     this.viewports = viewports.sort((a, b) => a.from - b.from)
 
+    let scaler = this.scaler
     this.scaler = this.heightMap.height <= VP.MaxDOMHeight ? IdScaler :
       new BigScaler(this.heightOracle, this.heightMap, this.viewports)
+    return scaler.eq(this.scaler) ? 0 : UpdateFlag.Height
   }
 
   updateViewportLines() {
@@ -224,13 +226,11 @@ export class ViewState {
     if (scrollTarget && (scrollTarget.range.head < viewport.from || scrollTarget.range.head > viewport.to) ||
         !this.viewportIsAppropriate(viewport))
       viewport = this.getViewport(0, scrollTarget)
-    let updateLines = !update.changes.empty || (update.flags & UpdateFlag.Height) ||
-      viewport.from != this.viewport.from || viewport.to != this.viewport.to
+    let viewportChange = viewport.from != this.viewport.from || viewport.to != this.viewport.to
     this.viewport = viewport
-    let vpCount = this.viewports.length
-    this.updateForViewport()
-    if (updateLines || this.scaler.scale != 1 && this.viewports.length != vpCount)
-      this.updateViewportLines()
+    update.flags |= this.updateForViewport()
+    if (viewportChange || !update.changes.empty || (update.flags & UpdateFlag.Height)) this.updateViewportLines()
+
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > (LG.Margin << 1))
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
     update.flags |= this.computeVisibleRanges()
@@ -335,7 +335,7 @@ export class ViewState {
       this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from ||
                             this.scrollTarget.range.head > this.viewport.to)
     if (viewportChange) this.viewport = this.getViewport(bias, this.scrollTarget)
-    this.updateForViewport()
+    result |= this.updateForViewport()
     if ((result & UpdateFlag.Height) || viewportChange)
       this.updateViewportLines()
 
@@ -608,7 +608,8 @@ function find<T>(array: readonly T[], f: (value: T) => boolean): T | undefined {
 type YScaler = {
   toDOM(n: number): number
   fromDOM(n: number): number
-  scale: number
+  scale: number,
+  eq(other: YScaler): boolean
 }
 
 // Don't scale when the document height is within the range of what
@@ -616,7 +617,8 @@ type YScaler = {
 const IdScaler: YScaler = {
   toDOM(n: number) { return n },
   fromDOM(n: number) { return n },
-  scale: 1
+  scale: 1,
+  eq(other: YScaler) { return other == this }
 }
 
 // When the height is too big (> VP.MaxDOMHeight), scale down the
@@ -658,6 +660,12 @@ class BigScaler implements YScaler {
       if (n <= vp.domBottom) return vp.top + (n - vp.domTop)
       base = vp.bottom; domBase = vp.domBottom
     }
+  }
+
+  eq(other: YScaler) {
+    if (!(other instanceof BigScaler)) return false
+    return this.scale == other.scale && this.viewports.length == other.viewports.length &&
+      this.viewports.every((vp, i) => vp.from == other.viewports[i].from && vp.to == other.viewports[i].to)
   }
 }
 
