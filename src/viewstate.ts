@@ -168,9 +168,11 @@ export class ViewState {
     this.stateDeco = state.facet(decorations).filter(d => typeof d != "function") as readonly DecorationSet[]
     this.heightMap = HeightMap.empty().applyChanges(this.stateDeco, Text.empty, this.heightOracle.setDoc(state.doc),
                                                     [new ChangedRange(0, 0, 0, state.doc.length)])
-    this.viewport = this.getViewport(0, null)
+    for (let i = 0; i < 2; i++) {
+      this.viewport = this.getViewport(0, null)
+      if (!this.updateForViewport()) break
+    }
     this.updateViewportLines()
-    this.updateForViewport()
     this.lineGaps = this.ensureLineGaps([])
     this.lineGapDeco = Decoration.set(this.lineGaps.map(gap => gap.draw(this, false)))
     this.computeVisibleRanges()
@@ -186,7 +188,10 @@ export class ViewState {
       }
     }
     this.viewports = viewports.sort((a, b) => a.from - b.from)
+    return this.updateScaler()
+  }
 
+  updateScaler() {
     let scaler = this.scaler
     this.scaler = this.heightMap.height <= VP.MaxDOMHeight ? IdScaler :
       new BigScaler(this.heightOracle, this.heightMap, this.viewports)
@@ -334,8 +339,11 @@ export class ViewState {
     let viewportChange = !this.viewportIsAppropriate(this.viewport, bias) ||
       this.scrollTarget && (this.scrollTarget.range.head < this.viewport.from ||
                             this.scrollTarget.range.head > this.viewport.to)
-    if (viewportChange) this.viewport = this.getViewport(bias, this.scrollTarget)
-    result |= this.updateForViewport()
+    if (viewportChange) {
+      if (result & UpdateFlag.Height) result |= this.updateScaler()
+      this.viewport = this.getViewport(bias, this.scrollTarget)
+      result |= this.updateForViewport()
+    }
     if ((result & UpdateFlag.Height) || viewportChange)
       this.updateViewportLines()
 
