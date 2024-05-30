@@ -392,7 +392,10 @@ class MouseSelection {
   }
 
   update(update: ViewUpdate) {
-    if (this.style.update(update)) setTimeout(() => this.select(this.lastEvent), 20)
+    if (update.transactions.some(tr => tr.isUserEvent("input.type")))
+      this.destroy()
+    else if (this.style.update(update))
+      setTimeout(() => this.select(this.lastEvent), 20)
   }
 }
 
