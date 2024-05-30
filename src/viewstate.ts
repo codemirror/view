@@ -143,7 +143,7 @@ export class ViewState {
   defaultTextDirection: Direction = Direction.LTR
 
   // The main viewport for the visible part of the document
-  viewport: Viewport
+  viewport!: Viewport
   // If the main selection starts or ends outside of the main
   // viewport, extra single-line viewports are created for these
   // points, so that the DOM selection doesn't fall in a gap.
