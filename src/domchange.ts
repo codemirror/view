@@ -15,8 +15,10 @@ export class DOMChange {
   } | null = null
   text: string = ""
   newSel: EditorSelection | null
+  domChanged: boolean
 
   constructor(view: EditorView, start: number, end: number, readonly typeOver: boolean) {
+    this.domChanged = start > -1
     let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
     if (view.state.readOnly && start > -1) {
       // Ignore changes when the editor is read-only

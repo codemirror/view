@@ -381,7 +381,7 @@ export class DOMObserver {
     let handled = applyDOMChange(this.view, domChange)
     // The view wasn't updated but DOM/selection changes were seen. Reset the view.
     if (this.view.state == startState &&
-        (domChange.bounds || domChange.newSel && !domChange.newSel.main.eq(this.view.state.selection.main)))
+        (domChange.domChanged || domChange.newSel && !domChange.newSel.main.eq(this.view.state.selection.main)))
       this.view.update([])
     return handled
   }
