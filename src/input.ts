@@ -22,9 +22,15 @@ export class InputState {
   // avoid messing up the virtual keyboard state.
   pendingIOSKey: undefined | {key: string, keyCode: number} | KeyboardEvent = undefined
 
+  /// When enabled (>-1), tab presses are not given to key handlers,
+  /// leaving the browser's default behavior. If >0, the mode expires
+  /// at that timestamp, and any other keypress clears it.
+  /// Esc enables temporary tab focus mode for two seconds when not
+  /// otherwise handled.
+  tabFocusMode: number = -1
+
   lastSelectionOrigin: string | null = null
   lastSelectionTime: number = 0
-  lastEscPress: number = 0
   lastContextMenu: number = 0
   scrollHandlers: ((event: Event) => boolean | void)[] = []
 
@@ -112,8 +118,10 @@ export class InputState {
     this.lastKeyCode = event.keyCode
     this.lastKeyTime = Date.now()
 
-    if (event.keyCode == 9 && Date.now() < this.lastEscPress + 2000) return true
-    if (event.keyCode != 27 && modifierCodes.indexOf(event.keyCode) < 0) this.view.inputState.lastEscPress = 0
+    if (event.keyCode == 9 && this.tabFocusMode > -1 && (!this.tabFocusMode || Date.now() <= this.tabFocusMode))
+      return true
+    if (this.tabFocusMode > 0 && event.keyCode != 27 && modifierCodes.indexOf(event.keyCode) < 0)
+      this.tabFocusMode = -1
 
     // Chrome for Android usually doesn't fire proper key events, but
     // occasionally does, usually surrounded by a bunch of complicated
@@ -492,7 +500,7 @@ observers.scroll = view => {
 
 handlers.keydown = (view, event: KeyboardEvent) => {
   view.inputState.setSelectionOrigin("select")
-  if (event.keyCode == 27) view.inputState.lastEscPress = Date.now()
+  if (event.keyCode == 27 && view.inputState.tabFocusMode != 0) view.inputState.tabFocusMode = Date.now() + 2000
   return false
 }
 
