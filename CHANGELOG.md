@@ -1,3 +1,21 @@
+## 6.26.4 (2024-06-04)
+
+### Bug fixes
+
+Fix an issue where commands with an optional second argument would get the keyboard event in that argument when called from a keymap.
+
+Fix an issue that could cause the cursor to be rendered on the wrong side of a zero-length block widget.
+
+Fix an issue where `drawSelection` got confused by block widgets in line-wrapped editors in some situations.
+
+Don't hide the native selection in widgets that have focus.
+
+Make sure that clicking an unfocusable editor still remove focus from any other focused elements.
+
+Fix a crash when loading the package in a non-browser environment.
+
+Stop mouse selection when the user types.
+
 ## 6.26.3 (2024-04-12)
 
 ### Bug fixes
