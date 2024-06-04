@@ -1,3 +1,9 @@
+## 6.27.0 (2024-06-04)
+
+### New features
+
+The new `setTabFocusMode` method can be used to control whether the editor disables key bindings for Tab and Shift-Tab.
+
 ## 6.26.4 (2024-06-04)
 
 ### Bug fixes
