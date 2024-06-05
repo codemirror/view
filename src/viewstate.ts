@@ -3,7 +3,7 @@ import {Rect, isScrolledToBottom, getScale} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
 import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
         contentAttributes} from "./extension"
-import {WidgetType, Decoration, DecorationSet} from "./decoration"
+import {WidgetType, Decoration, DecorationSet, BlockType} from "./decoration"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 
@@ -460,10 +460,10 @@ export class ViewState {
       gaps.push(gap)
     }
 
-    for (let line of this.viewportLines) {
-      if (line.length < doubleMargin) continue
+    let checkLine = (line: BlockInfo) => {
+      if (line.length < doubleMargin || line.type != BlockType.Text) return
       let structure = lineStructure(line.from, line.to, this.stateDeco)
-      if (structure.total < doubleMargin) continue
+      if (structure.total < doubleMargin) return
       let target = this.scrollTarget ? this.scrollTarget.range.head : null
       let viewFrom, viewTo
       if (wrapping) {
@@ -499,6 +499,11 @@ export class ViewState {
 
       if (viewFrom > line.from) addGap(line.from, viewFrom, line, structure)
       if (viewTo < line.to) addGap(viewTo, line.to, line, structure)
+    }
+
+    for (let line of this.viewportLines) {
+      if (Array.isArray(line.type)) line.type.forEach(checkLine)
+      else checkLine(line)
     }
     return gaps
   }
