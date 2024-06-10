@@ -850,6 +850,7 @@ export class EditorView {
   /// plugins. The view instance can no longer be used after
   /// calling this.
   destroy() {
+    if (this.root.activeElement == this.contentDOM) this.contentDOM.blur()
     for (let plugin of this.plugins) plugin.destroy(this)
     this.plugins = []
     this.inputState.destroy()
