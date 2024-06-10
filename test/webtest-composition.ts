@@ -3,6 +3,8 @@ import {EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetTyp
 import {EditorState, EditorSelection, StateField, Range} from "@codemirror/state"
 import ist from "ist"
 
+;(EditorView as any).EDIT_CONTEXT = false
+
 function event(cm: EditorView, type: string) {
   cm.contentDOM.dispatchEvent(new CompositionEvent(type))
 }
