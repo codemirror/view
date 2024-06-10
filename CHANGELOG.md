@@ -1,3 +1,13 @@
+## 6.28.0 (2024-06-10)
+
+### Bug fixes
+
+Fix an issue where long lines broken up by block widgets were sometimes only partially rendered.
+
+### New features
+
+The editor will now, when available (which is only on Chrome for the foreseeable future) use the [`EditContext`](https://developer.mozilla.org/en-US/docs/Web/API/EditContext) API to capture text input.
+
 ## 6.27.0 (2024-06-04)
 
 ### New features
