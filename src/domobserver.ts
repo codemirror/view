@@ -81,7 +81,7 @@ export class DOMObserver {
         this.flush()
     })
 
-    if (window.EditContext && (view.constructor as any).EDIT_CONTEXT !== false) {
+    if (window.EditContext && (view.constructor as any).EDIT_CONTEXT === true) {
       this.editContext = new EditContextManager(view)
       view.contentDOM.editContext = this.editContext.editContext
     }
