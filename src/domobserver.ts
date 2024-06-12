@@ -83,7 +83,8 @@ export class DOMObserver {
 
     if (window.EditContext && (view.constructor as any).EDIT_CONTEXT === true) {
       this.editContext = new EditContextManager(view)
-      view.contentDOM.editContext = this.editContext.editContext
+      if (view.state.facet(editable))
+        view.contentDOM.editContext = this.editContext.editContext
     }
 
     if (useCharData)
@@ -440,7 +441,11 @@ export class DOMObserver {
   }
 
   update(update: ViewUpdate) {
-    if (this.editContext) this.editContext.update(update)
+    if (this.editContext) {
+      this.editContext.update(update)
+      if (update.startState.facet(editable) != update.state.facet(editable))
+        update.view.contentDOM.editContext = update.state.facet(editable) ? this.editContext.editContext : null
+    }
   }
 
   destroy() {
