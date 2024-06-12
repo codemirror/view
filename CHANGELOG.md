@@ -1,3 +1,11 @@
+## 6.28.1 (2024-06-12)
+
+### Bug fixes
+
+Disable `EditContext` by default again, to work around a regression where Chrome's implementation doesn't support inverted selections.
+
+Make sure `EditorView.editable` is respected when `EditContext` is used.
+
 ## 6.28.0 (2024-06-10)
 
 ### Bug fixes
