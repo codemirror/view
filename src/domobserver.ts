@@ -81,7 +81,7 @@ export class DOMObserver {
         this.flush()
     })
 
-    if (window.EditContext && (view.constructor as any).EDIT_CONTEXT === true &&
+    if (window.EditContext && (view.constructor as any).EDIT_CONTEXT !== false &&
         // Chrome <126 doesn't support inverted selections in edit context (#1392)
         !(browser.chrome && browser.chrome_version < 126)) {
       this.editContext = new EditContextManager(view)
