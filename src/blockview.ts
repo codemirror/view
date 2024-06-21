@@ -151,7 +151,10 @@ export class LineView extends ContentView implements BlockView {
     return rect
   }
 
-  become(_other: ContentView) { return false }
+  become(other: ContentView) {
+    return other instanceof LineView && this.children.length == 0 && other.children.length == 0 &&
+      attrsEq(this.attrs, other.attrs) && this.breakAfter == other.breakAfter
+  }
 
   covers() { return true }
 
