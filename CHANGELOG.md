@@ -1,3 +1,13 @@
+## 6.28.2 (2024-06-21)
+
+### Bug fixes
+
+Only use `EditContext` on Chrome versions that support passing it an inverted selection range.
+
+Fix an issue that prevented non-inclusive block widgets from having their `updateDOM` method called when changed.
+
+Re-enable `EditContext` use on Chrome 126 and up.
+
 ## 6.28.1 (2024-06-12)
 
 ### Bug fixes
