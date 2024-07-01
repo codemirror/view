@@ -563,7 +563,7 @@ class EditContextManager {
       let rects: DOMRect[] = [], prev: DOMRect | null = null
       for (let i = this.toEditorPos(e.rangeStart), end = this.toEditorPos(e.rangeEnd); i < end; i++) {
         let rect = view.coordsForChar(i)
-        prev = (rect && new DOMRect(rect.left, rect.right, rect.right - rect.left, rect.bottom - rect.top))
+        prev = (rect && new DOMRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top))
           || prev || new DOMRect
         rects.push(prev)
       }
