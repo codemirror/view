@@ -1,3 +1,9 @@
+## 6.28.3 (2024-07-01)
+
+### Bug fixes
+
+Fix an issue causing the IME interface to appear in the wrong spot on Chrome Windows.
+
 ## 6.28.2 (2024-06-21)
 
 ### Bug fixes
