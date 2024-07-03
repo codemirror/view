@@ -549,7 +549,7 @@ class EditContextManager {
       if (change.from == this.from && anchor < this.from) change.from = anchor
       else if (change.to == this.to && anchor > this.to) change.to = anchor
 
-      // Edit context sometimes fire empty changes
+      // Edit contexts sometimes fire empty changes
       if (change.from == change.to && !change.insert.length) return
 
       this.pendingContextChange = change
@@ -612,6 +612,7 @@ class EditContextManager {
         if (pending.from == fromA && pending.to == toA && pending.insert.eq(insert)) {
           pending = this.pendingContextChange = null // Match
           off += dLen
+          this.to += dLen
           return
         } else { // Mismatch, revert
           pending = null
