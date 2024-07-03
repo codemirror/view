@@ -1,3 +1,9 @@
+## 6.28.4 (2024-07-03)
+
+### Bug fixes
+
+Fix a bug where EditContext-based editing could corrupt the document in some situations.
+
 ## 6.28.3 (2024-07-01)
 
 ### Bug fixes
