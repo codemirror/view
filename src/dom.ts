@@ -208,13 +208,14 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
   }
 }
 
-export function scrollableParent(dom: HTMLElement) {
-  let doc = dom.ownerDocument
+export function scrollableParents(dom: HTMLElement) {
+  let doc = dom.ownerDocument, x: HTMLElement | undefined, y: HTMLElement | undefined
   for (let cur = dom.parentNode as HTMLElement | null; cur;) {
-    if (cur == doc.body) {
+    if (cur == doc.body || (x && y)) {
       break
     } else if (cur.nodeType == 1) {
-      if (cur.scrollHeight > cur.clientHeight || cur.scrollWidth > cur.clientWidth) return cur
+      if (!y && cur.scrollHeight > cur.clientHeight) y = cur
+      if (!x && cur.scrollWidth > cur.clientWidth) x = cur
       cur = cur.assignedSlot || cur.parentNode as HTMLElement | null
     } else if (cur.nodeType == 11) {
       cur = (cur as any).host
@@ -222,7 +223,7 @@ export function scrollableParent(dom: HTMLElement) {
       break
     }
   }
-  return null
+  return {x, y}
 }
 
 export interface SelectionRange {
