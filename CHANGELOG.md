@@ -1,3 +1,11 @@
+## 6.28.5 (2024-07-17)
+
+### Bug fixes
+
+Fix a bug that broke drag scrolling along one axis when the innermost scrollable element around the editor was only scrollable along the other axis.
+
+Work around a memory leak in Chrome's EditContext implementation.
+
 ## 6.28.4 (2024-07-03)
 
 ### Bug fixes
