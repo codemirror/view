@@ -461,6 +461,10 @@ export class DOMObserver {
     clearTimeout(this.resizeTimeout)
     this.win.cancelAnimationFrame(this.delayedFlush)
     this.win.cancelAnimationFrame(this.flushingAndroidKey)
+    if (this.editContext) {
+      this.view.contentDOM.editContext = null
+      this.editContext.destroy()
+    }
   }
 }
 
@@ -530,6 +534,7 @@ class EditContextManager {
   // that sometimes breaks series of multiple edits made for a single
   // user action on some Android keyboards)
   pendingContextChange: {from: number, to: number, insert: Text} | null = null
+  handlers: {[name: string]: (e: any) => void} = Object.create(null)
 
   constructor(view: EditorView) {
     this.resetRange(view.state)
@@ -539,7 +544,7 @@ class EditContextManager {
       selectionStart: this.toContextPos(Math.max(this.from, Math.min(this.to, view.state.selection.main.anchor))),
       selectionEnd: this.toContextPos(view.state.selection.main.head)
     })
-    context.addEventListener("textupdate", e => {
+    this.handlers.textupdate = e => {
       let {anchor} = view.state.selection.main
       let change = {from: this.toEditorPos(e.updateRangeStart),
                     to: this.toEditorPos(e.updateRangeEnd),
@@ -558,8 +563,8 @@ class EditContextManager {
       // If the transaction didn't flush our change, revert it so
       // that the context is in sync with the editor state again.
       if (this.pendingContextChange) this.revertPending(view.state)
-    })
-    context.addEventListener("characterboundsupdate", e => {
+    }
+    this.handlers.characterboundsupdate = e => {
       let rects: DOMRect[] = [], prev: DOMRect | null = null
       for (let i = this.toEditorPos(e.rangeStart), end = this.toEditorPos(e.rangeEnd); i < end; i++) {
         let rect = view.coordsForChar(i)
@@ -568,8 +573,8 @@ class EditContextManager {
         rects.push(prev)
       }
       context.updateCharacterBounds(e.rangeStart, rects)
-    })
-    context.addEventListener("textformatupdate", e => {
+    }
+    this.handlers.textformatupdate = e => {
       let deco = []
       for (let format of e.getTextFormats()) {
         let lineStyle = format.underlineStyle, thickness = format.underlineThickness
@@ -582,17 +587,18 @@ class EditContextManager {
         }
       }
       view.dispatch({effects: setEditContextFormatting.of(Decoration.set(deco))})
-    })
-    context.addEventListener("compositionstart", () => {
+    }
+    this.handlers.compositionstart = () => {
       if (view.inputState.composing < 0) {
         view.inputState.composing = 0
         view.inputState.compositionFirstChange = true
       }
-    })
-    context.addEventListener("compositionend", () => {
+    }
+    this.handlers.compositionend = () => {
       view.inputState.composing = -1
       view.inputState.compositionFirstChange = null
-    })
+    }
+    for (let event in this.handlers) context.addEventListener(event as any, this.handlers[event])
 
     this.measureReq = {read: view => {
       this.editContext.updateControlBounds(view.contentDOM.getBoundingClientRect())
@@ -681,4 +687,8 @@ class EditContextManager {
 
   toEditorPos(contextPos: number) { return contextPos + this.from }
   toContextPos(editorPos: number) { return editorPos - this.from }
+
+  destroy() {
+    for (let event in this.handlers) this.editContext.removeEventListener(event as any, this.handlers[event])
+  }
 }
