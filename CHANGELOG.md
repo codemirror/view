@@ -1,3 +1,9 @@
+## 6.28.6 (2024-07-19)
+
+### Bug fixes
+
+Fix an issue where the editor got confused about the position of inserted text when using Chrome's `EditContext` and canceling transactions for typed text.
+
 ## 6.28.5 (2024-07-17)
 
 ### Bug fixes
