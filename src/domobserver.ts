@@ -558,8 +558,9 @@ class EditContextManager {
       if (change.from == change.to && !change.insert.length) return
 
       this.pendingContextChange = change
-      applyDOMChangeInner(view, change, EditorSelection.single(this.toEditorPos(e.selectionStart),
-                                                               this.toEditorPos(e.selectionEnd)))
+      if (!view.state.readOnly)
+        applyDOMChangeInner(view, change, EditorSelection.single(this.toEditorPos(e.selectionStart),
+                                                                 this.toEditorPos(e.selectionEnd)))
       // If the transaction didn't flush our change, revert it so
       // that the context is in sync with the editor state again.
       if (this.pendingContextChange) {
