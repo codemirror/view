@@ -558,8 +558,7 @@ function rangeForClick(view: EditorView, pos: number, bias: -1 | 1, type: number
   }
 }
 
-let insideY = (y: number, rect: Rect) => y >= rect.top && y <= rect.bottom
-let inside = (x: number, y: number, rect: Rect) => insideY(y, rect) && x >= rect.left && x <= rect.right
+let inside = (x: number, y: number, rect: Rect) => y >= rect.top && y <= rect.bottom && x >= rect.left && x <= rect.right
 
 // Try to determine, for the given coordinates, associated with the
 // given position, whether they are related to the element before or
@@ -578,8 +577,8 @@ function findPositionSide(view: EditorView, pos: number, x: number, y: number) {
   let after = line.coordsAt(off, 1)
   if (after && inside(x, y, after)) return 1
   // This is probably a line wrap point. Pick before if the point is
-  // beside it.
-  return before && insideY(y, before) ? -1 : 1
+  // above its bottom.
+  return before && before.bottom >= y ? -1 : 1
 }
 
 function queryPos(view: EditorView, event: MouseEvent): {pos: number, bias: 1 | -1} {
