@@ -316,9 +316,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let offset = tView.offset || noOffset, ltr = this.view.textDirection == Direction.LTR
       let left = size.width > space.right - space.left
         ? (ltr ? space.left : space.right - size.width)
-        : ltr
-          ? Math.max(space.left, Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, space.right - width))
-          : Math.min(Math.max(space.left, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x), space.right - width)
+        : ltr ? Math.max(space.left, Math.min(pos.left - (arrow ? Arrow.Offset : 0) + offset.x, space.right - width))
+        : Math.min(Math.max(space.left, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x), space.right - width)
       let above = this.above[i]
       if (!tooltip.strictSide && (above
             ? pos.top - (size.bottom - size.top) - offset.y < space.top
