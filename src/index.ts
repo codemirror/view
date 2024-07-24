@@ -15,7 +15,7 @@ export {Rect} from "./dom"
 export {layer, LayerMarker, RectangleMarker} from "./layer"
 export {MatchDecorator} from "./matchdecorator"
 export {rectangularSelection, crosshairCursor} from "./rectangular-selection"
-export {showTooltip, Tooltip, TooltipView, tooltips, getTooltip, hoverTooltip, hasHoverTooltips,
+export {showTooltip, Tooltip, TooltipView, tooltips, getTooltip, hoverTooltip, HoverTooltipSource, hasHoverTooltips,
         closeHoverTooltips, repositionTooltips} from "./tooltip"
 export {showPanel, PanelConstructor, Panel, getPanel, panels} from "./panel"
 export {lineNumbers, highlightActiveLineGutter, gutter, gutters, GutterMarker,

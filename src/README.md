@@ -116,6 +116,8 @@ See also the [tooltip example](../../examples/tooltip/).
 
 @hoverTooltip
 
+@HoverTooltipSource
+
 @hasHoverTooltips
 
 @closeHoverTooltips

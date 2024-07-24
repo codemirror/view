@@ -591,7 +591,9 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
 
 const enum Hover { Time = 300, MaxDist = 6 }
 
-type HoverSource = (view: EditorView, pos: number, side: -1 | 1) => Tooltip | readonly Tooltip[] | null | Promise<Tooltip | readonly Tooltip[] | null>
+/// The type of function that can be used as a [hover tooltip
+/// source](#view.hoverTooltip^source).
+export type HoverTooltipSource = (view: EditorView, pos: number, side: -1 | 1) => Tooltip | readonly Tooltip[] | null | Promise<Tooltip | readonly Tooltip[] | null>
 
 class HoverPlugin {
   lastMove: {x: number, y: number, target: HTMLElement, time: number}
@@ -600,7 +602,7 @@ class HoverPlugin {
   pending: {pos: number} | null = null
 
   constructor(readonly view: EditorView,
-              readonly source: HoverSource,
+              readonly source: HoverTooltipSource,
               readonly field: StateField<readonly Tooltip[]>,
               readonly setHover: StateEffectType<readonly Tooltip[]>,
               readonly hoverTime: number) {
@@ -746,7 +748,7 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
 /// container element. This allows multiple tooltips over the same
 /// range to be "merged" together without overlapping.
 export function hoverTooltip(
-  source: HoverSource,
+  source: HoverTooltipSource,
   options: {
     /// Controls whether a transaction hides the tooltip. The default
     /// is to not hide.
