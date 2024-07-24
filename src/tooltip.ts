@@ -590,7 +590,7 @@ const showHoverTooltipHost = showTooltip.compute([showHoverTooltip], state => {
 
 const enum Hover { Time = 300, MaxDist = 6 }
 
-type HoverSource = (view: EditorView, pos: number, side: -1 | 1) => Tooltip | readonly Tooltip[] | null | Promise<Tooltip | readonly Tooltip[] | null>
+export type HoverSource = (view: EditorView, pos: number, side: -1 | 1) => Tooltip | readonly Tooltip[] | null | Promise<Tooltip | readonly Tooltip[] | null>
 
 class HoverPlugin {
   lastMove: {x: number, y: number, target: HTMLElement, time: number}
