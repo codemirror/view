@@ -1,3 +1,15 @@
+## 6.29.0 (2024-07-25)
+
+### Bug fixes
+
+Fix an issue that caused typing into an editor marked read-only to cause document changes when using `EditContext`.
+
+Associate a cursor created by clicking above the end of the text on a wrap point with the line before it.
+
+### New features
+
+The package now exports the type of hover tooltip sources as `HoverTooltipSource`.
+
 ## 6.28.6 (2024-07-19)
 
 ### Bug fixes
