@@ -151,7 +151,7 @@ export class DOMObserver {
   }
 
   onPrint(event: Event) {
-    if (event.type == "change" && !(event as MediaQueryListEvent).matches) return
+    if ((event.type == "change" || !event.type) && !(event as MediaQueryListEvent).matches) return
     this.view.viewState.printing = true
     this.view.measure()
     setTimeout(() => {
