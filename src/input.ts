@@ -7,6 +7,7 @@ import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as 
 import browser from "./browser"
 import {groupAt, skipAtomicRanges} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParents} from "./dom"
+import {applyDOMChangeInner} from "./domchange"
 
 // This will also be where dragging info and such goes
 export class InputState {
@@ -865,7 +866,19 @@ observers.contextmenu = view => {
   view.inputState.lastContextMenu = Date.now()
 }
 
-handlers.beforeinput = (view, event) => {
+handlers.beforeinput = (view, event: InputEvent) => {
+  // In EditContext mode, we must handle insertReplacementText events
+  // directly, to make spell checking corrections work
+  if (event.inputType == "insertReplacementText" && view.observer.editContext) {
+    let text = event.dataTransfer?.getData("text/plain"), ranges = event.getTargetRanges()
+    if (text && ranges.length) {
+      let r = ranges[0]
+      let from = view.posAtDOM(r.startContainer, r.startOffset), to = view.posAtDOM(r.endContainer, r.endOffset)
+      applyDOMChangeInner(view, {from, to, insert: view.state.toText(text)}, null)
+      return true
+    }
+  }
+
   // Because Chrome Android doesn't fire useful key events, use
   // beforeinput to detect backspace (and possibly enter and delete,
   // but those usually don't even seem to fire beforeinput events at
