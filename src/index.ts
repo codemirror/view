@@ -22,8 +22,9 @@ export {lineNumbers, highlightActiveLineGutter, gutter, gutters, GutterMarker,
         gutterLineClass, lineNumberMarkers} from "./gutter"
 export {highlightWhitespace, highlightTrailingWhitespace} from "./highlight-space"
 
-import {HeightMap, HeightOracle, MeasuredHeights, QueryType} from "./heightmap"
+import {HeightMap, HeightOracle, MeasuredHeights, QueryType, clearHeightChangeFlag, heightChangeFlag} from "./heightmap"
 import {ChangedRange} from "./extension"
 import {computeOrder, moveVisually} from "./bidi"
 /// @internal
-export const __test = {HeightMap, HeightOracle, MeasuredHeights, QueryType, ChangedRange, computeOrder, moveVisually}
+export const __test = {HeightMap, HeightOracle, MeasuredHeights, QueryType, ChangedRange, computeOrder,
+                       moveVisually, clearHeightChangeFlag, getHeightChangeFlag: () => heightChangeFlag}

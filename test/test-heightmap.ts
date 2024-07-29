@@ -2,7 +2,7 @@ import {Decoration, WidgetType, BlockType, BlockInfo, __test} from "@codemirror/
 import {Text} from "@codemirror/state"
 import ist from "ist"
 
-const {HeightMap, HeightOracle, MeasuredHeights, QueryType, ChangedRange} = __test
+const {HeightMap, HeightOracle, MeasuredHeights, QueryType, ChangedRange, clearHeightChangeFlag, getHeightChangeFlag} = __test
 
 const byH = QueryType.ByHeight, byP = QueryType.ByPos
 
@@ -139,14 +139,14 @@ describe("HeightMap", () => {
     ist(map.height, 61)
   })
 
-  it("doesn't set the heightChanged bit for small within-line replacements", () => {
+  it("doesn't set the heightChanged flag for small within-line replacements", () => {
     let text = doc(10, 10, 10), oracle = o(text)
     let map = mk(text, []).updateHeight(oracle, 0, false, new MeasuredHeights(0, [12, 12, 12]))
     let newText = text.replace(21, 21, Text.of(["!"]))
     map = map.applyChanges([], text, oracle.setDoc(newText), [new ChangedRange(21, 21, 21, 22)])
-    oracle.heightChanged = false
+    clearHeightChangeFlag()
     map = map.updateHeight(oracle, 0, false, new MeasuredHeights(0, [12, 12, 12]))
-    ist(oracle.heightChanged, false)
+    ist(getHeightChangeFlag(), false)
   })
 
   it("can update lines across the tree", () => {
