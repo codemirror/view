@@ -1,3 +1,11 @@
+## 6.29.1 (2024-07-29)
+
+### Bug fixes
+
+Fix a crash on old Safari browsers that don't support `MediaQueryList.addEventListener`.
+
+Fix an issue where `EditorView.viewportLineBlocks` (and thus other things like the gutter) might be out of date after some kinds of decoration changes.
+
 ## 6.29.0 (2024-07-25)
 
 ### Bug fixes
