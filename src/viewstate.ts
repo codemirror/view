@@ -1,6 +1,7 @@
 import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} from "@codemirror/state"
 import {Rect, isScrolledToBottom, getScale} from "./dom"
-import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges} from "./heightmap"
+import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges,
+        clearHeightChangeFlag, heightChangeFlag} from "./heightmap"
 import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
         contentAttributes} from "./extension"
 import {WidgetType, Decoration, DecorationSet, BlockType} from "./decoration"
@@ -216,9 +217,11 @@ export class ViewState {
       prevDeco, this.stateDeco, update ? update.changes : ChangeSet.empty(this.state.doc.length)))
     let prevHeight = this.heightMap.height
     let scrollAnchor = this.scrolledToBottom ? null : this.scrollAnchorAt(this.scrollTop)
+    clearHeightChangeFlag()
     this.heightMap = this.heightMap.applyChanges(this.stateDeco, update.startState.doc,
                                                  this.heightOracle.setDoc(this.state.doc), heightChanges)
-    if (this.heightMap.height != prevHeight) update.flags |= UpdateFlag.Height
+    if (this.heightMap.height != prevHeight || heightChangeFlag)
+      update.flags |= UpdateFlag.Height
     if (scrollAnchor) {
       this.scrollAnchorPos = update.changes.mapPos(scrollAnchor.from, -1)
       this.scrollAnchorHeight = scrollAnchor.top
@@ -325,7 +328,7 @@ export class ViewState {
       if (dTop > 0 && dBottom > 0) bias = Math.max(dTop, dBottom)
       else if (dTop < 0 && dBottom < 0) bias = Math.min(dTop, dBottom)
 
-      oracle.heightChanged = false
+      clearHeightChangeFlag()
       for (let vp of this.viewports) {
         let heights = vp.from == this.viewport.from ? lineHeights : view.docView.measureVisibleLineHeights(vp)
         this.heightMap = (
@@ -333,7 +336,7 @@ export class ViewState {
                                                    [new ChangedRange(0, 0, 0, view.state.doc.length)]) : this.heightMap
         ).updateHeight(oracle, 0, refresh, new MeasuredHeights(vp.from, heights))
       }
-      if (oracle.heightChanged) result |= UpdateFlag.Height
+      if (heightChangeFlag) result |= UpdateFlag.Height
     }
 
     let viewportChange = !this.viewportIsAppropriate(this.viewport, bias) ||
