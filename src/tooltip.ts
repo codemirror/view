@@ -747,6 +747,11 @@ function isOverRange(view: EditorView, from: number, to: number, x: number, y: n
 /// Note that all hover tooltips are hosted within a single tooltip
 /// container element. This allows multiple tooltips over the same
 /// range to be "merged" together without overlapping.
+///
+/// The return value is a valid [editor extension](#state.Extension)
+/// but also provides an `active` property holding a state field that
+/// can be used to read the currently active tooltips produced by this
+/// extension.
 export function hoverTooltip(
   source: HoverTooltipSource,
   options: {
@@ -760,7 +765,7 @@ export function hoverTooltip(
     /// milliseconds. Defaults to 300ms.
     hoverTime?: number
   } = {}
-): Extension {
+): Extension & {active: StateField<readonly Tooltip[]>} {
   let setHover = StateEffect.define<readonly Tooltip[]>()
   let hoverState = StateField.define<readonly Tooltip[]>({
     create() { return [] },
@@ -793,11 +798,14 @@ export function hoverTooltip(
     provide: f => showHoverTooltip.from(f)
   })
 
-  return [
-    hoverState,
-    ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, options.hoverTime || Hover.Time)),
-    showHoverTooltipHost
-  ]
+  return {
+    active: hoverState,
+    extension: [
+      hoverState,
+      ViewPlugin.define(view => new HoverPlugin(view, source, hoverState, setHover, options.hoverTime || Hover.Time)),
+      showHoverTooltipHost
+    ]
+  }
 }
 
 /// Get the active tooltip view for a given tooltip, if available.
