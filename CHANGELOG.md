@@ -1,3 +1,13 @@
+## 6.30.0 (2024-08-05)
+
+### Bug fixes
+
+Make spell check corrections work again on `EditContext`-enabled Chrome versions.
+
+### New features
+
+The value returned by `hoverTooltip` now has an `active` property providing the state field used to store the open tooltips.
+
 ## 6.29.1 (2024-07-29)
 
 ### Bug fixes
