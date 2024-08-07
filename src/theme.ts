@@ -48,7 +48,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     height: "100%",
     overflowX: "auto",
     position: "relative",
-    zIndex: 0
+    zIndex: 0,
+    overflowAnchor: "none",
   },
 
   ".cm-content": {
