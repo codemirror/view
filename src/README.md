@@ -97,6 +97,8 @@ example](../../examples/gutter/).
 
 @lineNumberMarkers
 
+@lineNumberWidgetMarker
+
 ### Tooltips
 
 Tooltips are DOM elements overlaid on the editor near a given document

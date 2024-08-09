@@ -410,6 +410,9 @@ interface LineNumberConfig {
 /// Facet used to provide markers to the line number gutter.
 export const lineNumberMarkers = Facet.define<RangeSet<GutterMarker>>()
 
+/// Facet used to create markers in the line number gutter next to widgets.
+export const lineNumberWidgetMarker = Facet.define<(view: EditorView, widget: WidgetType, block: BlockInfo) => GutterMarker | null>()
+
 const lineNumberConfig = Facet.define<LineNumberConfig, Required<LineNumberConfig>>({
   combine(values) {
     return combineConfig<Required<LineNumberConfig>>(values, {formatNumber: String, domEventHandlers: {}}, {
@@ -445,7 +448,13 @@ const lineNumberGutter = activeGutters.compute([lineNumberConfig], state => ({
     if (others.some(m => m.toDOM)) return null
     return new NumberMarker(formatNumber(view, view.state.doc.lineAt(line.from).number))
   },
-  widgetMarker: () => null,
+  widgetMarker: (view, widget, block) => {
+    for (let m of view.state.facet(lineNumberWidgetMarker)) {
+      let result = m(view, widget, block)
+      if (result) return result
+    }
+    return null
+  },
   lineMarkerChange: update => update.startState.facet(lineNumberConfig) != update.state.facet(lineNumberConfig),
   initialSpacer(view: EditorView) {
     return new NumberMarker(formatNumber(view, maxLineNumber(view.state.doc.lines)))
