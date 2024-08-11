@@ -1,10 +1,10 @@
 import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
-import {BlockView, LineView, BlockWidgetView} from "./blockview"
+import {BlockView, LineView, BlockWidgetView, BlockGapWidget} from "./blockview"
 import {TextView, MarkView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
-import {Decoration, DecorationSet, WidgetType, addRange, MarkDecoration} from "./decoration"
+import {Decoration, DecorationSet, addRange, MarkDecoration} from "./decoration"
 import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState,
@@ -579,30 +579,6 @@ function betweenUneditable(pos: DOMPos) {
   return pos.node.nodeType == 1 && pos.node.firstChild &&
     (pos.offset == 0 || (pos.node.childNodes[pos.offset - 1] as HTMLElement).contentEditable == "false") &&
     (pos.offset == pos.node.childNodes.length || (pos.node.childNodes[pos.offset] as HTMLElement).contentEditable == "false")
-}
-
-class BlockGapWidget extends WidgetType {
-  constructor(readonly height: number) { super() }
-
-  toDOM() {
-    let elt = document.createElement("div")
-    elt.className = "cm-gap"
-    this.updateDOM(elt)
-    return elt
-  }
-
-  eq(other: BlockGapWidget) { return other.height == this.height }
-
-  updateDOM(elt: HTMLElement) {
-    elt.style.height = this.height + "px"
-    return true
-  }
-
-  get editable() { return true }
-
-  get estimatedHeight() { return this.height }
-
-  ignoreEvent() { return false }
 }
 
 export function findCompositionNode(view: EditorView, headPos: number): {from: number, to: number, node: Text} | null {

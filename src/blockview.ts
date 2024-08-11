@@ -1,7 +1,7 @@
 import {ContentView, DOMPos, ViewFlag, noChildren, mergeChildrenInto} from "./contentview"
 import {DocView} from "./docview"
 import {TextView, MarkView, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
-import {clientRectsFor, Rect, clearAttributes} from "./dom"
+import {clientRectsFor, Rect, flattenRect, clearAttributes} from "./dom"
 import {LineDecoration, WidgetType, PointDecoration} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
 import browser from "./browser"
@@ -240,7 +240,10 @@ export class BlockWidgetView extends ContentView implements BlockView {
   get isWidget() { return true }
 
   coordsAt(pos: number, side: number) {
-    return this.widget.coordsAt(this.dom!, pos, side)
+    let custom = this.widget.coordsAt(this.dom!, pos, side)
+    if (custom) return custom
+    if (this.widget instanceof BlockGapWidget) return null
+    return flattenRect(this.dom!.getBoundingClientRect(), this.length ? pos == 0 : side <= 0)
   }
 
   destroy() {
@@ -252,4 +255,28 @@ export class BlockWidgetView extends ContentView implements BlockView {
     let {startSide, endSide} = this.deco
     return startSide == endSide ? false : side < 0 ? startSide < 0 : endSide > 0
   }
+}
+
+export class BlockGapWidget extends WidgetType {
+  constructor(readonly height: number) { super() }
+
+  toDOM() {
+    let elt = document.createElement("div")
+    elt.className = "cm-gap"
+    this.updateDOM(elt)
+    return elt
+  }
+
+  eq(other: BlockGapWidget) { return other.height == this.height }
+
+  updateDOM(elt: HTMLElement) {
+    elt.style.height = this.height + "px"
+    return true
+  }
+
+  get editable() { return true }
+
+  get estimatedHeight() { return this.height }
+
+  ignoreEvent() { return false }
 }
