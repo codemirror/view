@@ -211,7 +211,8 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     boxSizing: "border-box",
     position: "sticky",
     left: 0,
-    right: 0
+    right: 0,
+    zIndex: 300
   },
   "&light .cm-panels": {
     backgroundColor: "#f5f5f5",
