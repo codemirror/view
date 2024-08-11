@@ -1,3 +1,19 @@
+## 6.31.0 (2024-08-11)
+
+### Bug fixes
+
+Avoid the editor's geometry measurements becoming incorrect when fonts finish loading by scheduling a measure on `document.fonts.ready`.
+
+Avoid an issue where Chrome would incorrectly scroll the window when deleting lines in the editor.
+
+Fix an issue where in some layouts editor content would be drawn on top of panel elements.
+
+Fix an issue where `coordsAtPos` would return null when querying a position in a block widget.
+
+### New features
+
+The new `lineNumberWidgetMarker` facet makes it possible to insert markers into the line number gutter for widgets.
+
 ## 6.30.0 (2024-08-05)
 
 ### Bug fixes
