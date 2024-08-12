@@ -1,3 +1,13 @@
+## 6.32.0 (2024-08-12)
+
+### Bug fixes
+
+Fix a bug where the editor could draw way too big a viewport when not managing its own scrollbar.
+
+### New features
+
+The new `gutterWidgetClass` facet makes it possible to add a class to gutter elements next to widgets.
+
 ## 6.31.0 (2024-08-11)
 
 ### Bug fixes
