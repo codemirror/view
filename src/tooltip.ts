@@ -723,9 +723,14 @@ class HoverPlugin {
 const tooltipMargin = 4
 
 function isInTooltip(tooltip: HTMLElement, event: MouseEvent) {
-  let rect = tooltip.getBoundingClientRect()
-  return event.clientX >= rect.left - tooltipMargin && event.clientX <= rect.right + tooltipMargin &&
-    event.clientY >= rect.top - tooltipMargin && event.clientY <= rect.bottom + tooltipMargin
+  let {left, right, top, bottom} = tooltip.getBoundingClientRect(), arrow
+  if (arrow = tooltip.querySelector(".cm-tooltip-arrow")) {
+    let arrowRect = arrow.getBoundingClientRect()
+    top = Math.min(arrowRect.top, top)
+    bottom = Math.max(arrowRect.bottom, bottom)
+  }
+  return event.clientX >= left - tooltipMargin && event.clientX <= right + tooltipMargin &&
+    event.clientY >= top - tooltipMargin && event.clientY <= bottom + tooltipMargin
 }
 
 function isOverRange(view: EditorView, from: number, to: number, x: number, y: number, margin: number) {
