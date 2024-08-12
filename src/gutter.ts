@@ -43,6 +43,11 @@ GutterMarker.prototype.point = true
 /// in all gutters for the line).
 export const gutterLineClass = Facet.define<RangeSet<GutterMarker>>()
 
+/// Facet used to add a class to all gutter elements next to a widget.
+/// Should not provide widgets with a `toDOM` method.
+export const gutterWidgetClass =
+  Facet.define<(view: EditorView, widget: WidgetType, block: BlockInfo) => GutterMarker | null>()
+
 type Handlers = {[event: string]: (view: EditorView, line: BlockInfo, event: Event) => boolean}
 
 interface GutterConfig {
@@ -272,8 +277,12 @@ class UpdateContext {
   }
 
   widget(view: EditorView, block: BlockInfo) {
-    let marker = this.gutter.config.widgetMarker(view, block.widget!, block)
-    if (marker) this.addElement(view, block, [marker])
+    let marker = this.gutter.config.widgetMarker(view, block.widget!, block), markers = marker ? [marker] : null
+    for (let cls of view.state.facet(gutterWidgetClass)) {
+      let marker = cls(view, block.widget!, block)
+      if (marker) (markers || (markers = [])).push(marker)
+    }
+    if (markers) this.addElement(view, block, markers)
   }
 
   finish() {

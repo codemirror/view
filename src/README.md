@@ -95,6 +95,8 @@ example](../../examples/gutter/).
 
 @gutterLineClass
 
+@gutterWidgetClass
+
 @lineNumberMarkers
 
 @lineNumberWidgetMarker
