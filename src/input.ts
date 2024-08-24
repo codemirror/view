@@ -1,9 +1,10 @@
-import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation, Text} from "@codemirror/state"
+import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation, Text, Facet} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
 import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior, atomicRanges,
-        logException, mouseSelectionStyle, PluginInstance, focusChangeEffect, getScrollMargins} from "./extension"
+        logException, mouseSelectionStyle, PluginInstance, focusChangeEffect, getScrollMargins,
+        clipboardInputFilter, clipboardOutputFilter} from "./extension"
 import browser from "./browser"
 import {groupAt, skipAtomicRanges} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParents} from "./dom"
@@ -471,7 +472,13 @@ function capturePaste(view: EditorView) {
   }, 50)
 }
 
+function textFilter(state: EditorState, facet: Facet<(value: string, state: EditorState) => string>, text: string) {
+  for (let filter of state.facet(facet)) text = filter(text, state)
+  return text
+}
+
 function doPaste(view: EditorView, input: string) {
+  input = textFilter(view.state, clipboardInputFilter, input)
   let {state} = view, changes, i = 1, text = state.toText(input)
   let byLine = text.lines == state.selection.ranges.length
   let linewise = lastLinewiseCopy != null && state.selection.ranges.every(r => r.empty) && lastLinewiseCopy == text.toString()
@@ -653,7 +660,8 @@ handlers.dragstart = (view, event: DragEvent) => {
   inputState.draggedContent = range
 
   if (event.dataTransfer) {
-    event.dataTransfer.setData("Text", view.state.sliceDoc(range.from, range.to))
+    event.dataTransfer.setData("Text", textFilter(view.state, clipboardOutputFilter,
+                                                  view.state.sliceDoc(range.from, range.to)))
     event.dataTransfer.effectAllowed = "copyMove"
   }
   return false
@@ -665,6 +673,7 @@ handlers.dragend = view => {
 }
 
 function dropText(view: EditorView, event: DragEvent, text: string, direct: boolean) {
+  text = textFilter(view.state, clipboardInputFilter, text)
   if (!text) return
   let dropPos = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
 
@@ -764,7 +773,7 @@ function copiedRange(state: EditorState) {
     linewise = true
   }
 
-  return {text: content.join(state.lineBreak), ranges, linewise}
+  return {text: textFilter(state, clipboardOutputFilter, content.join(state.lineBreak)), ranges, linewise}
 }
 
 let lastLinewiseCopy: string | null = null
