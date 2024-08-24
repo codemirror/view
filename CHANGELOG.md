@@ -1,3 +1,13 @@
+## 6.33.0 (2024-08-24)
+
+### Bug fixes
+
+Make it easier to move the pointer over a hover tooltip with an arrow by not closing the tooltip when the pointer is moving over the gap for the arrow.
+
+### New features
+
+The new `EditorView.clipboardInputFilter` and `clipboardOutputFilter` facets allow you to register filter functions that change text taken from or sent to the clipboard.
+
 ## 6.32.0 (2024-08-12)
 
 ### Bug fixes
