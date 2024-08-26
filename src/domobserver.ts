@@ -430,7 +430,7 @@ export class DOMObserver {
     win.addEventListener("resize", this.onResize)
     if (this.printQuery) { 
       if (this.printQuery.addEventListener) this.printQuery.addEventListener("change", this.onPrint)
-      else this.printQuery.addListener(this.onPrint)
+      else if (this.printQuery.addListener) this.printQuery.addListener(this.onPrint)
     }
     else win.addEventListener("beforeprint", this.onPrint)
     win.addEventListener("scroll", this.onScroll)
@@ -442,7 +442,7 @@ export class DOMObserver {
     win.removeEventListener("resize", this.onResize)
     if (this.printQuery) {
       if (this.printQuery.removeEventListener) this.printQuery.removeEventListener("change", this.onPrint)
-      else this.printQuery.removeListener(this.onPrint)
+      else if (this.printQuery.removeListener) this.printQuery.removeListener(this.onPrint)
     }
     else win.removeEventListener("beforeprint", this.onPrint)
     win.document.removeEventListener("selectionchange", this.onSelectionChange)
