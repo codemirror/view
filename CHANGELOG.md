@@ -1,3 +1,9 @@
+## 6.33.1 (2024-08-30)
+
+### Bug fixes
+
+Work around odd behavior in Chrome's newly supported `caretPositionFromPoint` method, which could cause CodeMirror to crash with a null dereference.
+
 ## 6.33.0 (2024-08-24)
 
 ### Bug fixes
