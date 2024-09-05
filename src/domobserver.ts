@@ -2,8 +2,7 @@ import browser from "./browser"
 import {ContentView, ViewFlag} from "./contentview"
 import {EditorView} from "./editorview"
 import {editable, ViewUpdate, setEditContextFormatting, MeasureRequest} from "./extension"
-import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition,
-        deepActiveElement, dispatchKey, atElementStart} from "./dom"
+import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition, dispatchKey, atElementStart} from "./dom"
 import {DOMChange, applyDOMChange, applyDOMChangeInner} from "./domchange"
 import type {EditContext} from "./editcontext"
 import {Decoration} from "./decoration"
@@ -201,7 +200,7 @@ export class DOMObserver {
     let selection = getSelection(view.root)
     if (!selection) return false
     let range = browser.safari && (view.root as any).nodeType == 11 &&
-      deepActiveElement(this.dom.ownerDocument) == this.dom &&
+      view.root.activeElement == this.dom &&
       safariSelectionRangeHack(this.view, selection) || selection
     if (!range || this.selectionRange.eq(range)) return false
     let local = hasSelection(this.dom, range)
