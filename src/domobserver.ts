@@ -171,7 +171,7 @@ export class DOMObserver {
     let wasChanged = this.selectionChanged
     if (!this.readSelectionRange() || this.delayedAndroidKey) return
     let {view} = this, sel = this.selectionRange
-    if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(view.dom, sel))
+    if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(this.dom, sel))
       return
 
     let context = sel.anchorNode && view.docView.nearest(sel.anchorNode)
