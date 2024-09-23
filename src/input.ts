@@ -10,7 +10,6 @@ import {groupAt, skipAtomicRanges} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParents} from "./dom"
 import {applyDOMChangeInner} from "./domchange"
 
-// This will also be where dragging info and such goes
 export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
