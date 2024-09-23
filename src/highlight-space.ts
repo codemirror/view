@@ -3,21 +3,6 @@ import {ViewPlugin} from "./extension"
 import {MatchDecorator} from "./matchdecorator"
 import {Decoration} from "./decoration"
 
-const WhitespaceDeco = new Map<string, Decoration>()
-
-function getWhitespaceDeco(space: string): Decoration {
-  let deco = WhitespaceDeco.get(space)
-  if (!deco) WhitespaceDeco.set(space, deco = Decoration.mark({
-    attributes: space === "\t" ? {
-      class: "cm-highlightTab",
-    } : {
-      class: "cm-highlightSpace",
-      "data-display": space.replace(/ /g, "·")
-    }
-  }))
-  return deco
-}
-
 function matcher(decorator: MatchDecorator): Extension {
   return ViewPlugin.define(view => ({
     decorations: decorator.createDeco(view),
@@ -29,9 +14,12 @@ function matcher(decorator: MatchDecorator): Extension {
   })
 }
 
+const tabDeco = Decoration.mark({class: "cm-highlightTab"})
+const spaceDeco = Decoration.mark({class: "cm-highlightSpace"})
+
 const whitespaceHighlighter = matcher(new MatchDecorator({
-  regexp: /\t| +/g,
-  decoration: match => getWhitespaceDeco(match[0]),
+  regexp: /\t| /g,
+  decoration: match => match[0] == "\t" ? tabDeco : spaceDeco,
   boundary: /\S/,
 }))
 

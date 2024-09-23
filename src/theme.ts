@@ -249,7 +249,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   },
 
   ".cm-highlightSpace:before": {
-    content: "attr(data-display)",
+    content: '"·"',
     position: "absolute",
     pointerEvents: "none",
     color: "#888"
