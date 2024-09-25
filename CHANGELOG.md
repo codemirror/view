@@ -1,3 +1,15 @@
+## 6.34.0 (2024-09-25)
+
+### Bug fixes
+
+Fix an issue where the dots past the wrapping point were displayed incorrectly when using `highlightWhitespace` with a wrapped sequence of spaces.
+
+Improve performance of documents displaying lots of highlighted spaces by using a CSS background instead of pseudo-element.
+
+### New features
+
+`placeholder` now allows a function that constructs the placedholder DOM to be passed in, and uses `cloneNode` when a raw element is passed in, to prevent adding the same element to multiple editors.
+
 ## 6.33.1 (2024-08-30)
 
 ### Bug fixes
