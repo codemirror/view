@@ -51,14 +51,15 @@ const enum VP {
   MaxCoverMargin = VP.Margin / 4,
   // Beyond this size, DOM layout starts to break down in browsers
   // because they use fixed-precision numbers to store dimensions.
-  MaxDOMHeight = 7e6
+  MaxDOMHeight = 7e6,
+  MaxHorizGap = 2e6
 }
 
 // Line gaps are placeholder widgets used to hide pieces of overlong
 // lines within the viewport, as a kludge to keep the editor
 // responsive when a ridiculously long line is loaded into it.
 export class LineGap {
-  constructor(readonly from: number, readonly to: number, readonly size: number) {}
+  constructor(readonly from: number, readonly to: number, readonly size: number, readonly displaySize: number) {}
 
   static same(a: readonly LineGap[], b: readonly LineGap[]) {
     if (a.length != b.length) return false
@@ -71,7 +72,7 @@ export class LineGap {
 
   draw(viewState: ViewState, wrapping: boolean) {
     return Decoration.replace({
-      widget: new LineGapWidget(this.size * (wrapping ? viewState.scaleY : viewState.scaleX), wrapping)
+      widget: new LineGapWidget(this.displaySize * (wrapping ? viewState.scaleY : viewState.scaleX), wrapping)
     }).range(this.from, this.to)
   }
 }
@@ -420,7 +421,7 @@ export class ViewState {
     if (!gaps.length || changes.empty) return gaps
     let mapped = []
     for (let gap of gaps) if (!changes.touchesRange(gap.from, gap.to))
-      mapped.push(new LineGap(changes.mapPos(gap.from), changes.mapPos(gap.to), gap.size))
+      mapped.push(new LineGap(changes.mapPos(gap.from), changes.mapPos(gap.to), gap.size, gap.displaySize))
     return mapped
   }
 
@@ -458,7 +459,9 @@ export class ViewState {
           let lineStart = mayMeasure.moveToLineBoundary(EditorSelection.cursor(to), false, true).head
           if (lineStart > from) to = lineStart
         }
-        gap = new LineGap(from, to, this.gapSize(line, from, to, structure))
+        let size = this.gapSize(line, from, to, structure)
+        let displaySize = wrapping || size < VP.MaxHorizGap ? size : VP.MaxHorizGap
+        gap = new LineGap(from, to, size, displaySize)
       }
       gaps.push(gap)
     }
@@ -486,15 +489,22 @@ export class ViewState {
       } else {
         let totalWidth = structure.total * this.heightOracle.charWidth
         let marginWidth = margin * this.heightOracle.charWidth
+        let horizOffset = 0
+        if (totalWidth > VP.MaxHorizGap) for (let old of current) {
+          if (old.from >= line.from && old.from < line.to && old.size != old.displaySize &&
+              old.from * this.heightOracle.charWidth + horizOffset < this.pixelViewport.left)
+            horizOffset = old.size - old.displaySize
+        }
+        let pxLeft = this.pixelViewport.left + horizOffset, pxRight = this.pixelViewport.right + horizOffset
         let left, right
         if (target != null) {
           let targetFrac = findFraction(structure, target)
-          let spaceFrac = ((this.pixelViewport.right - this.pixelViewport.left) / 2 + marginWidth) / totalWidth
+          let spaceFrac = ((pxRight - pxLeft) / 2 + marginWidth) / totalWidth
           left = targetFrac - spaceFrac
           right = targetFrac + spaceFrac
         } else {
-          left = (this.pixelViewport.left - marginWidth) / totalWidth
-          right = (this.pixelViewport.right + marginWidth) / totalWidth
+          left = (pxLeft - marginWidth) / totalWidth
+          right = (pxRight + marginWidth) / totalWidth
         }
         viewFrom = findPosition(structure, left)
         viewTo = findPosition(structure, right)
