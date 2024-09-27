@@ -1,3 +1,11 @@
+## 6.34.1 (2024-09-27)
+
+### Bug fixes
+
+Avoid a stack overflow that could happen when updating a line with a lot of text tokens.
+
+Improve the way enormously long (non-wrapped) lines are displayed by making sure they stay shorter than the maximal pixel size the browser's CSS engine can handle.
+
 ## 6.34.0 (2024-09-25)
 
 ### Bug fixes
