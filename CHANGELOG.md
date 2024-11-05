@@ -1,3 +1,9 @@
+## 6.34.2 (2024-11-05)
+
+### Bug fixes
+
+Fix the default cursor color for dark themes, which was way too dark.
+
 ## 6.34.1 (2024-09-27)
 
 ### Bug fixes
