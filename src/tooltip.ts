@@ -1,14 +1,14 @@
 import {EditorState, Transaction, StateEffect, StateEffectType,
         Facet, StateField, Extension, MapMode, FacetReader} from "@codemirror/state"
 import {EditorView} from "./editorview"
-import {ViewPlugin, ViewUpdate, logException} from "./extension"
+import {ViewPlugin, ViewUpdate, logException, getScrollMargins} from "./extension"
 import {Direction} from "./bidi"
 import {WidgetView} from "./inlineview"
 import {Rect} from "./dom"
 import browser from "./browser"
 
 type Measured = {
-  editor: DOMRect,
+  visible: Rect,
   parent: DOMRect,
   pos: (Rect | null)[],
   size: DOMRect[],
@@ -250,7 +250,6 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   }
 
   readMeasure(): Measured {
-    let editor = this.view.dom.getBoundingClientRect()
     let scaleX = 1, scaleY = 1, makeAbsolute = false
     if (this.position == "fixed" && this.manager.tooltipViews.length) {
       let {dom} = this.manager.tooltipViews[0]
@@ -277,9 +276,13 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         ;({scaleX, scaleY} = this.view.viewState)
       }
     }
+    let visible = this.view.scrollDOM.getBoundingClientRect(), margins = getScrollMargins(this.view)
     return {
-      editor,
-      parent: this.parent ? this.container.getBoundingClientRect() : editor,
+      visible: {
+        left: visible.left + margins.left, top: visible.top + margins.top,
+        right: visible.right - margins.right, bottom: visible.bottom - margins.bottom
+      },
+      parent: this.parent ? this.container.getBoundingClientRect() : this.view.dom.getBoundingClientRect(),
       pos: this.manager.tooltips.map((t, i) => {
         let tv = this.manager.tooltipViews[i]
         return tv.getCoords ? tv.getCoords(t.pos) : this.view.coordsAtPos(t.pos)
@@ -297,16 +300,16 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       for (let t of this.manager.tooltipViews) t.dom.style.position = "absolute"
     }
 
-    let {editor, space, scaleX, scaleY} = measured
+    let {visible, space, scaleX, scaleY} = measured
     let others = []
     for (let i = 0; i < this.manager.tooltips.length; i++) {
       let tooltip = this.manager.tooltips[i], tView = this.manager.tooltipViews[i], {dom} = tView
       let pos = measured.pos[i], size = measured.size[i]
       // Hide tooltips that are outside of the editor.
-      if (!pos || pos.bottom <= Math.max(editor.top, space.top) ||
-          pos.top >= Math.min(editor.bottom, space.bottom) ||
-          pos.right < Math.max(editor.left, space.left) - .1 ||
-          pos.left > Math.min(editor.right, space.right) + .1) {
+      if (!pos || pos.bottom <= Math.max(visible.top, space.top) ||
+          pos.top >= Math.min(visible.bottom, space.bottom) ||
+          pos.right < Math.max(visible.left, space.left) - .1 ||
+          pos.left > Math.min(visible.right, space.right) + .1) {
         dom.style.top = Outside
         continue
       }
@@ -374,7 +377,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
 
 const baseTheme = EditorView.baseTheme({
   ".cm-tooltip": {
-    zIndex: 100,
+    zIndex: 500,
     boxSizing: "border-box"
   },
   "&light .cm-tooltip": {
