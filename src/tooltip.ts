@@ -323,8 +323,8 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
         : Math.min(Math.max(space.left, pos.left - width + (arrow ? Arrow.Offset : 0) - offset.x), space.right - width)
       let above = this.above[i]
       if (!tooltip.strictSide && (above
-            ? pos.top - (size.bottom - size.top) - offset.y < space.top
-            : pos.bottom + (size.bottom - size.top) + offset.y > space.bottom) &&
+            ? pos.top - height - arrowHeight - offset.y < space.top
+            : pos.bottom + height + arrowHeight + offset.y > space.bottom) &&
           above == (space.bottom - pos.bottom > pos.top - space.top))
         above = this.above[i] = !above
       let spaceVert = (above ? pos.top - space.top : space.bottom - pos.bottom) - arrowHeight
