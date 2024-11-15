@@ -1,3 +1,13 @@
+## 6.34.3 (2024-11-15)
+
+### Bug fixes
+
+Make sure positions covered by a gutter or a panel aren't treated as visible for the purpose of displaying tooltips.
+
+Properly include the tooltip arrow height when checking whether a tooltip fits in its preferred above/below position.
+
+Fix an issue with compositions on Chrome inserting their content in the wrong position when another document change came in during composition.
+
 ## 6.34.2 (2024-11-05)
 
 ### Bug fixes
