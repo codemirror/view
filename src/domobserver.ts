@@ -540,6 +540,9 @@ class EditContextManager {
   // user action on some Android keyboards)
   pendingContextChange: {from: number, to: number, insert: Text} | null = null
   handlers: {[name: string]: (e: any) => void} = Object.create(null)
+  // Kludge to work around the fact that EditContext does not respond
+  // well to having its content updated during a composition (see #1472)
+  composing: {contextBase: number, editorBase: number, drifted: boolean} | null = null
 
   constructor(view: EditorView) {
     this.resetRange(view.state)
@@ -551,9 +554,10 @@ class EditContextManager {
     })
     this.handlers.textupdate = e => {
       let {anchor} = view.state.selection.main
-      let change = {from: this.toEditorPos(e.updateRangeStart),
-                    to: this.toEditorPos(e.updateRangeEnd),
-                    insert: Text.of(e.text.split("\n"))}
+      let from = this.toEditorPos(e.updateRangeStart), to = this.toEditorPos(e.updateRangeEnd)
+      if (view.inputState.composing >= 0 && !this.composing)
+        this.composing = {contextBase: e.updateRangeStart, editorBase: from, drifted: false}
+      let change = {from, to, insert: Text.of(e.text.split("\n"))}
       // If the window doesn't include the anchor, assume changes
       // adjacent to a side go up to the anchor.
       if (change.from == this.from && anchor < this.from) change.from = anchor
@@ -606,6 +610,11 @@ class EditContextManager {
     this.handlers.compositionend = () => {
       view.inputState.composing = -1
       view.inputState.compositionFirstChange = null
+      if (this.composing) {
+        let {drifted} = this.composing
+        this.composing = null
+        if (drifted) this.reset(view.state)
+      }
     }
     for (let event in this.handlers) context.addEventListener(event as any, this.handlers[event])
 
@@ -654,11 +663,13 @@ class EditContextManager {
 
   update(update: ViewUpdate) {
     let reverted = this.pendingContextChange
-    if (!this.applyEdits(update) || !this.rangeIsValid(update.state)) {
+    if (this.composing && (this.composing.drifted || update.transactions.some(
+          tr => !tr.isUserEvent("input.type") && tr.changes.touchesRange(this.from, this.to)))) {
+      this.composing.drifted = true
+      this.composing.editorBase = update.changes.mapPos(this.composing.editorBase)
+    } else if (!this.applyEdits(update) || !this.rangeIsValid(update.state)) {
       this.pendingContextChange = null
-      this.resetRange(update.state)
-      this.editContext.updateText(0, this.editContext.text.length, update.state.doc.sliceString(this.from, this.to))
-      this.setSelection(update.state)
+      this.reset(update.state)
     } else if (update.docChanged || update.selectionSet || reverted) {
       this.setSelection(update.state)
     }
@@ -670,6 +681,12 @@ class EditContextManager {
     let {head} = state.selection.main
     this.from = Math.max(0, head - CxVp.Margin)
     this.to = Math.min(state.doc.length, head + CxVp.Margin)
+  }
+
+  reset(state: EditorState) {
+    this.resetRange(state)
+    this.editContext.updateText(0, this.editContext.text.length, state.doc.sliceString(this.from, this.to))
+    this.setSelection(state)
   }
 
   revertPending(state: EditorState) {
@@ -695,8 +712,14 @@ class EditContextManager {
              this.to - this.from > CxVp.Margin * 3)
   }
 
-  toEditorPos(contextPos: number) { return contextPos + this.from }
-  toContextPos(editorPos: number) { return editorPos - this.from }
+  toEditorPos(contextPos: number) {
+    let c = this.composing
+    return c && c.drifted ? c.editorBase + (contextPos - c.contextBase) : contextPos + this.from
+  }
+  toContextPos(editorPos: number) {
+    let c = this.composing
+    return c && c.drifted ? c.contextBase + (editorPos - c.editorBase) : editorPos - this.from
+  }
 
   destroy() {
     for (let event in this.handlers) this.editContext.removeEventListener(event as any, this.handlers[event])
