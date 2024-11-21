@@ -1,3 +1,9 @@
+## 6.35.0 (2024-11-21)
+
+### New features
+
+Tooltips can now use the `clip` option to control whether they are hidden when outside the visible editor content.
+
 ## 6.34.3 (2024-11-15)
 
 ### Bug fixes
