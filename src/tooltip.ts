@@ -306,10 +306,11 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
       let tooltip = this.manager.tooltips[i], tView = this.manager.tooltipViews[i], {dom} = tView
       let pos = measured.pos[i], size = measured.size[i]
       // Hide tooltips that are outside of the editor.
-      if (!pos || pos.bottom <= Math.max(visible.top, space.top) ||
-          pos.top >= Math.min(visible.bottom, space.bottom) ||
-          pos.right < Math.max(visible.left, space.left) - .1 ||
-          pos.left > Math.min(visible.right, space.right) + .1) {
+      if (!pos || tooltip.clip !== false && (
+            pos.bottom <= Math.max(visible.top, space.top) ||
+            pos.top >= Math.min(visible.bottom, space.bottom) ||
+            pos.right < Math.max(visible.left, space.left) - .1 ||
+            pos.left > Math.min(visible.right, space.right) + .1)) {
         dom.style.top = Outside
         continue
       }
@@ -462,6 +463,10 @@ export interface Tooltip {
   /// When set to true, show a triangle connecting the tooltip element
   /// to position `pos`.
   arrow?: boolean
+  /// By default, tooltips are hidden when their position is outside
+  /// of the visible editor content. Set this to false to turn that
+  /// off.
+  clip?: boolean
 }
 
 /// Describes the way a tooltip is displayed.
