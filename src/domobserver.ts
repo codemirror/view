@@ -592,11 +592,13 @@ class EditContextManager {
       for (let format of e.getTextFormats()) {
         let lineStyle = format.underlineStyle, thickness = format.underlineThickness
         if (lineStyle != "None" && thickness != "None") {
-          let style = `text-decoration: underline ${
-            lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""
-          }${thickness == "Thin" ? 1 : 2}px`
-          deco.push(Decoration.mark({attributes: {style}})
-            .range(this.toEditorPos(format.rangeStart), this.toEditorPos(format.rangeEnd)))
+          let from = this.toEditorPos(format.rangeStart), to = this.toEditorPos(format.rangeEnd)
+          if (from < to) {
+            let style = `text-decoration: underline ${
+              lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""
+            }${thickness == "Thin" ? 1 : 2}px`
+            deco.push(Decoration.mark({attributes: {style}}).range(from, to))
+          }
         }
       }
       view.dispatch({effects: setEditContextFormatting.of(Decoration.set(deco))})
@@ -713,6 +715,7 @@ class EditContextManager {
   }
 
   toEditorPos(contextPos: number) {
+    contextPos = Math.min(contextPos, this.to - this.from)
     let c = this.composing
     return c && c.drifted ? c.editorBase + (contextPos - c.contextBase) : contextPos + this.from
   }
