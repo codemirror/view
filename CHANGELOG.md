@@ -1,3 +1,9 @@
+## 6.35.2 (2024-12-07)
+
+### Bug fixes
+
+Fix an issue on Chrome where typing at the end of the document would insert a character after the cursor.
+
 ## 6.35.1 (2024-12-06)
 
 ### Bug fixes
