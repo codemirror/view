@@ -567,9 +567,11 @@ class EditContextManager {
       if (change.from == change.to && !change.insert.length) return
 
       this.pendingContextChange = change
-      if (!view.state.readOnly)
-        applyDOMChangeInner(view, change, EditorSelection.single(this.toEditorPos(e.selectionStart),
-                                                                 this.toEditorPos(e.selectionEnd)))
+      if (!view.state.readOnly) {
+        let newLen = this.to - this.from + (change.to - change.from + change.insert.length)
+        applyDOMChangeInner(view, change, EditorSelection.single(this.toEditorPos(e.selectionStart, newLen),
+                                                                 this.toEditorPos(e.selectionEnd, newLen)))
+      }
       // If the transaction didn't flush our change, revert it so
       // that the context is in sync with the editor state again.
       if (this.pendingContextChange) {
@@ -714,8 +716,8 @@ class EditContextManager {
              this.to - this.from > CxVp.Margin * 3)
   }
 
-  toEditorPos(contextPos: number) {
-    contextPos = Math.min(contextPos, this.to - this.from)
+  toEditorPos(contextPos: number, clipLen = this.to - this.from) {
+    contextPos = Math.min(contextPos, clipLen)
     let c = this.composing
     return c && c.drifted ? c.editorBase + (contextPos - c.contextBase) : contextPos + this.from
   }
