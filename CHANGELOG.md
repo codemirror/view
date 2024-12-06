@@ -1,3 +1,13 @@
+## 6.35.1 (2024-12-06)
+
+### Bug fixes
+
+Work around another crash caused by incorrect composition positions reported by `EditContext`.
+
+Stop disabling custom cursors on Safari version 11.4 and up, which support `caret-color`.
+
+Fix an issue where a tooltip with wrapped content could, in some circumstances, fail to find a stable position due to a cyclic dependency between its width and its position.
+
 ## 6.35.0 (2024-11-21)
 
 ### New features
