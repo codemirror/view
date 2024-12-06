@@ -5,7 +5,7 @@ import {EditorView} from "./editorview"
 import {layer, RectangleMarker} from "./layer"
 import browser from "./browser"
 
-const CanHidePrimary = !browser.ios // FIXME test IE
+const CanHidePrimary = !(browser.ios && browser.webkit && browser.webkit_version < 534)
 
 type SelectionConfig = {
   /// The length of a full cursor blink cycle, in milliseconds.
