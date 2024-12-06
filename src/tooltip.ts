@@ -343,10 +343,10 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
           top = above ? r.top - height - 2 - arrowHeight : r.bottom + arrowHeight + 2
       if (this.position == "absolute") {
         dom.style.top = (top - measured.parent.top) / scaleY + "px"
-        dom.style.left = (left - measured.parent.left) / scaleX + "px"
+        setLeftStyle(dom, (left - measured.parent.left) / scaleX)
       } else {
         dom.style.top = top / scaleY + "px"
-        dom.style.left = left / scaleX + "px"
+        setLeftStyle(dom, left / scaleX)
       }
       if (arrow) {
         let arrowLeft = pos.left + (ltr ? offset.x : -offset.x) - (left + Arrow.Offset - Arrow.Size)
@@ -375,6 +375,11 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     scroll() { this.maybeMeasure() }
   }
 })
+
+function setLeftStyle(elt: HTMLElement, value: number) {
+  let current = parseInt(elt.style.left, 10)
+  if (isNaN(current) || Math.abs(value - current) > 1) elt.style.left = value + "px"
+}
 
 const baseTheme = EditorView.baseTheme({
   ".cm-tooltip": {
