@@ -1,3 +1,13 @@
+## 6.35.3 (2024-12-09)
+
+### Bug fixes
+
+Fix an issue where mark decorations that got merged or split weren't properly redrawn.
+
+Avoid spurious focus events by not updating the DOM selection when the editor is unfocused but focusable.
+
+Disable `writingsuggestions` for the editable element, to opt out of Safari's new intelligence completions (which mess up in the editor).
+
 ## 6.35.2 (2024-12-07)
 
 ### Bug fixes
