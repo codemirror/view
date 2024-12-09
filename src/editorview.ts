@@ -517,6 +517,7 @@ export class EditorView {
       spellcheck: "false",
       autocorrect: "off",
       autocapitalize: "off",
+      writingsuggestions: "false",
       translate: "no",
       contenteditable: !this.state.facet(editable) ? "false" : "true",
       class: "cm-content",
