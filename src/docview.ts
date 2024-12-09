@@ -644,6 +644,7 @@ class DecorationComparator {
   changes: number[] = []
   compareRange(from: number, to: number) { addRange(from, to, this.changes) }
   comparePoint(from: number, to: number) { addRange(from, to, this.changes) }
+  boundChange(pos: number) { addRange(pos, pos, this.changes) }
 }
 
 function findChangedDeco(a: readonly DecorationSet[], b: readonly DecorationSet[], diff: ChangeSet) {
