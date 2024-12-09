@@ -9,7 +9,7 @@ import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState,
         textNodeBefore, textNodeAfter} from "./dom"
-import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRange,
+import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRange, editable,
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
@@ -228,7 +228,7 @@ export class DocView extends ContentView {
   updateSelection(mustRead = false, fromPointer = false) {
     if (mustRead || !this.view.observer.selectionRange.focusNode) this.view.observer.readSelectionRange()
     let activeElt = this.view.root.activeElement, focused = activeElt == this.dom
-    let selectionNotFocus = !focused &&
+    let selectionNotFocus = !focused && !(this.view.state.facet(editable) || this.dom.tabIndex > -1) &&
       hasSelection(this.dom, this.view.observer.selectionRange) && !(activeElt && this.dom.contains(activeElt))
     if (!(focused || fromPointer || selectionNotFocus)) return
     let force = this.forceSelection
