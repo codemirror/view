@@ -98,10 +98,6 @@ function wrappedLine(view: EditorView, pos: number, side: 1 | -1, inside: {from:
   return {from: Math.max(inside.from, Math.min(left, right)), to: Math.min(inside.to, Math.max(left, right))}
 }
 
-// Added to range rectangle's vertical extent to prevent rounding
-// errors from introducing gaps in the rendered content.
-const enum C { Epsilon = 0.01 }
-
 function rectanglesForRange(view: EditorView, className: string, range: SelectionRange): RectangleMarker[] {
   if (range.to <= view.viewport.from || range.from >= view.viewport.to) return []
   let from = Math.max(range.from, view.viewport.from), to = Math.min(range.to, view.viewport.to)
@@ -135,8 +131,8 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
   }
 
   function piece(left: number, top: number, right: number, bottom: number) {
-    return new RectangleMarker(className, left - base.left, top - base.top - C.Epsilon,
-                               right - left, bottom - top + C.Epsilon)
+    return new RectangleMarker(className, left - base.left, top - base.top,
+                               right - left, bottom - top)
   }
   function pieces({top, bottom, horizontal}: {top: number, bottom: number, horizontal: number[]}) {
     let pieces = []
