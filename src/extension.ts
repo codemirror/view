@@ -317,7 +317,7 @@ export function getScrollMargins(view: EditorView) {
 
 export const styleModule = Facet.define<StyleModule>()
 
-export const enum UpdateFlag { Focus = 1, Height = 2, Viewport = 4, Geometry = 8 }
+export const enum UpdateFlag { Focus = 1, Height = 2, Viewport = 4, ViewportMoved = 8, Geometry = 16 }
 
 export class ChangedRange {
   constructor(readonly fromA: number, readonly toA: number, readonly fromB: number, readonly toB: number) {}
@@ -398,6 +398,14 @@ export class ViewUpdate {
   /// update.
   get viewportChanged() {
     return (this.flags & UpdateFlag.Viewport) > 0
+  }
+
+  /// Returns true when
+  /// [`viewportChanged`](#view.ViewUpdate.viewportChanged) is true
+  /// and the viewport change is not just the result of mapping it in
+  /// response to document changes.
+  get viewportMoved() {
+    return (this.flags & UpdateFlag.ViewportMoved) > 0
   }
 
   /// Indicates whether the height of a block element in the editor

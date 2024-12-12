@@ -235,6 +235,7 @@ export class ViewState {
     if (scrollTarget && (scrollTarget.range.head < viewport.from || scrollTarget.range.head > viewport.to) ||
         !this.viewportIsAppropriate(viewport))
       viewport = this.getViewport(0, scrollTarget)
+
     let viewportChange = viewport.from != this.viewport.from || viewport.to != this.viewport.to
     this.viewport = viewport
     update.flags |= this.updateForViewport()
@@ -242,7 +243,7 @@ export class ViewState {
 
     if (this.lineGaps.length || this.viewport.to - this.viewport.from > (LG.Margin << 1))
       this.updateLineGaps(this.ensureLineGaps(this.mapLineGaps(this.lineGaps, update.changes)))
-    update.flags |= this.computeVisibleRanges()
+    update.flags |= this.computeVisibleRanges(update.changes)
 
     if (scrollTarget) this.scrollTarget = scrollTarget
 
@@ -537,7 +538,7 @@ export class ViewState {
     }
   }
 
-  computeVisibleRanges() {
+  computeVisibleRanges(changes?: ChangeDesc) {
     let deco = this.stateDeco
     if (this.lineGaps.length) deco = deco.concat(this.lineGapDeco)
     let ranges: {from: number, to: number}[] = []
@@ -545,10 +546,21 @@ export class ViewState {
       span(from, to) { ranges.push({from, to}) },
       point() {}
     }, 20)
-    let changed = ranges.length != this.visibleRanges.length ||
-      this.visibleRanges.some((r, i) => r.from != ranges[i].from || r.to != ranges[i].to)
+    let changed = 0
+    if (ranges.length != this.visibleRanges.length) {
+      changed = UpdateFlag.ViewportMoved | UpdateFlag.Viewport
+    } else {
+      for (let i = 0; i < ranges.length && !(changed & UpdateFlag.ViewportMoved); i++) {
+        let old = this.visibleRanges[i], nw = ranges[i]
+        if (old.from != nw.from || old.to != nw.to) {
+          changed |= UpdateFlag.Viewport
+          if (!(changes && changes.mapPos(old.from, -1) == nw.from && changes.mapPos(old.to, 1) == nw.to))
+            changed |= UpdateFlag.ViewportMoved
+        }
+      }
+    }
     this.visibleRanges = ranges
-    return changed ? UpdateFlag.Viewport : 0
+    return changed
   }
 
   lineBlockAt(pos: number): BlockInfo {
