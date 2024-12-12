@@ -108,7 +108,7 @@ export class MatchDecorator {
         changeTo = Math.max(to, changeTo)
       }
     })
-    if (update.viewportChanged || changeTo - changeFrom > 1000)
+    if (update.viewportMoved || changeTo - changeFrom > 1000)
       return this.createDeco(update.view)
     if (changeTo > -1)
       return this.updateRange(update.view, deco.map(update.changes), changeFrom, changeTo)
