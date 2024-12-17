@@ -1,3 +1,15 @@
+## 6.36.0 (2024-12-17)
+
+### Bug fixes
+
+Make selection rectangles verticaly align precisely, rather than introducing a slight overlap.
+
+Fix an issue in `MatchDecorator` that caused it to fully rebuild its decorations on normal edits.
+
+### New features
+
+View updates now have a `viewportMoved` flag that is only true when a viewport change originated from something other than mapping the viewport over a document change.
+
 ## 6.35.3 (2024-12-09)
 
 ### Bug fixes
