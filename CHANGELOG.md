@@ -1,3 +1,9 @@
+## 6.36.1 (2024-12-19)
+
+### Bug fixes
+
+Fix a crash in MatchDecorator when updating matches at the end of the document.
+
 ## 6.36.0 (2024-12-17)
 
 ### Bug fixes
