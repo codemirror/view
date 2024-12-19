@@ -103,7 +103,7 @@ export class MatchDecorator {
   updateDeco(update: ViewUpdate, deco: DecorationSet) {
     let changeFrom = 1e9, changeTo = -1
     if (update.docChanged) update.changes.iterChanges((_f, _t, from, to) => {
-      if (to > update.view.viewport.from && from < update.view.viewport.to) {
+      if (to >= update.view.viewport.from && from <= update.view.viewport.to) {
         changeFrom = Math.min(from, changeFrom)
         changeTo = Math.max(to, changeTo)
       }
