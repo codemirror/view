@@ -37,6 +37,12 @@ function visiblePixelRange(dom: HTMLElement, paddingTop: number): Rect {
           top: top - (rect.top + paddingTop), bottom: Math.max(top, bottom) - (rect.top + paddingTop)}
 }
 
+function inWindow(elt: HTMLElement) {
+  let rect = elt.getBoundingClientRect(), win = elt.ownerDocument.defaultView || window
+  return rect.left < win.innerWidth && rect.right > 0 &&
+    rect.top < win.innerHeight && rect.bottom > 0
+}
+
 function fullPixelRange(dom: HTMLElement, paddingTop: number): Rect {
   let rect = dom.getBoundingClientRect()
   return {left: 0, right: rect.right - rect.left,
@@ -305,7 +311,7 @@ export class ViewState {
       this.inView = inView
       if (inView) measureContent = true
     }
-    if (!this.inView && !this.scrollTarget) return 0
+    if (!this.inView && !this.scrollTarget && !inWindow(view.dom)) return 0
 
     let contentWidth = domRect.width
     if (this.contentDOMWidth != contentWidth || this.editorHeight != view.scrollDOM.clientHeight) {
