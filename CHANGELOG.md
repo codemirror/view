@@ -1,3 +1,13 @@
+## 6.36.2 (2025-01-09)
+
+### Bug fixes
+
+Fix an issue where some kinds of relayouts could put the editor in a state where it believed it wasn't in window, preventing relayout, though it in fact was.
+
+Make sure macOS double-space-to-period conversions are properly suppressed.
+
+Fix an issue where native selection changes, such as mobile spacebar-drag, weren't being picked up in edit context mode.
+
 ## 6.36.1 (2024-12-19)
 
 ### Bug fixes
