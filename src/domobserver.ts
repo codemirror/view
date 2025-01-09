@@ -89,7 +89,7 @@ export class DOMObserver {
     }
 
     if (useCharData)
-      this.onCharData = (event: MutationEvent) => {
+      this.onCharData = (event: any) => {
         this.queue.push({target: event.target,
                          type: "characterData",
                          oldValue: event.prevValue} as MutationRecord)
