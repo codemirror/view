@@ -553,7 +553,7 @@ class EditContextManager {
       selectionEnd: this.toContextPos(view.state.selection.main.head)
     })
     this.handlers.textupdate = e => {
-      let {anchor, head} = view.state.selection.main
+      let main = view.state.selection.main, {anchor, head} = main
       let from = this.toEditorPos(e.updateRangeStart), to = this.toEditorPos(e.updateRangeEnd)
       if (view.inputState.composing >= 0 && !this.composing)
         this.composing = {contextBase: e.updateRangeStart, editorBase: from, drifted: false}
@@ -564,7 +564,11 @@ class EditContextManager {
       else if (change.to == this.to && anchor > this.to) change.to = anchor
 
       // Edit contexts sometimes fire empty changes
-      if (change.from == change.to && !change.insert.length) return
+      if (change.from == change.to && !change.insert.length) {
+        let newSel = EditorSelection.single(this.toEditorPos(e.selectionStart), this.toEditorPos(e.selectionEnd))
+        if (!newSel.main.eq(main)) view.dispatch({selection: newSel, userEvent: "select"})
+        return
+      }
       if ((browser.mac || browser.android) && change.from == head - 1 &&
           /^\. ?$/.test(e.text) && view.contentDOM.getAttribute("autocorrect") == "off")
         change = {from, to, insert: Text.of([e.text.replace(".", " ")])}
