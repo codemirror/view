@@ -92,6 +92,12 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
   if (!change && domChange.typeOver && !sel.empty && newSel && newSel.main.empty) {
     // Heuristic to notice typing over a selected character
     change = {from: sel.from, to: sel.to, insert: view.state.doc.slice(sel.from, sel.to)}
+  } else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
+             /^\. ?$/.test(change.insert.toString()) && view.contentDOM.getAttribute("autocorrect") == "off") {
+    // Detect insert-period-on-double-space Mac and Android behavior,
+    // and transform it into a regular space insert.
+    if (newSel && change.insert.length == 2) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)
+    change = {from: change.from, to: change.to, insert: Text.of([change.insert.toString().replace(".", " ")])}
   } else if (change && change.from >= sel.from && change.to <= sel.to &&
              (change.from != sel.from || change.to != sel.to) &&
              (sel.to - sel.from) - (change.to - change.from) <= 4) {
@@ -102,12 +108,6 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       from: sel.from, to: sel.to,
       insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
     }
-  } else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
-             /^\. ?$/.test(change.insert.toString()) && view.contentDOM.getAttribute("autocorrect") == "off") {
-    // Detect insert-period-on-double-space Mac and Android behavior,
-    // and transform it into a regular space insert.
-    if (newSel && change.insert.length == 2) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)
-    change = {from: sel.from, to: sel.to, insert: Text.of([" "])}
   } else if (browser.chrome && change && change.from == change.to && change.from == sel.head &&
              change.insert.toString() == "\n " && view.lineWrapping) {
     // In Chrome, if you insert a space at the start of a wrapped
