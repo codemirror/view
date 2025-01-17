@@ -1,5 +1,5 @@
 import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation, Text, Facet} from "@codemirror/state"
-import {EditorView} from "./editorview"
+import {EditorView, UpdateState} from "./editorview"
 import {ContentView} from "./contentview"
 import {LineView} from "./blockview"
 import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior, atomicRanges,
@@ -84,7 +84,8 @@ export class InputState {
   handleEvent(event: Event) {
     if (!eventBelongsToEditor(this.view, event) || this.ignoreDuringComposition(event)) return
     if (event.type == "keydown" && this.keydown(event as KeyboardEvent)) return
-    this.runHandlers(event.type, event)
+    if (this.view.updateState != UpdateState.Idle) Promise.resolve().then(() => this.runHandlers(event.type, event))
+    else this.runHandlers(event.type, event)
   }
 
   runHandlers(type: string, event: Event) {
