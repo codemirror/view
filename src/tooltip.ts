@@ -103,9 +103,10 @@ export function tooltips(config: {
   parent?: HTMLElement
   /// By default, when figuring out whether there is room for a
   /// tooltip at a given position, the extension considers the entire
-  /// space between 0,0 and `innerWidth`,`innerHeight` to be available
-  /// for showing tooltips. You can provide a function here that
-  /// returns an alternative rectangle.
+  /// space between 0,0 and
+  /// `documentElement.clientWidth`/`clientHeight` to be available for
+  /// showing tooltips. You can provide a function here that returns
+  /// an alternative rectangle.
   tooltipSpace?: (view: EditorView) => Rect
 } = {}): Extension {
   return tooltipConfig.of(config)
@@ -118,8 +119,8 @@ type TooltipConfig = {
 }
 
 function windowSpace(view: EditorView) {
-  let {win} = view
-  return {top: 0, left: 0, bottom: win.innerHeight, right: win.innerWidth}
+  let docElt = view.dom.ownerDocument.documentElement
+  return {top: 0, left: 0, bottom: docElt.clientHeight, right: docElt.clientWidth}
 }
 
 const tooltipConfig = Facet.define<Partial<TooltipConfig>, TooltipConfig>({
