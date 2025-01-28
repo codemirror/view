@@ -673,9 +673,11 @@ class EditContextManager {
   }
 
   update(update: ViewUpdate) {
-    let reverted = this.pendingContextChange
-    if (this.composing && (this.composing.drifted || update.transactions.some(
-          tr => !tr.isUserEvent("input.type") && tr.changes.touchesRange(this.from, this.to)))) {
+    let reverted = this.pendingContextChange, startSel = update.startState.selection.main
+    if (this.composing &&
+        (this.composing.drifted ||
+         (!update.changes.touchesRange(startSel.from, startSel.to) &&
+          update.transactions.some(tr => !tr.isUserEvent("input.type") && tr.changes.touchesRange(this.from, this.to))))) {
       this.composing.drifted = true
       this.composing.editorBase = update.changes.mapPos(this.composing.editorBase)
     } else if (!this.applyEdits(update) || !this.rangeIsValid(update.state)) {
