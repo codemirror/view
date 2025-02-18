@@ -1,3 +1,13 @@
+## 6.36.3 (2025-02-18)
+
+### Bug fixes
+
+Make sure event handlers registered with `domEventHandlers` are not called during view updates, to avoid triggering nested update errors.
+
+Don't include the window scrollbars in the space available for displaying tooltips.
+
+Work around an issue with Chrome's `EditContext` that shows up when using autocompletion while composing with Samsung's virtual Android keyboard.
+
 ## 6.36.2 (2025-01-09)
 
 ### Bug fixes
