@@ -204,7 +204,7 @@ export class BlockWidgetView extends ContentView implements BlockView {
   get children() { return noChildren }
 
   sync(view: EditorView) {
-    if (!this.dom || !this.widget.updateDOM(this.dom, view)) {
+    if (!this.dom || !this.widget.updateDOM(this.dom, view, this.prevWidget)) {
       if (this.dom && this.prevWidget) this.prevWidget.destroy(this.dom)
       this.prevWidget = null
       this.setDOM(this.widget.toDOM(view))
