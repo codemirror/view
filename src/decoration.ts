@@ -66,10 +66,6 @@ interface WidgetDecorationSpec {
   /// [`requestMeasure`](#view.EditorView.requestMeasure), so that the
   /// editor can update its information about its vertical layout.
   block?: boolean
-  /// By default, widgets get removed, during mapping, when the
-  /// content around them is deleted. Set this to true to make a
-  /// widget survive such changes.
-  persistent?: boolean
   /// Other properties are allowed.
   [other: string]: any
 }
@@ -243,7 +239,7 @@ export abstract class Decoration extends RangeValue {
     side += (block && !spec.inlineOrder)
       ? (side > 0 ? Side.BlockAfter : Side.BlockBefore)
       : (side > 0 ? Side.InlineAfter : Side.InlineBefore)
-    return new PointDecoration(spec, side, side, block, !!spec.persistent, spec.widget || null, false)
+    return new PointDecoration(spec, side, side, block, spec.widget || null, false)
   }
 
   /// Create a replace decoration which replaces the given range with
@@ -258,7 +254,7 @@ export abstract class Decoration extends RangeValue {
       startSide = (start ? (block ? Side.BlockIncStart : Side.InlineIncStart) : Side.NonIncStart) - 1
       endSide = (end ? (block ? Side.BlockIncEnd : Side.InlineIncEnd) : Side.NonIncEnd) + 1
     }
-    return new PointDecoration(spec, startSide, endSide, block, false, spec.widget || null, true)
+    return new PointDecoration(spec, startSide, endSide, block, spec.widget || null, true)
   }
 
   /// Create a line decoration, which can add DOM attributes to the
@@ -336,14 +332,10 @@ export class PointDecoration extends Decoration {
   constructor(spec: any,
               startSide: number, endSide: number,
               public block: boolean,
-              persistent: boolean,
               widget: WidgetType | null,
               readonly isReplace: boolean) {
     super(startSide, endSide, widget, spec)
-    this.mapMode = persistent ? MapMode.Simple
-      : !block ? MapMode.TrackDel
-      : startSide <= 0 ? MapMode.TrackBefore
-      : MapMode.TrackAfter
+    this.mapMode = !block ? MapMode.TrackDel : startSide <= 0 ? MapMode.TrackBefore : MapMode.TrackAfter
   }
 
   // Only relevant when this.block == true
