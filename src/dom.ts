@@ -193,6 +193,10 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
         }
       }
       if (top) break
+      if (rect.top < bounding.top || rect.bottom > bounding.bottom ||
+          rect.left < bounding.left || rect.right > bounding.right)
+        rect = {left: Math.max(rect.left, bounding.left), right: Math.min(rect.right, bounding.right),
+                top: Math.max(rect.top, bounding.top), bottom: Math.min(rect.bottom, bounding.bottom)}
       cur = cur.assignedSlot || cur.parentNode
     } else if (cur.nodeType == 11) { // A shadow root
       cur = cur.host
