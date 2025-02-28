@@ -138,13 +138,13 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
       let moveX = 0, moveY = 0
       if (y == "nearest") {
         if (rect.top < bounding.top) {
-          moveY = -(bounding.top - rect.top + yMargin)
+          moveY = rect.top - (bounding.top + yMargin)
           if (side > 0 && rect.bottom > bounding.bottom + moveY)
-            moveY = rect.bottom - bounding.bottom + moveY + yMargin
+            moveY = rect.bottom - bounding.bottom + yMargin
         } else if (rect.bottom > bounding.bottom) {
           moveY = rect.bottom - bounding.bottom + yMargin
           if (side < 0 && (rect.top - moveY) < bounding.top)
-            moveY = -(bounding.top + moveY - rect.top + yMargin)
+            moveY = rect.top - (bounding.top + yMargin)
         }
       } else {
         let rectHeight = rect.bottom - rect.top, boundingHeight = bounding.bottom - bounding.top
@@ -156,13 +156,13 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
       }
       if (x == "nearest") {
         if (rect.left < bounding.left) {
-          moveX = -(bounding.left - rect.left + xMargin)
+          moveX = rect.left - (bounding.left + xMargin)
           if (side > 0 && rect.right > bounding.right + moveX)
-            moveX = rect.right - bounding.right + moveX + xMargin
+            moveX = rect.right - bounding.right + xMargin
         } else if (rect.right > bounding.right) {
           moveX = rect.right - bounding.right + xMargin
           if (side < 0 && rect.left < bounding.left + moveX)
-            moveX = -(bounding.left + moveX - rect.left + xMargin)
+            moveX = rect.left - (bounding.left + xMargin)
         }
       } else {
         let targetLeft =
