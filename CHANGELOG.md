@@ -1,3 +1,9 @@
+## 6.36.4 (2025-03-03)
+
+### Bug fixes
+
+Fix an issue where scrolling down to a range higher than the viewport could in some situations fail to scroll to the proper position.
+
 ## 6.36.3 (2025-02-18)
 
 ### Bug fixes
