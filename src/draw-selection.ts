@@ -1,11 +1,7 @@
 import {EditorSelection, Extension, Facet, combineConfig, Prec, EditorState} from "@codemirror/state"
-import {StyleSpec} from "style-mod"
 import {ViewUpdate, nativeSelectionHidden} from "./extension"
 import {EditorView} from "./editorview"
 import {layer, RectangleMarker} from "./layer"
-import browser from "./browser"
-
-const CanHidePrimary = !(browser.ios && browser.webkit && browser.webkit_version < 534)
 
 type SelectionConfig = {
   /// The length of a full cursor blink cycle, in milliseconds.
@@ -72,7 +68,7 @@ const cursorLayer = layer({
     let cursors = []
     for (let r of state.selection.ranges) {
       let prim = r == state.selection.main
-      if (r.empty ? !prim || CanHidePrimary : conf.drawRangeCursor) {
+      if (r.empty || conf.drawRangeCursor) {
         let className = prim ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary"
         let cursor = r.empty ? r : EditorSelection.cursor(r.head, r.head > r.anchor ? -1 : 1)
         for (let piece of RectangleMarker.forRange(view, className, cursor)) cursors.push(piece)
@@ -109,11 +105,13 @@ const selectionLayer = layer({
   class: "cm-selectionLayer"
 })
 
-const themeSpec: {[selector: string]: StyleSpec} = {
+const hideNativeSelection = Prec.highest(EditorView.theme({
   ".cm-line": {
     "& ::selection, &::selection": {backgroundColor: "transparent !important"},
+    caretColor: "transparent !important"
   },
   ".cm-content": {
+    caretColor: "transparent !important",
     "& :focus": {
       caretColor: "initial !important",
       "&::selection, & ::selection": {
@@ -121,7 +119,4 @@ const themeSpec: {[selector: string]: StyleSpec} = {
       }
     }
   }
-}
-if (CanHidePrimary)
-  themeSpec[".cm-line"].caretColor = themeSpec[".cm-content"].caretColor = "transparent !important"
-const hideNativeSelection = Prec.highest(EditorView.theme(themeSpec))
+}))
