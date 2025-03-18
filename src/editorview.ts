@@ -145,7 +145,7 @@ export class EditorView {
   private announceDOM: HTMLElement
 
   /// @internal
-  inputState!: InputState
+  declare inputState: InputState
 
   /// @internal
   public viewState: ViewState
@@ -156,7 +156,7 @@ export class EditorView {
   private pluginMap: Map<ViewPlugin<any>, PluginInstance | null> = new Map
   private editorAttrs: Attrs = {}
   private contentAttrs: Attrs = {}
-  private styleModules!: readonly StyleModule[]
+  declare private styleModules: readonly StyleModule[]
   private bidiCache: CachedOrder[] = []
 
   private destroyed = false;

@@ -141,7 +141,7 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
   position: "fixed" | "absolute"
   madeAbsolute = false
   parent: HTMLElement | null
-  container!: HTMLElement
+  declare container: HTMLElement
   classes: string
   intersectionObserver: IntersectionObserver | null
   resizeObserver: ResizeObserver | null

@@ -48,7 +48,7 @@ export function placeholder(content: string | HTMLElement | ((view: EditorView) 
         : Decoration.none
     }
 
-    update!: () => void // Kludge to convince TypeScript that this is a plugin value
+    declare update: () => void // Kludge to convince TypeScript that this is a plugin value
 
     get decorations() { return this.view.state.doc.length ? Decoration.none : this.placeholder }
   }, {decorations: v => v.decorations})

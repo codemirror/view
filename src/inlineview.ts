@@ -9,8 +9,8 @@ import {EditorView} from "./editorview"
 const MaxJoinLen = 256
 
 export class TextView extends ContentView {
-  children!: ContentView[]
-  dom!: Text | null
+  declare children: ContentView[]
+  declare dom: Text | null
 
   constructor(public text: string) {
     super()
@@ -69,7 +69,7 @@ export class TextView extends ContentView {
 }
 
 export class MarkView extends ContentView {
-  dom!: HTMLElement | null
+  declare dom: HTMLElement | null
 
   constructor(readonly mark: MarkDecoration,
               public children: ContentView[] = [],
@@ -159,8 +159,8 @@ function textCoords(text: Text, pos: number, side: number): Rect | null {
 
 // Also used for collapsed ranges that don't have a placeholder widget!
 export class WidgetView extends ContentView {
-  children!: ContentView[]
-  dom!: HTMLElement | null
+  declare children: ContentView[]
+  declare dom: HTMLElement | null
   prevWidget: WidgetType | null = null
 
   static create(widget: WidgetType, length: number, side: number) {
@@ -256,8 +256,8 @@ export class WidgetView extends ContentView {
 // browser bugs that show up when the cursor is directly next to
 // uneditable inline content.
 export class WidgetBufferView extends ContentView {
-  children!: ContentView[]
-  dom!: HTMLElement | null
+  declare children: ContentView[]
+  declare dom: HTMLElement | null
 
   constructor(readonly side: number) { super() }
 

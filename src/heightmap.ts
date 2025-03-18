@@ -149,7 +149,7 @@ export abstract class HeightMap {
     public flags: number = Flag.Outdated
   ) {}
 
-  size!: number
+  declare size: number
 
   get outdated() { return (this.flags & Flag.Outdated) > 0 }
   set outdated(value) { this.flags = (value ? Flag.Outdated : 0) | (this.flags & ~Flag.Outdated) }

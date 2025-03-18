@@ -147,15 +147,15 @@ export class ViewState {
   mustMeasureContent = true
 
   stateDeco: readonly DecorationSet[]
-  viewportLines!: BlockInfo[]
+  declare viewportLines: BlockInfo[]
   defaultTextDirection: Direction = Direction.LTR
 
   // The main viewport for the visible part of the document
-  viewport!: Viewport
+  declare viewport: Viewport
   // If the main selection starts or ends outside of the main
   // viewport, extra single-line viewports are created for these
   // points, so that the DOM selection doesn't fall in a gap.
-  viewports!: readonly Viewport[]
+  declare viewports: readonly Viewport[]
   visibleRanges: readonly {from: number, to: number}[] = []
   lineGaps: readonly LineGap[]
   lineGapDeco: DecorationSet

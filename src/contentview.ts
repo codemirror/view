@@ -32,7 +32,7 @@ export abstract class ContentView {
   flags: number = ViewFlag.NodeDirty
   abstract length: number
   abstract children: ContentView[]
-  breakAfter!: number
+  declare breakAfter: number
 
   get overrideDOMText(): Text | null { return null }
 

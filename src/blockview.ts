@@ -16,11 +16,11 @@ export interface BlockView extends ContentView {
 export class LineView extends ContentView implements BlockView {
   children: ContentView[] = []
   length: number = 0
-  dom!: HTMLElement | null
+  declare dom: HTMLElement | null
   prevAttrs: Attrs | null | undefined = undefined
   attrs: Attrs | null = null
   breakAfter = 0
-  parent!: DocView | null
+  declare parent: DocView | null
 
   // Consumes source
   merge(from: number, to: number, source: BlockView | null, hasStart: boolean, openStart: number, openEnd: number): boolean {
@@ -172,8 +172,8 @@ export class LineView extends ContentView implements BlockView {
 }
 
 export class BlockWidgetView extends ContentView implements BlockView {
-  dom!: HTMLElement | null
-  parent!: DocView | null
+  declare dom: HTMLElement | null
+  declare parent: DocView | null
   breakAfter = 0
   prevWidget: WidgetType | null = null
 

@@ -214,7 +214,7 @@ export abstract class Decoration extends RangeValue {
     readonly spec: any) { super() }
 
   /// @internal
-  point!: boolean
+  declare point: boolean
 
   /// @internal
   get heightRelevant() { return false }
