@@ -246,6 +246,7 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     color: "#888",
     display: "inline-block",
     verticalAlign: "top",
+    userSelect: "none"
   },
 
   ".cm-highlightSpace": {
