@@ -1,3 +1,11 @@
+## 6.36.5 (2025-03-29)
+
+### Bug fixes
+
+Fix an issue where some browsers wouldn't enable context menu paste when clicking on placeholder text.
+
+Fix an issue where cursor height would unnecessarily be based on a placeholder node's dimensions, and thus be off from the text height.
+
 ## 6.36.4 (2025-03-03)
 
 ### Bug fixes
