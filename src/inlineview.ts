@@ -342,7 +342,7 @@ export function coordsInChildren(view: ContentView, pos: number, side: number): 
       if (end >= pos) {
         if (child.children.length) {
           scan(child, pos - off)
-        } else if ((!after || after.isHidden && side > 0) &&
+        } else if ((!after || after.isHidden && (side > 0 || onSameLine(after, child))) &&
                    (end > pos || off == end && child.getSide() > 0)) {
           after = child
           afterPos = pos - off
@@ -365,4 +365,9 @@ function fallbackRect(view: ContentView) {
   if (!last) return (view.dom as HTMLElement).getBoundingClientRect()
   let rects = clientRectsFor(last)
   return rects[rects.length - 1] || null
+}
+
+function onSameLine(a: ContentView, b: ContentView) {
+  let posA = a.coordsAt(0, 1), posB = b.coordsAt(0, 1)
+  return posA && posB && posB.top < posA.bottom
 }
