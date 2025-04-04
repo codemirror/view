@@ -109,7 +109,7 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
     (lineStyle ? parseInt(lineStyle.paddingLeft) + Math.min(0, parseInt(lineStyle.textIndent)) : 0)
   let rightSide = contentRect.right - (lineStyle ? parseInt(lineStyle.paddingRight) : 0)
 
-  let startBlock = blockAt(view, from), endBlock = blockAt(view, to)
+  let startBlock = blockAt(view, from, 1), endBlock = blockAt(view, to, -1)
   let visualStart: {from: number, to: number} | null = startBlock.type == BlockType.Text ? startBlock : null
   let visualEnd: {from: number, to: number} | null = endBlock.type == BlockType.Text ? endBlock : null
   if (visualStart && (view.lineWrapping || startBlock.widgetLineBreaks))

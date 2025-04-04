@@ -244,16 +244,24 @@ function isSuspiciousChromeCaretResult(node: Node, offset: number, x: number) {
   return x - rect.left > 5
 }
 
-export function blockAt(view: EditorView, pos: number): BlockInfo {
+export function blockAt(view: EditorView, pos: number, side: -1 | 1): BlockInfo {
   let line = view.lineBlockAt(pos)
-  if (Array.isArray(line.type)) for (let l of line.type) {
-    if (l.to > pos || l.to == pos && (l.to == line.to || l.type == BlockType.Text)) return l
+  if (Array.isArray(line.type)) {
+    let best: BlockInfo | undefined
+    for (let l of line.type) {
+      if (l.from > pos) break
+      if (l.to < pos) continue
+      if (l.from < pos && l.to > pos) return l
+      if (!best || (l.type == BlockType.Text && (best.type != l.type || (side < 0 ? l.from < pos : l.to > pos))))
+        best = l
+    }
+    return best || line
   }
   return line
 }
 
 export function moveToLineBoundary(view: EditorView, start: SelectionRange, forward: boolean, includeWrap: boolean) {
-  let line = blockAt(view, start.head)
+  let line = blockAt(view, start.head, start.assoc || -1)
   let coords = !includeWrap || line.type != BlockType.Text || !(view.lineWrapping || line.widgetLineBreaks) ? null
     : view.coordsAtPos(start.assoc < 0 && start.head > line.from ? start.head - 1 : start.head)
   if (coords) {
