@@ -234,7 +234,7 @@ export class ViewState {
       this.scrollAnchorHeight = scrollAnchor.top
     } else {
       this.scrollAnchorPos = -1
-      this.scrollAnchorHeight = this.heightMap.height
+      this.scrollAnchorHeight = prevHeight
     }
 
     let viewport = heightChanges.length ? this.mapViewport(this.viewport, update.changes) : this.viewport
