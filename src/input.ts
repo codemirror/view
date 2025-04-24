@@ -808,7 +808,7 @@ export function focusChangeTransaction(state: EditorState, focus: boolean) {
     let effect = getEffect(state, focus)
     if (effect) effects.push(effect)
   }
-  return effects ? state.update({effects, annotations: isFocusChange.of(true)}) : null
+  return effects.length ? state.update({effects, annotations: isFocusChange.of(true)}) : null
 }
 
 function updateForFocusChange(view: EditorView) {
