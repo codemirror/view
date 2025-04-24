@@ -1,3 +1,13 @@
+## 6.36.6 (2025-04-24)
+
+### Bug fixes
+
+Fix an issue where `drawSelection` would draw selections starting at a block widget not at a line break in an odd way.
+
+Fix an issue where the editor would inappropriately scroll when editing near the bottom of the document with line wrapping enabled, in some cases.
+
+Fix an issue that caused unnecessary transactions on focus change.
+
 ## 6.36.5 (2025-03-29)
 
 ### Bug fixes
