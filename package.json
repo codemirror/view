@@ -28,7 +28,7 @@
   "dependencies": {
     "@codemirror/state": "^6.5.0",
     "style-mod": "^4.1.0",
-    "w3c-keyname": "^2.2.4"
+    "w3c-keyname": "^2.2.8"
   },
   "devDependencies": {
     "@codemirror/buildhelper": "^1.0.0"
