@@ -15,10 +15,7 @@ class Placeholder extends WidgetType {
       typeof this.content == "string" ? document.createTextNode(this.content) :
       typeof this.content == "function" ? this.content(view) :
       this.content.cloneNode(true))
-    if (typeof this.content == "string")
-      wrap.setAttribute("aria-label", "placeholder " + this.content)
-    else
-      wrap.setAttribute("aria-hidden", "true")
+    wrap.setAttribute("aria-hidden", "true")
     return wrap
   }
 
@@ -39,7 +36,7 @@ class Placeholder extends WidgetType {
 /// Extension that enables a placeholder—a piece of example content
 /// to show when the editor is empty.
 export function placeholder(content: string | HTMLElement | ((view: EditorView) => HTMLElement)): Extension {
-  return ViewPlugin.fromClass(class {
+  let plugin = ViewPlugin.fromClass(class {
     placeholder: DecorationSet
 
     constructor(readonly view: EditorView) {
@@ -52,4 +49,7 @@ export function placeholder(content: string | HTMLElement | ((view: EditorView) 
 
     get decorations() { return this.view.state.doc.length ? Decoration.none : this.placeholder }
   }, {decorations: v => v.decorations})
+  return typeof content == "string" ? [
+    plugin, EditorView.contentAttributes.of({"aria-placeholder": content})
+  ] : plugin
 }
