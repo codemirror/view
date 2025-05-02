@@ -1,3 +1,11 @@
+## 6.36.7 (2025-05-02)
+
+### Bug fixes
+
+Use the `aria-placeholder` attribute to communicate the placeholder text to screen readers.
+
+Fix a crash when `EditorView.composing` or `.compositionStarted` are accessed during view initialization.
+
 ## 6.36.6 (2025-04-24)
 
 ### Bug fixes
