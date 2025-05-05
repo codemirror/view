@@ -91,7 +91,7 @@ export const setEditContextFormatting = StateEffect.define<DecorationSet>()
 export function logException(state: EditorState, exception: any, context?: string) {
   let handler = state.facet(exceptionSink)
   if (handler.length) handler[0](exception)
-  else if (window.onerror) window.onerror(String(exception), context, undefined, undefined, exception)
+  else if (window.onerror && window.onerror(String(exception), context, undefined, undefined, exception)) {}
   else if (context) console.error(context + ":", exception)
   else console.error(exception)
 }
