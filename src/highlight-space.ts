@@ -33,8 +33,7 @@ export function highlightWhitespace() {
 
 const trailingHighlighter = matcher(new MatchDecorator({
   regexp: /\s+$/g,
-  decoration: Decoration.mark({class: "cm-trailingSpace"}),
-  boundary: /\S/,
+  decoration: Decoration.mark({class: "cm-trailingSpace"})
 }))
 
 /// Returns an extension that adds a `cm-trailingSpace` class to all

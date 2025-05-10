@@ -118,7 +118,7 @@ export class MatchDecorator {
   private updateRange(view: EditorView, deco: DecorationSet, updateFrom: number, updateTo: number) {
     for (let r of view.visibleRanges) {
       let from = Math.max(r.from, updateFrom), to = Math.min(r.to, updateTo)
-      if (to > from) {
+      if (to >= from) {
         let fromLine = view.state.doc.lineAt(from), toLine = fromLine.to < to ? view.state.doc.lineAt(to) : fromLine
         let start = Math.max(r.from, fromLine.from), end = Math.min(r.to, toLine.to)
         if (this.boundary) {
