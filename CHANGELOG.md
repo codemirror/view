@@ -1,3 +1,11 @@
+## 6.36.8 (2025-05-12)
+
+### Bug fixes
+
+Make `logException` log errors to the console when `onerror` returns a falsy value.
+
+Fix an issue in `MatchDecorator` causing `updateDeco` to sometimes not do the right thing for deletions.
+
 ## 6.36.7 (2025-05-02)
 
 ### Bug fixes
