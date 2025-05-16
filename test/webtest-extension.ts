@@ -79,4 +79,10 @@ describe("EditorView extension", () => {
     cm.dispatch({effects: lang.reconfigure(EditorState.phrases.of({Hello: "Bonjour"}))})
     ist(cm.dom.querySelector(".greeting")!.textContent, "Bonjour")
   })
+
+  it("supports plugins with arguments", () => {
+    let plugin = ViewPlugin.define((v, arg: number) => ({number: arg}))
+    let cm = tempView("", plugin.of(20))
+    ist(cm.plugin(plugin)?.number, 20)
+  })
 })

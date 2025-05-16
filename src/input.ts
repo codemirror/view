@@ -218,13 +218,13 @@ function computeHandlers(plugins: readonly PluginInstance[]) {
     return result[type] || (result[type] = {observers: [], handlers: []})
   }
   for (let plugin of plugins) {
-    let spec = plugin.spec
-    if (spec && spec.domEventHandlers) for (let type in spec.domEventHandlers) {
-      let f = spec.domEventHandlers[type]
+    let spec = plugin.spec, handlers = spec && spec.plugin.domEventHandlers, observers = spec && spec.plugin.domEventObservers
+    if (handlers) for (let type in handlers) {
+      let f = handlers[type]
       if (f) record(type).handlers.push(bindHandler(plugin.value!, f))
     }
-    if (spec && spec.domEventObservers) for (let type in spec.domEventObservers) {
-      let f = spec.domEventObservers[type]
+    if (observers) for (let type in observers) {
+      let f = observers[type]
       if (f) record(type).observers.push(bindHandler(plugin.value!, f))
     }
   }

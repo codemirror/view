@@ -123,7 +123,16 @@ export interface PluginValue extends Object {
 
 let nextPluginID = 0
 
-export const viewPlugin = Facet.define<ViewPlugin<any>>()
+type PluginSource<Arg> = {plugin: ViewPlugin<any, Arg>, arg: Arg}
+
+export const viewPlugin = Facet.define<PluginSource<any>>({
+  combine(plugins) {
+    return plugins.filter((p, i) => {
+      for (let j = 0; j < i; j++) if (plugins[j].plugin == p.plugin) return false
+      return true
+    })
+  }
+})
 
 /// Provides additional information when defining a [view
 /// plugin](#view.ViewPlugin).
@@ -141,7 +150,7 @@ export interface PluginSpec<V extends PluginValue> {
 
   /// Specify that the plugin provides additional extensions when
   /// added to an editor configuration.
-  provide?: (plugin: ViewPlugin<V>) => Extension
+  provide?: (plugin: ViewPlugin<V, any>) => Extension
 
   /// Allow the plugin to provide decorations. When given, this should
   /// be a function that take the plugin value and return a
@@ -153,31 +162,44 @@ export interface PluginSpec<V extends PluginValue> {
 
 /// View plugins associate stateful values with a view. They can
 /// influence the way the content is drawn, and are notified of things
-/// that happen in the view.
-export class ViewPlugin<V extends PluginValue> {
-  /// Instances of this class act as extensions.
-  extension: Extension
+/// that happen in the view. They optionally take an argument, in
+/// which case you need to call [`of`](#view.ViewPlugin.of) to create
+/// an extension for the plugin. When the argument type is undefined,
+/// you can use the plugin instance as an extension directly.
+export class ViewPlugin<V extends PluginValue, Arg = undefined> {
+  /// When `Arg` is undefined, instances of this class act as
+  /// extensions. Otherwise, you have to call `of` to create an
+  /// extension value.
+  extension: Arg extends undefined ? Extension : null
+
+  private baseExtensions: Extension[]
 
   private constructor(
     /// @internal
     readonly id: number,
     /// @internal
-    readonly create: (view: EditorView) => V,
+    readonly create: (view: EditorView, arg: Arg) => V,
     /// @internal
     readonly domEventHandlers: DOMEventHandlers<V> | undefined,
     /// @internal
     readonly domEventObservers: DOMEventHandlers<V> | undefined,
-    buildExtensions: (plugin: ViewPlugin<V>) => Extension
+    buildExtensions: (plugin: ViewPlugin<V, Arg>) => Extension[]
   ) {
-    this.extension = buildExtensions(this)
+    this.baseExtensions = buildExtensions(this)
+    this.extension = this.baseExtensions.concat(viewPlugin.of({plugin: this, arg: undefined})) as any
+  }
+
+  /// Create an extension for this plugin with the given argument.
+  of(arg: Arg): Extension {
+    return this.baseExtensions.concat(viewPlugin.of({plugin: this, arg}))
   }
 
   /// Define a plugin from a constructor function that creates the
   /// plugin's value, given an editor view.
-  static define<V extends PluginValue>(create: (view: EditorView) => V, spec?: PluginSpec<V>) {
+  static define<V extends PluginValue, Arg = undefined>(create: (view: EditorView, arg: Arg) => V, spec?: PluginSpec<V>) {
     const {eventHandlers, eventObservers, provide, decorations: deco} = spec || {}
-    return new ViewPlugin<V>(nextPluginID++, create, eventHandlers, eventObservers, plugin => {
-      let ext = [viewPlugin.of(plugin)]
+    return new ViewPlugin<V, Arg>(nextPluginID++, create, eventHandlers, eventObservers, plugin => {
+      let ext = []
       if (deco) ext.push(decorations.of(view => {
         let pluginInst = view.plugin(plugin)
         return pluginInst ? deco(pluginInst) : Decoration.none
@@ -189,27 +211,29 @@ export class ViewPlugin<V extends PluginValue> {
 
   /// Create a plugin for a class whose constructor takes a single
   /// editor view as argument.
-  static fromClass<V extends PluginValue>(cls: {new (view: EditorView): V}, spec?: PluginSpec<V>) {
-    return ViewPlugin.define(view => new cls(view), spec)
+  static fromClass<V extends PluginValue, Arg = undefined>(cls: {new (view: EditorView, arg: Arg): V}, spec?: PluginSpec<V>) {
+    return ViewPlugin.define<V, Arg>((view, arg) => new cls(view, arg), spec)
   }
 }
 
 export class PluginInstance {
   // When starting an update, all plugins have this field set to the
   // update object, indicating they need to be updated. When finished
-  // updating, it is set to `false`. Retrieving a plugin that needs to
+  // updating, it is set to `null`. Retrieving a plugin that needs to
   // be updated with `view.plugin` forces an eager update.
   mustUpdate: ViewUpdate | null = null
   // This is null when the plugin is initially created, but
   // initialized on the first update.
   value: PluginValue | null = null
 
-  constructor(public spec: ViewPlugin<any> | null) {}
+  constructor(public spec: PluginSource<any> | null) {}
+
+  get plugin() { return this.spec && this.spec.plugin }
 
   update(view: EditorView) {
     if (!this.value) {
       if (this.spec) {
-        try { this.value = this.spec.create(view) }
+        try { this.value = this.spec.plugin.create(view, this.spec.arg) }
         catch (e) {
           logException(view.state, e, "CodeMirror plugin crashed")
           this.deactivate()

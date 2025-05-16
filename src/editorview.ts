@@ -153,7 +153,7 @@ export class EditorView {
   public docView: DocView
 
   private plugins: PluginInstance[] = []
-  private pluginMap: Map<ViewPlugin<any>, PluginInstance | null> = new Map
+  private pluginMap: Map<ViewPlugin<any, any>, PluginInstance | null> = new Map
   private editorAttrs: Attrs = {}
   private contentAttrs: Attrs = {}
   declare private styleModules: readonly StyleModule[]
@@ -585,10 +585,10 @@ export class EditorView {
   /// plugins that crash can be dropped from a view, so even when you
   /// know you registered a given plugin, it is recommended to check
   /// the return value of this method.
-  plugin<T extends PluginValue>(plugin: ViewPlugin<T>): T | null {
+  plugin<T extends PluginValue>(plugin: ViewPlugin<T, any>): T | null {
     let known = this.pluginMap.get(plugin)
-    if (known === undefined || known && known.spec != plugin)
-      this.pluginMap.set(plugin, known = this.plugins.find(p => p.spec == plugin) || null)
+    if (known === undefined || known && known.plugin != plugin)
+      this.pluginMap.set(plugin, known = this.plugins.find(p => p.plugin == plugin) || null)
     return known && known.update(this).value as T
   }
 
