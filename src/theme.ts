@@ -229,6 +229,22 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     color: "white"
   },
 
+  ".cm-dialog": {
+    padding: "2px 19px 4px 6px",
+    position: "relative",
+    "& label": { fontSize: "80%" },
+  },
+  ".cm-dialog-close": {
+    position: "absolute",
+    top: "3px",
+    right: "4px",
+    backgroundColor: "inherit",
+    border: "none",
+    font: "inherit",
+    fontSize: "14px",
+    padding: "0"
+  },
+
   ".cm-tab": {
     display: "inline-block",
     overflow: "hidden",

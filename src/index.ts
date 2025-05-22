@@ -18,6 +18,7 @@ export {rectangularSelection, crosshairCursor} from "./rectangular-selection"
 export {showTooltip, Tooltip, TooltipView, tooltips, getTooltip, hoverTooltip, HoverTooltipSource, hasHoverTooltips,
         closeHoverTooltips, repositionTooltips} from "./tooltip"
 export {showPanel, PanelConstructor, Panel, getPanel, panels} from "./panel"
+export {showDialog, getDialog} from "./dialog"
 export {lineNumbers, highlightActiveLineGutter, gutter, gutters, GutterMarker,
         gutterLineClass, gutterWidgetClass, lineNumberMarkers, lineNumberWidgetMarker} from "./gutter"
 export {highlightWhitespace, highlightTrailingWhitespace} from "./highlight-space"

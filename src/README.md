@@ -147,6 +147,10 @@ See also the [panel example](../../examples/panel/).
 
 @panels
 
+@showDialog
+
+@getDialog
+
 ### Layers
 
 Layers are sets of DOM elements drawn over or below the document text.
