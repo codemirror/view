@@ -1,3 +1,11 @@
+## 6.37.0 (2025-05-29)
+
+### New features
+
+View plugins can now take an argument, in which case they must be instantiated with their `of` method in order to be added to a configuration.
+
+The new `showDialog` function makes it easy to show a notification or prompt using a CodeMirror panel.
+
 ## 6.36.8 (2025-05-12)
 
 ### Bug fixes

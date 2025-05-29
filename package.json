@@ -1,6 +1,6 @@
 {
   "name": "@codemirror/view",
-  "version": "6.36.8",
+  "version": "6.37.0",
   "description": "DOM view component for the CodeMirror code editor",
   "scripts": {
     "test": "cm-runtests",
