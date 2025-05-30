@@ -1,3 +1,9 @@
+## 6.37.1 (2025-05-30)
+
+### Bug fixes
+
+Properly add `crelt` as a dependency.
+
 ## 6.37.0 (2025-05-29)
 
 ### New features
