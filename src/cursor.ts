@@ -223,10 +223,19 @@ function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockI
 // line before. This is used to detect such a result so that it can be
 // ignored (issue #401).
 function isSuspiciousSafariCaretResult(node: Node, offset: number, x: number) {
-  let len
+  let len, scan = node
   if (node.nodeType != 3 || offset != (len = node.nodeValue!.length)) return false
-  for (let next = node.nextSibling; next; next = next.nextSibling)
-    if (next.nodeType != 1 || next.nodeName != "BR") return false
+  for (;;) { // Check that there is no content after this node
+    let next = scan.nextSibling
+    if (next) {
+      if (next.nodeName == "BR") break
+      return false
+    } else {
+      let parent = scan.parentNode
+      if (!parent || parent.nodeName == "DIV") break
+      scan = parent
+    }
+  }
   return textRange(node as Text, len - 1, len).getBoundingClientRect().left >= x
 }
 
