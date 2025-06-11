@@ -227,7 +227,7 @@ function isSuspiciousSafariCaretResult(node: Node, offset: number, x: number) {
   if (node.nodeType != 3 || offset != (len = node.nodeValue!.length)) return false
   for (let next = node.nextSibling; next; next = next.nextSibling)
     if (next.nodeType != 1 || next.nodeName != "BR") return false
-  return textRange(node as Text, len - 1, len).getBoundingClientRect().left > x
+  return textRange(node as Text, len - 1, len).getBoundingClientRect().left >= x
 }
 
 // Chrome will move positions between lines to the start of the next line
