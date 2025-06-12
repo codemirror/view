@@ -1,3 +1,11 @@
+## 6.37.2 (2025-06-12)
+
+### Bug fixes
+
+Fix an issue where moving the cursor vertically from the one-but-last character on a line would sometimes move incorrectly on Safari.
+
+Fix an issue causing coordinates between lines of text to sometimes be inappropriately placed at the end of the line by `posAtCoords`.
+
 ## 6.37.1 (2025-05-30)
 
 ### Bug fixes
