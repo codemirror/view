@@ -71,8 +71,7 @@ function domPosAtCoords(parent: HTMLElement, x: number, y: number): {node: Node,
         return child.nodeType == 3 ? domPosInText(child as Text, x, y) : domPosAtCoords(child as HTMLElement, x, y)
       if (!closest || closestY > dy || closestY == dy && closestX > dx) {
         closest = child; closestRect = rect; closestX = dx; closestY = dy
-        let side = dy ? (y < rect.top ? -1 : 1) : dx ? (x < rect.left ? -1 : 1) : 0
-        closestOverlap = !side || (side > 0 ? i < rects.length - 1 : i > 0)
+        closestOverlap = !dx ? true : x < rect.left ? i > 0 : i < rects.length - 1
       }
       if (dx == 0) {
         if (y > rect.bottom && (!aboveRect || aboveRect.bottom < rect.bottom)) { above = child; aboveRect = rect }
@@ -236,7 +235,7 @@ function isSuspiciousSafariCaretResult(node: Node, offset: number, x: number) {
       scan = parent
     }
   }
-  return textRange(node as Text, len - 1, len).getBoundingClientRect().left >= x
+  return textRange(node as Text, len - 1, len).getBoundingClientRect().right > x
 }
 
 // Chrome will move positions between lines to the start of the next line
