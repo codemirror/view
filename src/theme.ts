@@ -133,6 +133,23 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "&dark .cm-cursor": {
     borderLeftColor: "#ddd"
   },
+
+  ".cm-selectionHandle": {
+    backgroundColor: "currentColor",
+    width: "1.5px"
+  },
+  ".cm-selectionHandle-start::before, .cm-selectionHandle-end::before": {
+    content: '""',
+    backgroundColor: "inherit",
+    borderRadius: "50%",
+    width: "8px",
+    height: "8px",
+    position: "absolute",
+    left: "-3.25px"
+  },
+  ".cm-selectionHandle-start::before": {top: "-8px"},
+  ".cm-selectionHandle-end::before": {bottom: "-8px"},
+
   ".cm-dropCursor": {
     position: "absolute"
   },

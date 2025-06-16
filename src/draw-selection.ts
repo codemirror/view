@@ -2,6 +2,7 @@ import {EditorSelection, Extension, Facet, combineConfig, Prec, EditorState} fro
 import {ViewUpdate, nativeSelectionHidden} from "./extension"
 import {EditorView} from "./editorview"
 import {layer, RectangleMarker} from "./layer"
+import browser from "./browser"
 
 type SelectionConfig = {
   /// The length of a full cursor blink cycle, in milliseconds.
@@ -10,13 +11,18 @@ type SelectionConfig = {
   /// Whether to show a cursor for non-empty ranges. Defaults to
   /// true.
   drawRangeCursor?: boolean
+  /// Because hiding the cursor also hides the selection handles in
+  /// the iOS browser, when this is enabled (the default), the
+  /// extension draws handles on the side of the selection in iOS.
+  iosSelectionHandles?: boolean
 }
 
 const selectionConfig = Facet.define<SelectionConfig, Required<SelectionConfig>>({
   combine(configs) {
     return combineConfig(configs, {
       cursorBlinkRate: 1200,
-      drawRangeCursor: true
+      drawRangeCursor: true,
+      iosSelectionHandles: true
     }, {
       cursorBlinkRate: (a, b) => Math.min(a, b),
       drawRangeCursor: (a, b) => a || b
@@ -68,7 +74,7 @@ const cursorLayer = layer({
     let cursors = []
     for (let r of state.selection.ranges) {
       let prim = r == state.selection.main
-      if (r.empty || conf.drawRangeCursor) {
+      if (r.empty || conf.drawRangeCursor && !(prim && browser.ios && conf.iosSelectionHandles)) {
         let className = prim ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary"
         let cursor = r.empty ? r : EditorSelection.cursor(r.head, r.head > r.anchor ? -1 : 1)
         for (let piece of RectangleMarker.forRange(view, className, cursor)) cursors.push(piece)
@@ -96,8 +102,19 @@ function setBlinkRate(state: EditorState, dom: HTMLElement) {
 const selectionLayer = layer({
   above: false,
   markers(view) {
-    return view.state.selection.ranges.map(r => r.empty ? [] : RectangleMarker.forRange(view, "cm-selectionBackground", r))
-      .reduce((a, b) => a.concat(b))
+    let markers = [], {main, ranges} = view.state.selection
+    for (let r of ranges) if (!r.empty) {
+      for (let marker of RectangleMarker.forRange(view, "cm-selectionBackground", r)) markers.push(marker)
+    }
+    if (browser.ios && !main.empty && view.state.facet(selectionConfig).iosSelectionHandles) {
+      for (let piece of RectangleMarker.forRange(view, "cm-selectionHandle cm-selectionHandle-start",
+                                                 EditorSelection.cursor(main.from, 1)))
+        markers.push(piece)
+      for (let piece of RectangleMarker.forRange(view, "cm-selectionHandle cm-selectionHandle-end",
+                                                 EditorSelection.cursor(main.to, 1)))
+        markers.push(piece)
+    }
+    return markers
   },
   update(update, dom) {
     return update.docChanged || update.selectionSet || update.viewportChanged || configChanged(update)
