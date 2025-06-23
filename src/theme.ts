@@ -164,14 +164,17 @@ export const baseTheme = buildTheme("." + baseThemeID, {
     display: "flex",
     height: "100%",
     boxSizing: "border-box",
-    insetInlineStart: 0,
-    zIndex: 200
+    zIndex: 200,
   },
+  ".cm-gutters-before": { insetInlineStart: 0 },
+  ".cm-gutters-after": { insetInlineEnd: 0 },
 
   "&light .cm-gutters": {
     backgroundColor: "#f5f5f5",
     color: "#6c6c6c",
-    borderRight: "1px solid #ddd"
+    border: "0px solid #ddd",
+    "&.cm-gutters-before": { borderRightWidth: "1px" },
+    "&.cm-gutters-after": { borderLeftWidth: "1px" },
   },
 
   "&dark .cm-gutters": {

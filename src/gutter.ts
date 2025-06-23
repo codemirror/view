@@ -74,6 +74,10 @@ interface GutterConfig {
   updateSpacer?: null | ((spacer: GutterMarker, update: ViewUpdate) => GutterMarker)
   /// Supply event handlers for DOM events on this gutter.
   domEventHandlers?: Handlers,
+  /// By default, gutters are shown horizontally before the editor
+  /// content (to the left in a left-to-right layout). Set this to
+  /// `"after"` to show a gutter on the other side of the content.
+  side?: "before" | "after"
 }
 
 const defaults = {
@@ -86,7 +90,8 @@ const defaults = {
   lineMarkerChange: null,
   initialSpacer: null,
   updateSpacer: null,
-  domEventHandlers: {}
+  domEventHandlers: {},
+  side: "before" as const
 }
 
 const activeGutters = Facet.define<Required<GutterConfig>>()
@@ -120,18 +125,22 @@ export function gutters(config?: {fixed?: boolean}): Extension {
 const gutterView = ViewPlugin.fromClass(class {
   gutters: SingleGutterView[]
   dom: HTMLElement
+  domAfter: HTMLElement | null = null
   fixed: boolean
   prevViewport: {from: number, to: number}
 
   constructor(readonly view: EditorView) {
     this.prevViewport = view.viewport
     this.dom = document.createElement("div")
-    this.dom.className = "cm-gutters"
+    this.dom.className = "cm-gutters cm-gutters-before"
     this.dom.setAttribute("aria-hidden", "true")
     this.dom.style.minHeight = (this.view.contentHeight / this.view.scaleY) + "px"
     this.gutters = view.state.facet(activeGutters).map(conf => new SingleGutterView(view, conf))
-    for (let gutter of this.gutters) this.dom.appendChild(gutter.dom)
     this.fixed = !view.state.facet(unfixGutters)
+    for (let gutter of this.gutters) {
+      if (gutter.config.side == "after") this.getDOMAfter().appendChild(gutter.dom)
+      else this.dom.appendChild(gutter.dom)
+    }
     if (this.fixed) {
       // FIXME IE11 fallback, which doesn't support position: sticky,
       // by using position: relative + event handlers that realign the
@@ -140,6 +149,18 @@ const gutterView = ViewPlugin.fromClass(class {
     }
     this.syncGutters(false)
     view.scrollDOM.insertBefore(this.dom, view.contentDOM)
+  }
+
+  getDOMAfter() {
+    if (!this.domAfter) {
+      this.domAfter = document.createElement("div")
+      this.domAfter.className = "cm-gutters cm-gutters-after"
+      this.domAfter.setAttribute("aria-hidden", "true")
+      this.domAfter.style.minHeight = (this.view.contentHeight / this.view.scaleY) + "px"
+      this.domAfter.style.position = this.fixed ? "sticky" : ""
+      this.view.scrollDOM.appendChild(this.domAfter)
+    }
+    return this.domAfter
   }
 
   update(update: ViewUpdate) {
@@ -152,18 +173,24 @@ const gutterView = ViewPlugin.fromClass(class {
       this.syncGutters(vpOverlap < (vpB.to - vpB.from) * 0.8)
     }
     if (update.geometryChanged) {
-      this.dom.style.minHeight = (this.view.contentHeight / this.view.scaleY) + "px"
+      let min = (this.view.contentHeight / this.view.scaleY) + "px"
+      this.dom.style.minHeight = min
+      if (this.domAfter) this.domAfter.style.minHeight = min
     }
     if (this.view.state.facet(unfixGutters) != !this.fixed) {
       this.fixed = !this.fixed
       this.dom.style.position = this.fixed ? "sticky" : ""
+      if (this.domAfter) this.domAfter.style.position = this.fixed ? "sticky" : ""
     }
     this.prevViewport = update.view.viewport
   }
 
   syncGutters(detach: boolean) {
     let after = this.dom.nextSibling
-    if (detach) this.dom.remove()
+    if (detach) {
+      this.dom.remove()
+      if (this.domAfter) this.domAfter.remove()
+    }
     let lineClasses = RangeSet.iter(this.view.state.facet(gutterLineClass), this.view.viewport.from)
     let classSet: GutterMarker[] = []
     let contexts = this.gutters.map(gutter => new UpdateContext(gutter, this.view.viewport, -this.view.documentPadding.top))
@@ -188,7 +215,10 @@ const gutterView = ViewPlugin.fromClass(class {
       }
     }
     for (let cx of contexts) cx.finish()
-    if (detach) this.view.scrollDOM.insertBefore(this.dom, after)
+    if (detach) {
+      this.view.scrollDOM.insertBefore(this.dom, after)
+      if (this.domAfter) this.view.scrollDOM.appendChild(this.domAfter)
+    }
   }
 
   updateGutters(update: ViewUpdate) {
@@ -214,7 +244,10 @@ const gutterView = ViewPlugin.fromClass(class {
         g.dom.remove()
         if (gutters.indexOf(g) < 0) g.destroy()
       }
-      for (let g of gutters) this.dom.appendChild(g.dom)
+      for (let g of gutters) {
+        if (g.config.side == "after") this.getDOMAfter().appendChild(g.dom)
+        else this.dom.appendChild(g.dom)
+      }
       this.gutters = gutters
     }
     return change
@@ -223,14 +256,16 @@ const gutterView = ViewPlugin.fromClass(class {
   destroy() {
     for (let view of this.gutters) view.destroy()
     this.dom.remove()
+    if (this.domAfter) this.domAfter.remove()
   }
 }, {
   provide: plugin => EditorView.scrollMargins.of(view => {
     let value = view.plugin(plugin)
     if (!value || value.gutters.length == 0 || !value.fixed) return null
+    let before = value.dom.offsetWidth * view.scaleX, after = value.domAfter ? value.domAfter.offsetWidth * view.scaleX : 0
     return view.textDirection == Direction.LTR
-      ? {left: value.dom.offsetWidth * view.scaleX}
-      : {right: value.dom.offsetWidth * view.scaleX}
+      ? {left: before, right: after}
+      : {right: before, left: after}
   })
 })
 
