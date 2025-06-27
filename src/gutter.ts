@@ -507,7 +507,8 @@ const lineNumberGutter = activeGutters.compute([lineNumberConfig], state => ({
     let max = formatNumber(update.view, maxLineNumber(update.view.state.doc.lines))
     return max == (spacer as NumberMarker).number ? spacer : new NumberMarker(max)
   },
-  domEventHandlers: state.facet(lineNumberConfig).domEventHandlers
+  domEventHandlers: state.facet(lineNumberConfig).domEventHandlers,
+  side: "before"
 }))
 
 /// Create a line number gutter extension.
