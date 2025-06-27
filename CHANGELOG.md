@@ -1,3 +1,9 @@
+## 6.38.0 (2025-06-27)
+
+### New features
+
+Gutters can now specify that they should be displayed after the content (which would be to the right in a left-to-right layout).
+
 ## 6.37.2 (2025-06-12)
 
 ### Bug fixes
