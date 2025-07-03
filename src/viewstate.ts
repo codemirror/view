@@ -49,7 +49,7 @@ function fullPixelRange(dom: HTMLElement, paddingTop: number): Rect {
           top: paddingTop, bottom: rect.bottom - (rect.top + paddingTop)}
 }
 
-const enum VP {
+export const enum VP {
   // FIXME look into appropriate value of this through benchmarking etc
   Margin = 1000,
   // coveredBy requires at least this many extra pixels to be covered
