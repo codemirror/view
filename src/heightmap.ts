@@ -1,6 +1,7 @@
 import {Text, ChangeSet, RangeSet, SpanIterator} from "@codemirror/state"
 import {DecorationSet, PointDecoration, Decoration, BlockType, addRange, WidgetType} from "./decoration"
 import {ChangedRange} from "./extension"
+import { VP } from "./viewstate"
 
 const wrappingWhiteSpace = ["pre-wrap", "normal", "pre-line", "break-spaces"]
 
@@ -162,6 +163,7 @@ export abstract class HeightMap {
   abstract toString(): void
 
   setHeight(height: number) {
+    if (height === Infinity) height = VP.MaxDOMHeight;
     if (this.height != height) {
       if (Math.abs(this.height - height) > Epsilon) heightChangeFlag = true
       this.height = height
@@ -338,6 +340,9 @@ class HeightMapGap extends HeightMap {
   blockAt(height: number, oracle: HeightOracle, top: number, offset: number) {
     let {firstLine, lastLine, perLine, perChar} = this.heightMetrics(oracle, offset)
     if (oracle.lineWrapping) {
+      if (height === Infinity) {
+        height = VP.MaxDOMHeight;
+      }
       let guess = offset + (height < oracle.lineHeight ? 0
         : Math.round(Math.max(0, Math.min(1, (height - top) / this.height)) * this.length))
       let line = oracle.doc.lineAt(guess), lineHeight = perLine + line.length * perChar
@@ -534,6 +539,8 @@ class HeightMapBranch extends HeightMap {
 
   updateHeight(oracle: HeightOracle, offset: number = 0, force: boolean = false, measured?: MeasuredHeights): HeightMap {
     let {left, right} = this, rightStart = offset + left.length + this.break, rebalance: any = null
+    if (left.height === Infinity) left.height = VP.MaxDOMHeight; 
+    if (right.height === Infinity) right.height = VP.MaxDOMHeight; 
     if (measured && measured.from <= offset + left.length && measured.more)
       rebalance = left = left.updateHeight(oracle, offset, force, measured)
     else
@@ -543,7 +550,7 @@ class HeightMapBranch extends HeightMap {
     else
       right.updateHeight(oracle, rightStart, force)
     if (rebalance) return this.balanced(left, right)
-    this.height = this.left.height + this.right.height
+    this.height = Math.min((this.left.height + this.right.height), VP.MaxDOMHeight);
     this.outdated = false
     return this
   }
