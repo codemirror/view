@@ -28,7 +28,7 @@ export class HeightOracle {
 
   heightForLine(length: number): number {
     if (!this.lineWrapping) return this.lineHeight
-    let lines = 1 + Math.max(0, Math.ceil((length - this.lineLength) / (this.lineLength - 5)))
+    let lines = 1 + Math.max(0, Math.ceil((length - this.lineLength) / Math.max(1, this.lineLength - 5)))
     return lines * this.lineHeight
   }
 

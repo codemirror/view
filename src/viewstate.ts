@@ -326,7 +326,7 @@ export class ViewState {
       if (refresh || oracle.lineWrapping && Math.abs(contentWidth - this.contentDOMWidth) > oracle.charWidth) {
         let {lineHeight, charWidth, textHeight} = view.docView.measureTextSize()
         refresh = lineHeight > 0 && oracle.refresh(whiteSpace, lineHeight, charWidth, textHeight,
-                                                   contentWidth / charWidth, lineHeights)
+                                                   Math.max(5, contentWidth / charWidth), lineHeights)
         if (refresh) {
           view.docView.minWidth = 0
           result |= UpdateFlag.Geometry
