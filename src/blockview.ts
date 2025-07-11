@@ -120,7 +120,14 @@ export class LineView extends ContentView implements BlockView {
     }
   }
 
-  measureTextSize(): {lineHeight: number, charWidth: number, textHeight: number} | null {
+  measureTextSize(): {
+    lineHeight: number,
+    charWidth: number,
+    textHeight: number,
+    originalLineHeight: number,
+    originalCharWidth: number,
+    originalTextHeight: number
+  } | null {
     if (this.children.length == 0 || this.length > 20) return null
     let totalWidth = 0, textHeight!: number
     for (let child of this.children) {
@@ -130,11 +137,22 @@ export class LineView extends ContentView implements BlockView {
       totalWidth += rects[0].width
       textHeight = rects[0].height
     }
-    return !totalWidth ? null : {
-      lineHeight: this.dom!.getBoundingClientRect().height,
+
+    if (!totalWidth) return null
+
+    const lineHeight = this.dom!.getBoundingClientRect().height
+    const originalLineHeight = this.dom!.clientHeight
+    const scale = originalLineHeight / lineHeight
+
+    const result = {
+      lineHeight: lineHeight,
       charWidth: totalWidth / this.length,
-      textHeight
+      textHeight,
+      originalLineHeight: originalLineHeight,
+      originalCharWidth: (totalWidth / this.length) * scale,
+      originalTextHeight: textHeight * scale
     }
+    return result
   }
 
   coordsAt(pos: number, side: number): Rect | null {
