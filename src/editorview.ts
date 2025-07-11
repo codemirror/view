@@ -17,7 +17,8 @@ import {ViewUpdate, styleModule,
         viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, outerDecorations, atomicRanges,
         scrollMargins, MeasureRequest, editable, inputHandler, focusChangeEffect, perLineTextDirection,
         scrollIntoView, UpdateFlag, ScrollTarget, bidiIsolatedRanges, getIsolatedRanges, scrollHandler,
-        clipboardInputFilter, clipboardOutputFilter} from "./extension"
+        clipboardInputFilter, clipboardOutputFilter,
+        disableAutoScrollToAnchor} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
@@ -116,7 +117,7 @@ export class EditorView {
   /// lot, since just putting the cursor on a word starts a
   /// composition there.
   get compositionStarted() { return !!this.inputState && this.inputState.composing >= 0 }
-  
+
   private dispatchTransactions: (trs: readonly Transaction[], view: EditorView) => void
 
   private _root: DocumentOrShadowRoot
@@ -484,7 +485,10 @@ export class EditorView {
               let diff = newAnchorHeight - scrollAnchorHeight
               if (diff > 1 || diff < -1) {
                 scrollTop = scrollTop + diff
-                sDOM.scrollTop = scrollTop / this.scaleY
+                const disabled = this.state.facet(EditorView.disableAutoScrollToAnchor)
+                if (disabled.length === 0 || !disabled.some((v: boolean) => v)) {
+                  sDOM.scrollTop = scrollTop / this.scaleY
+                }
                 scrollAnchorHeight = -1
                 continue
               }
@@ -980,6 +984,10 @@ export class EditorView {
   /// scrolling. If they return false, the default scroll behavior is
   /// applied. Scroll handlers should never initiate editor updates.
   static scrollHandler = scrollHandler
+
+  /// If true, the scrollDOM will not be automatically changed to match
+  /// the [scroll anchor position](viewstate.scrollAnchorPos)
+  static disableAutoScrollToAnchor = disableAutoScrollToAnchor
 
   /// This facet can be used to provide functions that create effects
   /// to be dispatched when the editor's focus state changes.

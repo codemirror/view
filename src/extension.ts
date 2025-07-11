@@ -17,6 +17,8 @@ export type Command = (target: EditorView) => boolean
 
 export const clickAddsSelectionRange = Facet.define<(event: MouseEvent) => boolean>()
 
+export const disableAutoScrollToAnchor = Facet.define<boolean>()
+
 export const dragMovesSelection = Facet.define<(event: MouseEvent) => boolean>()
 
 export const mouseSelectionStyle = Facet.define<MakeSelectionStyle>()

@@ -12,24 +12,31 @@ export function clearHeightChangeFlag() { heightChangeFlag = false }
 export class HeightOracle {
   doc: Text = Text.empty
   heightSamples: {[key: number]: boolean} = {}
+  originalHeightSamples: {[key: number]: boolean} = {}
   lineHeight: number = 14 // The height of an entire line (line-height)
   charWidth: number = 7
   textHeight: number = 14 // The height of the actual font (font-size)
   lineLength: number = 30
+  originalLineHeight: number = 14 // The original height of an entire line (line-height)
+  originalCharWidth: number = 7
+  originalTextHeight: number = 14 // The original height of the actual font (font-size)
+  originalLineLength: number = 30
 
   constructor(public lineWrapping: boolean) {}
 
-  heightForGap(from: number, to: number): number {
+  heightForGap(from: number, to: number): { height: number; originalHeight: number } {
     let lines = this.doc.lineAt(to).number - this.doc.lineAt(from).number + 1
     if (this.lineWrapping)
       lines += Math.max(0, Math.ceil(((to - from) - (lines * this.lineLength * 0.5)) / this.lineLength))
-    return this.lineHeight * lines
+    const height = this.lineHeight * lines
+    const originalHeight = this.originalLineHeight * lines
+    return { height, originalHeight }
   }
 
-  heightForLine(length: number): number {
-    if (!this.lineWrapping) return this.lineHeight
+  heightForLine(length: number): { height: number; originalHeight: number } {
+    if (!this.lineWrapping) return { height: this.lineHeight, originalHeight: this.originalLineHeight }
     let lines = 1 + Math.max(0, Math.ceil((length - this.lineLength) / Math.max(1, this.lineLength - 5)))
-    return lines * this.lineHeight
+    return { height: lines * this.lineHeight, originalHeight: lines * this.originalLineHeight }
   }
 
   setDoc(doc: Text): this { this.doc = doc; return this }
@@ -53,32 +60,46 @@ export class HeightOracle {
   }
 
   refresh(whiteSpace: string, lineHeight: number, charWidth: number, textHeight: number,
-          lineLength: number, knownHeights: number[]): boolean {
+          lineLength: number,
+          knownHeights: number[],
+          originalLineHeight: number, originalCharWidth: number, originalTextHeight: number,
+          originalLineLength: number,
+          knownOriginalHeights: number[]
+  ): boolean {
     let lineWrapping = wrappingWhiteSpace.indexOf(whiteSpace) > -1
-    let changed = Math.round(lineHeight) != Math.round(this.lineHeight) || this.lineWrapping != lineWrapping
+    let changed = lineHeight != this.lineHeight || this.lineWrapping != lineWrapping
     this.lineWrapping = lineWrapping
     this.lineHeight = lineHeight
     this.charWidth = charWidth
     this.textHeight = textHeight
     this.lineLength = lineLength
+    this.originalLineHeight = originalLineHeight
+    this.originalCharWidth = originalCharWidth
+    this.originalTextHeight = originalTextHeight
+    this.originalLineLength = originalLineLength
     if (changed) {
       this.heightSamples = {}
+      this.originalHeightSamples = {}
       for (let i = 0; i < knownHeights.length; i++) {
         let h = knownHeights[i]
         if (h < 0) i++
         else this.heightSamples[Math.floor(h * 10)] = true
       }
+      for (let i = 0; i < knownOriginalHeights.length; i++) {
+        let h = knownOriginalHeights[i]
+        if (h < 0) i++
+        else this.originalHeightSamples[Math.floor(h * 10)] = true
+      }
     }
     return changed
   }
 }
-
 // This object is used by `updateHeight` to make DOM measurements
 // arrive at the right nides. The `heights` array is a sequence of
 // block heights, starting from position `from`.
 export class MeasuredHeights {
   public index = 0
-  constructor(readonly from: number, readonly heights: number[]) {}
+  constructor(readonly from: number, readonly heights: number[], readonly originalHeights: number[]) {}
   get more() { return this.index < this.heights.length }
 }
 
@@ -96,11 +117,15 @@ export class BlockInfo {
     readonly top: number,
     /// Its height.
     readonly height: number,
+    /// The original top position of the element (relative to the top of the document).
+    readonly originalTop: number,
+    /// The original height of the element.
+    readonly originalHeight: number,
     /// @internal Weird packed field that holds an array of children
     /// for composite blocks, a decoration for block widgets, and a
     /// number indicating the amount of widget-create line breaks for
     /// text blocks.
-    readonly _content: readonly BlockInfo[] | PointDecoration | number
+    readonly _content: readonly BlockInfo[] | PointDecoration | number,
   ) {}
 
   /// The type of element this is. When querying lines, this may be
@@ -114,6 +139,9 @@ export class BlockInfo {
   get to() { return this.from + this.length }
   /// The bottom position of the element.
   get bottom() { return this.top + this.height }
+
+  /// The original bottom position of the element.
+  get originalBottom() { return this.originalTop + this.originalHeight }
 
   /// If this is a widget block, this will return the widget
   /// associated with it.
@@ -132,11 +160,14 @@ export class BlockInfo {
     let content = (Array.isArray(this._content) ? this._content : [this])
                     .concat(Array.isArray(other._content) ? other._content : [other])
     return new BlockInfo(this.from, this.length + other.length,
-                         this.top, this.height + other.height, content)
+                         this.top, this.height + other.height,
+                         this.originalTop,
+                         this.originalHeight + other.originalHeight,
+                         content)
   }
 }
 
-export enum QueryType { ByPos, ByHeight, ByPosNoHeight }
+export enum QueryType { ByPos, ByHeight, ByOriginalHeight, ByPosNoHeight }
 
 const enum Flag { Break = 1, Outdated = 2, SingleLine = 4 }
 
@@ -146,6 +177,7 @@ export abstract class HeightMap {
   constructor(
     public length: number, // The number of characters covered
     public height: number, // Height of this part of the document
+    public originalHeight: number = height, // Unscaled height of this part of the document
     public flags: number = Flag.Outdated
   ) {}
 
@@ -154,17 +186,19 @@ export abstract class HeightMap {
   get outdated() { return (this.flags & Flag.Outdated) > 0 }
   set outdated(value) { this.flags = (value ? Flag.Outdated : 0) | (this.flags & ~Flag.Outdated) }
 
-  abstract blockAt(height: number, oracle: HeightOracle, top: number, offset: number): BlockInfo
-  abstract lineAt(value: number, type: QueryType, oracle: HeightOracle, top: number, offset: number): BlockInfo
-  abstract forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, f: (line: BlockInfo) => void): void
+  abstract blockAt(height: number, oracle: HeightOracle, top: number, offset: number, originalTop: number): BlockInfo
+
+  abstract lineAt(value: number, type: QueryType, oracle: HeightOracle, top: number, offset: number, originalTop: number): BlockInfo
+  abstract forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, originalTop: number, f: (line: BlockInfo) => void): void
 
   abstract updateHeight(oracle: HeightOracle, offset?: number, force?: boolean, measured?: MeasuredHeights): HeightMap
   abstract toString(): void
 
-  setHeight(height: number) {
+  setHeight(height: number, originalHeight: number) {
     if (this.height != height) {
       if (Math.abs(this.height - height) > Epsilon) heightChangeFlag = true
       this.height = height
+      this.originalHeight = originalHeight
     }
   }
 
@@ -184,14 +218,14 @@ export abstract class HeightMap {
     let me: HeightMap = this, doc = oracle.doc
     for (let i = changes.length - 1; i >= 0; i--) {
       let {fromA, toA, fromB, toB} = changes[i]
-      let start = me.lineAt(fromA, QueryType.ByPosNoHeight, oracle.setDoc(oldDoc), 0, 0)
-      let end = start.to >= toA ? start : me.lineAt(toA, QueryType.ByPosNoHeight, oracle, 0, 0)
+      let start = me.lineAt(fromA, QueryType.ByPosNoHeight, oracle.setDoc(oldDoc), 0, 0, 0)
+      let end = start.to >= toA ? start : me.lineAt(toA, QueryType.ByPosNoHeight, oracle, 0, 0, 0)
       toB += end.to - toA; toA = end.to
       while (i > 0 && start.from <= changes[i - 1].toA) {
         fromA = changes[i - 1].fromA
         fromB = changes[i - 1].fromB
         i--
-        if (fromA < start.from) start = me.lineAt(fromA, QueryType.ByPosNoHeight, oracle, 0, 0)
+        if (fromA < start.from) start = me.lineAt(fromA, QueryType.ByPosNoHeight, oracle, 0, 0, 0)
       }
       fromB += start.from - fromA; fromA = start.from
       let nodes = NodeBuilder.build(oracle.setDoc(doc), decorations, fromB, toB)
@@ -200,7 +234,7 @@ export abstract class HeightMap {
     return me.updateHeight(oracle, 0)
   }
 
-  static empty(): HeightMap { return new HeightMapText(0, 0) }
+  static empty(): HeightMap { return new HeightMapText(0, 0, 0) }
 
   // nodes uses null values to indicate the position of line breaks.
   // There are never line breaks at the start or end of the array, or
@@ -252,23 +286,25 @@ function replace(old: HeightMap, val: HeightMap) {
 HeightMap.prototype.size = 1
 
 class HeightMapBlock extends HeightMap {
-  constructor(length: number, height: number, readonly deco: PointDecoration | null) { super(length, height) }
+  constructor(length: number, height: number, originalHeight: number, readonly deco: PointDecoration | null) { super(length, height, originalHeight) }
 
-  blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number) {
-    return new BlockInfo(offset, this.length, top, this.height, this.deco || 0)
+  blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    return new BlockInfo(offset, this.length, top, this.height, originalTop, this.originalHeight, this.deco || 0)
   }
 
-  lineAt(_value: number, _type: QueryType, oracle: HeightOracle, top: number, offset: number) {
-    return this.blockAt(0, oracle, top, offset)
+  lineAt(value: number, _type: QueryType, _oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    return this.blockAt(0, _oracle, top, offset, originalTop)
   }
 
-  forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, f: (line: BlockInfo) => void) {
-    if (from <= offset + this.length && to >= offset) f(this.blockAt(0, oracle, top, offset))
+  forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, originalTop: number, f: (line: BlockInfo) => void) {
+    if (from <= offset + this.length && to >= offset) f(this.blockAt(0, oracle, top, offset, originalTop))
   }
 
   updateHeight(oracle: HeightOracle, offset: number = 0, _force: boolean = false, measured?: MeasuredHeights) {
-    if (measured && measured.from <= offset && measured.more)
-      this.setHeight(measured.heights[measured.index++])
+    if (measured && measured.from <= offset && measured.more){
+      this.setHeight(measured.heights[measured.index], measured.originalHeights[measured.index])
+      measured.index++
+    }
     this.outdated = false
     return this
   }
@@ -281,18 +317,25 @@ class HeightMapText extends HeightMapBlock {
   public widgetHeight = 0 // Maximum inline widget height
   public breaks = 0 // Number of widget-introduced line breaks on the line
 
-  constructor(length: number, height: number) { super(length, height, null) }
+  constructor(length: number, height: number, originalHeight: number) { super(length, height, originalHeight, null) }
 
-  blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number) {
-    return new BlockInfo(offset, this.length, top, this.height, this.breaks)
+  lineAt(value: number, type: QueryType, oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    return super.lineAt(value, type, oracle, top, offset, originalTop)
+  }
+
+  blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    return new BlockInfo(offset, this.length, top, this.height, originalTop, this.originalHeight, this.breaks)
   }
 
   replace(_from: number, _to: number, nodes: (HeightMap | null)[]): HeightMap {
     let node = nodes[0]
     if (nodes.length == 1 && (node instanceof HeightMapText || node instanceof HeightMapGap && (node.flags & Flag.SingleLine)) &&
         Math.abs(this.length - node.length) < 10) {
-      if (node instanceof HeightMapGap) node = new HeightMapText(node.length, this.height)
-      else node.height = this.height
+      if (node instanceof HeightMapGap) node = new HeightMapText(node.length, this.height, this.originalHeight)
+      else {
+        node.height = this.height
+        node.originalHeight = this.originalHeight
+      }
       if (!this.outdated) node.outdated = false
       return node
     } else {
@@ -302,10 +345,15 @@ class HeightMapText extends HeightMapBlock {
 
   updateHeight(oracle: HeightOracle, offset: number = 0, force: boolean = false, measured?: MeasuredHeights) {
     if (measured && measured.from <= offset && measured.more)
-      this.setHeight(measured.heights[measured.index++])
-    else if (force || this.outdated)
-      this.setHeight(Math.max(this.widgetHeight, oracle.heightForLine(this.length - this.collapsed)) +
-        this.breaks * oracle.lineHeight)
+      this.setHeight(measured.heights[measured.index], measured.originalHeights[measured.index++])
+    else if (force || this.outdated) {
+      const heights = oracle.heightForLine(this.length - this.collapsed)
+
+      const originalWidgetHeight = heights.originalHeight > 0 ? this.widgetHeight * (heights.originalHeight / heights.height) : this.widgetHeight
+
+      this.setHeight(Math.max(this.widgetHeight, heights.height) + this.breaks * oracle.lineHeight,
+                     Math.max(originalWidgetHeight, heights.originalHeight) + this.breaks * oracle.originalLineHeight)
+    }
     this.outdated = false
     return this
   }
@@ -316,66 +364,110 @@ class HeightMapText extends HeightMapBlock {
 }
 
 class HeightMapGap extends HeightMap {
-  constructor(length: number) { super(length, 0) }
+  constructor(length: number) { super(length, 0, 0) }
 
   private heightMetrics(oracle: HeightOracle, offset: number): {
-    firstLine: number, lastLine: number, perLine: number, perChar: number
+    firstLine: number, lastLine: number, perLine: number, perChar: number, originalPerLine: number, originalPerChar: number
   } {
     let firstLine = oracle.doc.lineAt(offset).number, lastLine = oracle.doc.lineAt(offset + this.length).number
     let lines = lastLine - firstLine + 1
     let perLine, perChar = 0
+    let originalPerLine, originalPerChar = 0
     if (oracle.lineWrapping) {
       let totalPerLine = Math.min(this.height, oracle.lineHeight * lines)
       perLine = totalPerLine / lines
-      if (this.length > lines + 1)
+      let originalTotalPerLine = Math.min(this.originalHeight, oracle.lineHeight * lines)
+      originalPerLine = originalTotalPerLine / lines
+      if (this.length > lines + 1) {
         perChar = (this.height - totalPerLine) / (this.length - lines - 1)
+        originalPerChar = (this.originalHeight - originalTotalPerLine) / (this.length - lines - 1)
+      }
     } else {
       perLine = this.height / lines
+      originalPerLine = this.originalHeight / lines
     }
-    return {firstLine, lastLine, perLine, perChar}
+    return {firstLine, lastLine, perLine, perChar, originalPerLine, originalPerChar}
   }
 
-  blockAt(height: number, oracle: HeightOracle, top: number, offset: number) {
-    let {firstLine, lastLine, perLine, perChar} = this.heightMetrics(oracle, offset)
+  blockAt(height: number, oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    let {firstLine, lastLine, perLine, perChar, originalPerLine, originalPerChar} = this.heightMetrics(oracle, offset)
+    let originalHeight = height * (originalPerLine / perLine)
     if (oracle.lineWrapping) {
       let guess = offset + (height < oracle.lineHeight ? 0
         : Math.round(Math.max(0, Math.min(1, (height - top) / this.height)) * this.length))
       let line = oracle.doc.lineAt(guess), lineHeight = perLine + line.length * perChar
+      let originalLineHeight = originalPerLine + line.length * originalPerChar
       let lineTop = Math.max(top, height - lineHeight / 2)
-      return new BlockInfo(line.from, line.length, lineTop, lineHeight, 0)
+      let originalLineTop = Math.max(originalTop, originalHeight - originalLineHeight / 2)
+      return new BlockInfo(line.from, line.length, lineTop, lineHeight, originalLineTop, originalLineHeight, 0)
     } else {
       let line = Math.max(0, Math.min(lastLine - firstLine, Math.floor((height - top) / perLine)))
       let {from, length} = oracle.doc.line(firstLine + line)
-      return new BlockInfo(from, length, top + perLine * line, perLine, 0)
+      return new BlockInfo(from, length, top + perLine * line, perLine, originalTop + originalPerLine * line, originalPerLine, 0)
     }
   }
 
-  lineAt(value: number, type: QueryType, oracle: HeightOracle, top: number, offset: number) {
-    if (type == QueryType.ByHeight) return this.blockAt(value, oracle, top, offset)
+  blockAtOriginalHeight(value: number, oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    let {firstLine, lastLine, perLine, perChar, originalPerLine, originalPerChar} = this.heightMetrics(oracle, offset)
+    if (oracle.lineWrapping) {
+      let guess = offset + (value < oracle.originalLineHeight ? 0
+        : Math.round(Math.max(0, Math.min(1, (value - originalTop) / this.originalHeight)) * this.length))
+      let line = oracle.doc.lineAt(guess), lineHeight = perLine + line.length * perChar
+      let originalLineHeight = originalPerLine + line.length * originalPerChar
+      let lineTop = Math.max(top, value - lineHeight / 2)
+      let originalLineTop = Math.max(originalTop, value - originalLineHeight / 2)
+      return new BlockInfo(line.from, line.length, lineTop, lineHeight, originalLineTop, originalLineHeight, 0)
+    } else {
+      let line = Math.max(0, Math.min(lastLine - firstLine, Math.floor((value - originalTop) / originalPerLine)))
+      let {from, length} = oracle.doc.line(firstLine + line)
+      return new BlockInfo(from, length, top + perLine * line, perLine, originalTop + originalPerLine * line, originalPerLine, 0)
+    }
+  }
+
+  lineAt(value: number, type: QueryType, oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    if (type == QueryType.ByHeight) return this.blockAt(value, oracle, top, offset, originalTop)
+    if (type == QueryType.ByOriginalHeight) return this.blockAtOriginalHeight(value, oracle, top, offset, originalTop)
     if (type == QueryType.ByPosNoHeight) {
       let {from, to} = oracle.doc.lineAt(value)
-      return new BlockInfo(from, to - from, 0, 0, 0)
+      return new BlockInfo(from, to - from, 0, 0, 0, 0, 0)
     }
-    let {firstLine, perLine, perChar} = this.heightMetrics(oracle, offset)
+
+    let {firstLine, perLine, perChar, originalPerLine, originalPerChar} = this.heightMetrics(oracle, offset)
     let line = oracle.doc.lineAt(value), lineHeight = perLine + line.length * perChar
+    let originalLineHeight = originalPerLine + line.length * originalPerChar
     let linesAbove = line.number - firstLine
-    let lineTop = top + perLine * linesAbove + perChar * (line.from - offset - linesAbove)
-    return new BlockInfo(line.from, line.length, Math.max(top, Math.min(lineTop, top + this.height - lineHeight)),
-                         lineHeight, 0)
+    let lineTop = top
+      + perLine * linesAbove
+      + perChar * (line.from - offset - linesAbove)
+    let originalLineTop = originalTop
+      + originalPerLine * linesAbove
+      + originalPerChar * (line.from - offset - linesAbove)
+    return new BlockInfo(
+      line.from,
+      line.length,
+      Math.max(top, Math.min(lineTop, top + this.height - lineHeight)),
+      lineHeight,
+      Math.max(originalTop, Math.min(originalLineTop, originalTop + this.originalHeight - originalLineHeight)),
+      originalLineHeight,
+      0
+    )
   }
 
-  forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, f: (line: BlockInfo) => void) {
+  forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, originalTop: number, f: (line: BlockInfo) => void) {
     from = Math.max(from, offset); to = Math.min(to, offset + this.length)
-    let {firstLine, perLine, perChar} = this.heightMetrics(oracle, offset)
-    for (let pos = from, lineTop = top; pos <= to;) {
+    let {firstLine, perLine, perChar, originalPerLine, originalPerChar} = this.heightMetrics(oracle, offset)
+    for (let pos = from, lineTop = top, originalLineTop = originalTop; pos <= to;) {
       let line = oracle.doc.lineAt(pos)
       if (pos == from) {
         let linesAbove = line.number - firstLine
         lineTop += perLine * linesAbove + perChar * (from - offset - linesAbove)
+        originalLineTop += originalPerLine * linesAbove + originalPerChar * (from - offset - linesAbove)
       }
       let lineHeight = perLine + perChar * line.length
-      f(new BlockInfo(line.from, line.length, lineTop, lineHeight, 0))
+      let originalLineHeight = originalPerLine + originalPerChar * line.length
+      f(new BlockInfo(line.from, line.length, lineTop, lineHeight, originalLineTop, originalLineHeight, 0))
       lineTop += lineHeight
+      originalLineTop += originalLineHeight
       pos = line.to + 1
     }
   }
@@ -415,10 +507,12 @@ class HeightMapGap extends HeightMap {
       while (pos <= end && measured.more) {
         let len = oracle.doc.lineAt(pos).length
         if (nodes.length) nodes.push(null)
-        let height = measured.heights[measured.index++]
+        let height = measured.heights[measured.index]
+        let originalHeight = measured.originalHeights[measured.index]
+        measured.index++
         if (singleHeight == -1) singleHeight = height
         else if (Math.abs(height - singleHeight) >= Epsilon) singleHeight = -2
-        let line = new HeightMapText(len, height)
+        let line = new HeightMapText(len, height, originalHeight)
         line.outdated = false
         nodes.push(line)
         pos += len + 1
@@ -430,7 +524,8 @@ class HeightMapGap extends HeightMap {
         heightChangeFlag = true
       return replace(this, result)
     } else if (force || this.outdated) {
-      this.setHeight(oracle.heightForGap(offset, offset + this.length))
+      const heights = oracle.heightForGap(offset, offset + this.length)
+      this.setHeight(heights.height, heights.originalHeight)
       this.outdated = false
     }
     return this
@@ -443,41 +538,48 @@ class HeightMapBranch extends HeightMap {
   size: number
 
   constructor(public left: HeightMap, brk: number, public right: HeightMap) {
-    super(left.length + brk + right.length, left.height + right.height, brk | (left.outdated || right.outdated ? Flag.Outdated : 0))
+    super(left.length + brk + right.length, left.height + right.height, left.originalHeight + right.originalHeight, brk | (left.outdated || right.outdated ? Flag.Outdated : 0))
     this.size = left.size + right.size
   }
 
   get break() { return this.flags & Flag.Break }
 
-  blockAt(height: number, oracle: HeightOracle, top: number, offset: number) {
+  blockAt(height: number, oracle: HeightOracle, top: number, offset: number, originalTop: number) {
     let mid = top + this.left.height
-    return height < mid ? this.left.blockAt(height, oracle, top, offset)
-      : this.right.blockAt(height, oracle, mid, offset + this.left.length + this.break)
+    let originalMid = originalTop + this.left.originalHeight
+    return height < mid ? this.left.blockAt(height, oracle, top, offset, originalTop)
+      : this.right.blockAt(height, oracle, mid, offset + this.left.length + this.break, originalMid)
   }
 
-  lineAt(value: number, type: QueryType, oracle: HeightOracle, top: number, offset: number) {
-    let rightTop = top + this.left.height, rightOffset = offset + this.left.length + this.break
-    let left = type == QueryType.ByHeight ? value < rightTop : value < rightOffset
-    let base = left ? this.left.lineAt(value, type, oracle, top, offset)
-      : this.right.lineAt(value, type, oracle, rightTop, rightOffset)
+  lineAt(value: number, type: QueryType, oracle: HeightOracle, top: number, offset: number, originalTop: number) {
+    let rightTop = top + this.left.height
+    let rightOriginalTop = originalTop + this.left.originalHeight
+    let rightOffset = offset + this.left.length + this.break
+    let left = type == QueryType.ByHeight ? value < rightTop
+      : type == QueryType.ByOriginalHeight ? value < rightOriginalTop
+      : value < rightOffset
+    let base = left ? this.left.lineAt(value, type, oracle, top, offset, originalTop)
+      : this.right.lineAt(value, type, oracle, rightTop, rightOffset, rightOriginalTop)
     if (this.break || (left ? base.to < rightOffset : base.from > rightOffset)) return base
     let subQuery = type == QueryType.ByPosNoHeight ? QueryType.ByPosNoHeight : QueryType.ByPos
     if (left)
-      return base.join(this.right.lineAt(rightOffset, subQuery, oracle, rightTop, rightOffset))
+      return base.join(this.right.lineAt(rightOffset, subQuery, oracle, rightTop, rightOffset, rightOriginalTop))
     else
-      return this.left.lineAt(rightOffset, subQuery, oracle, top, offset).join(base)
+      return this.left.lineAt(rightOffset, subQuery, oracle, top, offset, originalTop).join(base)
   }
 
-  forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, f: (line: BlockInfo) => void) {
-    let rightTop = top + this.left.height, rightOffset = offset + this.left.length + this.break
+  forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, originalTop: number, f: (line: BlockInfo) => void) {
+    let rightTop = top + this.left.height
+    let rightOriginalTop = originalTop + this.left.originalHeight
+    let rightOffset = offset + this.left.length + this.break
     if (this.break) {
-      if (from < rightOffset) this.left.forEachLine(from, to, oracle, top, offset, f)
-      if (to >= rightOffset) this.right.forEachLine(from, to, oracle, rightTop, rightOffset, f)
+      if (from < rightOffset) this.left.forEachLine(from, to, oracle, top, offset, originalTop, f)
+      if (to >= rightOffset) this.right.forEachLine(from, to, oracle, rightTop, rightOffset, rightOriginalTop, f)
     } else {
-      let mid = this.lineAt(rightOffset, QueryType.ByPos, oracle, top, offset)
-      if (from < mid.from) this.left.forEachLine(from, mid.from - 1, oracle, top, offset, f)
+      let mid = this.lineAt(rightOffset, QueryType.ByPos, oracle, top, offset, originalTop)
+      if (from < mid.from) this.left.forEachLine(from, mid.from - 1, oracle, top, offset, originalTop, f)
       if (mid.to >= from && mid.from <= to) f(mid)
-      if (to > mid.to) this.right.forEachLine(mid.to + 1, to, oracle, rightTop, rightOffset, f)
+      if (to > mid.to) this.right.forEachLine(mid.to + 1, to, oracle, rightTop, rightOffset, rightOriginalTop, f)
     }
   }
 
@@ -525,7 +627,7 @@ class HeightMapBranch extends HeightMap {
       return HeightMap.of(this.break ? [left, null, right] : [left, right])
     this.left = replace(this.left, left)
     this.right = replace(this.right, right)
-    this.setHeight(left.height + right.height)
+    this.setHeight(left.height + right.height, left.originalHeight + right.originalHeight)
     this.outdated = left.outdated || right.outdated
     this.size = left.size + right.size
     this.length = left.length + this.break + right.length
@@ -544,6 +646,7 @@ class HeightMapBranch extends HeightMap {
       right.updateHeight(oracle, rightStart, force)
     if (rebalance) return this.balanced(left, right)
     this.height = this.left.height + this.right.height
+    this.originalHeight = this.left.originalHeight + this.right.originalHeight
     this.outdated = false
     return this
   }
@@ -582,7 +685,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
       if (last instanceof HeightMapText)
         last.length += end - this.pos
       else if (end > this.pos || !this.isCovered)
-        this.nodes.push(new HeightMapText(end - this.pos, -1))
+        this.nodes.push(new HeightMapText(end - this.pos, -1, -1))
       this.writtenTo = end
       if (to > end) {
         this.nodes.push(null)
@@ -596,11 +699,12 @@ class NodeBuilder implements SpanIterator<Decoration> {
   point(from: number, to: number, deco: PointDecoration) {
     if (from < to || deco.heightRelevant) {
       let height = deco.widget ? deco.widget.estimatedHeight : 0
+      let originalHeight = deco.widget ? deco.widget.estimatedHeight * this.oracle.originalLineHeight / this.oracle.lineHeight : 0
       let breaks = deco.widget ? deco.widget.lineBreaks : 0
       if (height < 0) height = this.oracle.lineHeight
       let len = to - from
       if (deco.block) {
-        this.addBlock(new HeightMapBlock(len, height, deco))
+        this.addBlock(new HeightMapBlock(len, height, originalHeight, deco))
       } else if (len || breaks || height >= relevantWidgetHeight) {
         this.addLineDeco(height, breaks, len)
       }
@@ -621,7 +725,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
       this.nodes.push(null)
     }
     if (this.pos > from)
-      this.nodes.push(new HeightMapText(this.pos - from, -1))
+      this.nodes.push(new HeightMapText(this.pos - from, -1, -1))
     this.writtenTo = this.pos
   }
 
@@ -635,7 +739,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
     this.enterLine()
     let last = this.nodes.length ? this.nodes[this.nodes.length - 1] : null
     if (last instanceof HeightMapText) return last
-    let line = new HeightMapText(0, -1)
+    let line = new HeightMapText(0, -1, -1)
     this.nodes.push(line)
     return line
   }
@@ -661,7 +765,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
   finish(from: number) {
     let last = this.nodes.length == 0 ? null : this.nodes[this.nodes.length - 1]
     if (this.lineStart > -1 && !(last instanceof HeightMapText) && !this.isCovered)
-      this.nodes.push(new HeightMapText(0, -1))
+      this.nodes.push(new HeightMapText(0, -1, -1))
     else if (this.writtenTo < this.pos || last == null)
       this.nodes.push(this.blankContent(this.writtenTo, this.pos))
     let pos = from

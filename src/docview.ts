@@ -13,6 +13,7 @@ import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRa
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
+import { QueryType } from "./heightmap"
 
 type Composition = {
   range: ChangedRange,
@@ -425,7 +426,7 @@ export class DocView extends ContentView {
   }
 
   measureVisibleLineHeights(viewport: {from: number, to: number}) {
-    let result = [], {from, to} = viewport
+    let result = [], originalResult = [], {from, to} = viewport
     let contentWidth = this.view.contentDOM.clientWidth
     let isWider = contentWidth > Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
     let widest = -1, ltr = this.view.textDirection == Direction.LTR
@@ -435,6 +436,7 @@ export class DocView extends ContentView {
       if (pos >= from) {
         let childRect = child.dom!.getBoundingClientRect()
         result.push(childRect.height)
+        originalResult.push(child.dom!.clientHeight)
         if (isWider) {
           let last = child.dom!.lastChild
           let rects = last ? clientRectsFor(last) : []
@@ -452,7 +454,7 @@ export class DocView extends ContentView {
       }
       pos = end + child.breakAfter
     }
-    return result
+    return {result, originalResult}
   }
 
   textDirectionAt(pos: number) {
@@ -460,7 +462,7 @@ export class DocView extends ContentView {
     return getComputedStyle(this.children[i].dom!).direction == "rtl" ? Direction.RTL : Direction.LTR
   }
 
-  measureTextSize(): {lineHeight: number, charWidth: number, textHeight: number} {
+  measureTextSize(): {lineHeight: number, charWidth: number, textHeight: number, originalLineHeight: number, originalCharWidth: number, originalTextHeight: number} {
     for (let child of this.children) {
       if (child instanceof LineView) {
         let measure = child.measureTextSize()
@@ -469,6 +471,7 @@ export class DocView extends ContentView {
     }
     // If no workable line exists, force a layout of a measurable element
     let dummy = document.createElement("div"), lineHeight!: number, charWidth!: number, textHeight!: number
+    let originalLineHeight!: number, originalCharWidth!: number, originalTextHeight!: number
     dummy.className = "cm-line"
     dummy.style.width = "99999px"
     dummy.style.position = "absolute"
@@ -476,12 +479,17 @@ export class DocView extends ContentView {
     this.view.observer.ignore(() => {
       this.dom.appendChild(dummy)
       let rect = clientRectsFor(dummy.firstChild!)[0]
+      let clientWidth = dummy.clientWidth
+      let clientHeight = dummy.clientHeight
       lineHeight = dummy.getBoundingClientRect().height
       charWidth = rect ? rect.width / 27 : 7
       textHeight = rect ? rect.height : lineHeight
+      originalLineHeight = clientHeight
+      originalCharWidth = rect ? (rect.width / 27) * (originalLineHeight / lineHeight) : charWidth
+      originalTextHeight = rect ? rect.height * (originalLineHeight / lineHeight) : textHeight
       dummy.remove()
     })
-    return {lineHeight, charWidth, textHeight}
+    return {lineHeight, charWidth, textHeight, originalLineHeight, originalCharWidth, originalTextHeight}
   }
 
   childCursor(pos: number = this.length): ChildCursor {
@@ -499,7 +507,7 @@ export class DocView extends ContentView {
       let next = i == vs.viewports.length ? null : vs.viewports[i]
       let end = next ? next.from - 1 : this.length
       if (end > pos) {
-        let height = (vs.lineBlockAt(end).bottom - vs.lineBlockAt(pos).top) / this.view.scaleY
+        let height = (vs.lineBlockAt(end).originalBottom - vs.lineBlockAt(pos).originalTop)
         deco.push(Decoration.replace({
           widget: new BlockGapWidget(height),
           block: true,
