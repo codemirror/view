@@ -20,7 +20,6 @@ export class HeightOracle {
   originalLineHeight: number = 14 // The original height of an entire line (line-height)
   originalCharWidth: number = 7
   originalTextHeight: number = 14 // The original height of the actual font (font-size)
-  originalLineLength: number = 30
 
   constructor(public lineWrapping: boolean) {}
 
@@ -76,7 +75,6 @@ export class HeightOracle {
     this.originalLineHeight = originalLineHeight
     this.originalCharWidth = originalCharWidth
     this.originalTextHeight = originalTextHeight
-    this.originalLineLength = originalLineLength
     if (changed) {
       this.heightSamples = {}
       this.originalHeightSamples = {}
