@@ -1,3 +1,11 @@
+## 6.38.1 (2025-07-15)
+
+### Bug fixes
+
+Make the keymap not dispatch Alt key combos on macOS by key code, because those are generally used to type special characters.
+
+Fix a layout bug that could occur with very narrow editors.
+
 ## 6.38.0 (2025-06-27)
 
 ### New features
