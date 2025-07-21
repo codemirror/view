@@ -253,7 +253,7 @@ function runHandlers(map: Keymap, event: KeyboardEvent, view: EditorView, scope:
                // Ctrl-Alt may be used for AltGr on Windows
                !(browser.windows && event.ctrlKey && event.altKey) &&
                // Alt-combinations on macOS tend to be typed characters
-               !(browser.mac && event.altKey && !event.ctrlKey) &&
+               !(browser.mac && event.altKey && !(event.ctrlKey || event.metaKey)) &&
                (baseName = base[event.keyCode]) && baseName != name) {
       if (runFor(scopeObj[prefix + modifiers(baseName, event, true)])) {
         handled = true
