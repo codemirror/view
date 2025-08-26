@@ -621,7 +621,7 @@ export class EditorView {
   }
 
   /// Find the line block (see
-  /// [`lineBlockAt`](#view.EditorView.lineBlockAt) at the given
+  /// [`lineBlockAt`](#view.EditorView.lineBlockAt)) at the given
   /// height, again interpreted relative to the [top of the
   /// document](#view.EditorView.documentTop).
   lineBlockAtHeight(height: number): BlockInfo {
