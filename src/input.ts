@@ -6,7 +6,7 @@ import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as 
         logException, mouseSelectionStyle, PluginInstance, focusChangeEffect, getScrollMargins,
         clipboardInputFilter, clipboardOutputFilter} from "./extension"
 import browser from "./browser"
-import {groupAt, skipAtomicRanges} from "./cursor"
+import {groupAt, skipAtomsForSelection} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParents} from "./dom"
 import {applyDOMChangeInner} from "./domchange"
 
@@ -376,29 +376,8 @@ class MouseSelection {
     if (this.dragging === false) this.select(this.lastEvent)
   }
 
-  skipAtoms(sel: EditorSelection) {
-    let ranges = null
-    for (let i = 0; i < sel.ranges.length; i++) {
-      let range = sel.ranges[i], updated = null
-      if (range.empty) {
-        let pos = skipAtomicRanges(this.atoms, range.from, 0)
-        if (pos != range.from) updated = EditorSelection.cursor(pos, -1)
-      } else {
-        let from = skipAtomicRanges(this.atoms, range.from, -1)
-        let to = skipAtomicRanges(this.atoms, range.to, 1)
-        if (from != range.from || to != range.to)
-          updated = EditorSelection.range(range.from == range.anchor ? from : to, range.from == range.head ? from : to)
-      }
-      if (updated) {
-        if (!ranges) ranges = sel.ranges.slice()
-        ranges[i] = updated
-      }
-    }
-    return ranges ? EditorSelection.create(ranges, sel.mainIndex) : sel
-  }
-
   select(event: MouseEvent) {
-    let {view} = this, selection = this.skipAtoms(this.style.get(event, this.extend, this.multiple))
+    let {view} = this, selection = skipAtomsForSelection(this.atoms, this.style.get(event, this.extend, this.multiple))
     if (this.mustSelect || !selection.eq(view.state.selection, this.dragging === false))
       this.view.dispatch({
         selection,
@@ -549,6 +528,8 @@ handlers.mousedown = (view, event: MouseEvent) => {
       mouseSel.start(event)
       return mouseSel.dragging === false
     }
+  } else {
+    view.inputState.setSelectionOrigin("select.pointer")
   }
   return false
 }

@@ -358,6 +358,27 @@ export function skipAtomicRanges(atoms: readonly RangeSet<any>[], pos: number, b
   }
 }
 
+export function skipAtomsForSelection(atoms: readonly RangeSet<any>[], sel: EditorSelection) {
+  let ranges = null
+  for (let i = 0; i < sel.ranges.length; i++) {
+    let range = sel.ranges[i], updated = null
+    if (range.empty) {
+      let pos = skipAtomicRanges(atoms, range.from, 0)
+      if (pos != range.from) updated = EditorSelection.cursor(pos, -1)
+    } else {
+      let from = skipAtomicRanges(atoms, range.from, -1)
+      let to = skipAtomicRanges(atoms, range.to, 1)
+      if (from != range.from || to != range.to)
+        updated = EditorSelection.range(range.from == range.anchor ? from : to, range.from == range.head ? from : to)
+    }
+    if (updated) {
+      if (!ranges) ranges = sel.ranges.slice()
+      ranges[i] = updated
+    }
+  }
+  return ranges ? EditorSelection.create(ranges, sel.mainIndex) : sel
+}
+
 export function skipAtoms(view: EditorView, oldPos: SelectionRange, pos: SelectionRange) {
   let newPos = skipAtomicRanges(view.state.facet(atomicRanges).map(f => f(view)), pos.from, oldPos.head > pos.from ? -1 : 1)
   return newPos == pos.from ? pos : EditorSelection.cursor(newPos, newPos < pos.from ? 1 : -1)

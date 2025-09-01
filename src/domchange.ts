@@ -1,10 +1,11 @@
 import {EditorView} from "./editorview"
-import {inputHandler, editable} from "./extension"
+import {inputHandler, editable, atomicRanges} from "./extension"
 import {contains, dispatchKey} from "./dom"
 import browser from "./browser"
 import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
 import {findCompositionNode} from "./docview"
 import {EditorSelection, Text, Transaction, TransactionSpec} from "@codemirror/state"
+import {skipAtomsForSelection} from "./cursor"
 
 export class DOMChange {
   bounds: {
@@ -124,6 +125,8 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
     if (view.inputState.lastSelectionTime > Date.now() - 50) {
       if (view.inputState.lastSelectionOrigin == "select") scrollIntoView = true
       userEvent = view.inputState.lastSelectionOrigin!
+      if (userEvent == "select.pointer")
+        newSel = skipAtomsForSelection(view.state.facet(atomicRanges).map(f => f(view)), newSel)
     }
     view.dispatch({selection: newSel, scrollIntoView, userEvent})
     return true
