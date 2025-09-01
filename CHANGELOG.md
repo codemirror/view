@@ -1,3 +1,11 @@
+## 6.38.2 (2025-09-01)
+
+### Bug fixes
+
+Re-enable falling dispatching keys by key code for Cmd-Alt- combinations on macOS.
+
+Make sure all pointer selections skip atomic ranges.
+
 ## 6.38.1 (2025-07-15)
 
 ### Bug fixes
