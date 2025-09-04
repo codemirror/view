@@ -5,6 +5,7 @@ import {Direction} from "./bidi"
 import {BlockType} from "./decoration"
 import {BlockInfo} from "./heightmap"
 import {blockAt} from "./cursor"
+import browser from "./browser"
 
 /// Markers shown in a [layer](#view.layer) must conform to this
 /// interface. They are created in a measuring phase, and have to
@@ -284,6 +285,8 @@ class LayerView {
         old = next
       }
       this.drawn = markers
+      if (browser.ios) // Issue #1600
+        this.dom.style.display = this.dom.firstChild ? "" : "none"
     }
   }
 
