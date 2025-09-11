@@ -175,14 +175,12 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
       if (pos) ({offsetNode: node, offset} = pos)
     } else if (doc.caretRangeFromPoint) {
       let range = doc.caretRangeFromPoint(x, y)
-      if (range) {
-        ;({startContainer: node, startOffset: offset} = range)
-        if (!view.contentDOM.contains(node) ||
-            browser.safari && isSuspiciousSafariCaretResult(node, offset, x) ||
-            browser.chrome && isSuspiciousChromeCaretResult(node, offset, x))
-          node = undefined
-      }
+      if (range) ({startContainer: node, startOffset: offset} = range)
     }
+    if (node && (!view.contentDOM.contains(node) ||
+                 browser.safari && isSuspiciousSafariCaretResult(node, offset, x) ||
+                 browser.chrome && isSuspiciousChromeCaretResult(node, offset, x)))
+      node = undefined
     // Chrome will return offsets into <input> elements without child
     // nodes, which will lead to a null deref below, so clip the
     // offset to the node size.
@@ -217,11 +215,7 @@ function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockI
   return block.from + findColumn(content, into, view.state.tabSize)
 }
 
-// In case of a high line height, Safari's caretRangeFromPoint treats
-// the space between lines as belonging to the last character of the
-// line before. This is used to detect such a result so that it can be
-// ignored (issue #401).
-function isSuspiciousSafariCaretResult(node: Node, offset: number, x: number) {
+function isEndOfLineBefore(node: Node, offset: number, x: number) {
   let len, scan = node
   if (node.nodeType != 3 || offset != (len = node.nodeValue!.length)) return false
   for (;;) { // Check that there is no content after this node
@@ -238,9 +232,17 @@ function isSuspiciousSafariCaretResult(node: Node, offset: number, x: number) {
   return textRange(node as Text, len - 1, len).getBoundingClientRect().right > x
 }
 
+// In case of a high line height, Safari's caretRangeFromPoint treats
+// the space between lines as belonging to the last character of the
+// line before. This is used to detect such a result so that it can be
+// ignored (issue #401).
+function isSuspiciousSafariCaretResult(node: Node, offset: number, x: number) {
+  return isEndOfLineBefore(node, offset, x)
+}
+
 // Chrome will move positions between lines to the start of the next line
 function isSuspiciousChromeCaretResult(node: Node, offset: number, x: number) {
-  if (offset != 0) return false
+  if (offset != 0) return isEndOfLineBefore(node, offset, x)
   for (let cur = node;;) {
     let parent = cur.parentNode
     if (!parent || parent.nodeType != 1 || parent.firstChild != cur) return false
