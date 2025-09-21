@@ -84,13 +84,14 @@ export class ContentBuilder implements SpanIterator<Decoration> {
           this.textOff = 0
         }
       }
-      let take = Math.min(this.text.length - this.textOff, length, T.Chunk)
+      let remaining = Math.min(this.text.length - this.textOff, length)
+      let take = Math.min(remaining, T.Chunk)
       this.flushBuffer(active.slice(active.length - openStart))
       this.getLine().append(wrapMarks(new TextView(this.text.slice(this.textOff, this.textOff + take)), active), openStart)
       this.atCursorPos = true
       this.textOff += take
       length -= take
-      openStart = 0
+      openStart = remaining <= take ? 0 : active.length
     }
   }
 
