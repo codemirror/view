@@ -1,3 +1,15 @@
+## 6.38.3 (2025-09-22)
+
+### Bug fixes
+
+Work around a rendering bug in Mobile Safari by completely hiding empty layers.
+
+Fix vertical cursor motion in Chrome around decorations with bottom borders or margins.
+
+Fix an issue that caused mark decorations longer than 512 characters to needlessly be split.
+
+Move the cursor out of atomic ranges when text input happens.
+
 ## 6.38.2 (2025-09-01)
 
 ### Bug fixes
