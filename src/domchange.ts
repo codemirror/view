@@ -5,7 +5,7 @@ import browser from "./browser"
 import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
 import {findCompositionNode} from "./docview"
 import {EditorSelection, Text, Transaction, TransactionSpec} from "@codemirror/state"
-import {skipAtomsForSelection} from "./cursor"
+import {skipAtomsForSelection, skipAtomicRanges} from "./cursor"
 
 export class DOMChange {
   bounds: {
@@ -175,10 +175,20 @@ export function applyDOMChangeInner(
 
 function applyDefaultInsert(view: EditorView, change: {from: number, to: number, insert: Text},
                             newSel: EditorSelection | null): Transaction {
-  let tr: TransactionSpec, startState = view.state, sel = startState.selection.main
-  if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3 &&
-      (!newSel || newSel.main.empty && newSel.main.from == change.from + change.insert.length) &&
-      view.inputState.composing < 0) {
+  let tr: TransactionSpec, startState = view.state, sel = startState.selection.main, inAtomic = -1
+  if (change.from == change.to && change.from < sel.from || change.from > sel.to) {
+    let side: -1 | 1 = change.from < sel.from ? -1 : 1, pos = side < 0 ? sel.from : sel.to
+    let moved = skipAtomicRanges(startState.facet(atomicRanges).map(f => f(view)), pos, side)
+    if (change.from == moved) inAtomic = moved
+  }
+  if (inAtomic > -1) {
+    tr = {
+      changes: change,
+      selection: EditorSelection.cursor(change.from + change.insert.length, -1)
+    }
+  } else if (change.from >= sel.from && change.to <= sel.to && change.to - change.from >= (sel.to - sel.from) / 3 &&
+             (!newSel || newSel.main.empty && newSel.main.from == change.from + change.insert.length) &&
+             view.inputState.composing < 0) {
     let before = sel.from < change.from ? startState.sliceDoc(sel.from, change.from) : ""
     let after = sel.to > change.to ? startState.sliceDoc(change.to, sel.to) : ""
     tr = startState.replaceSelection(view.state.toText(
@@ -188,7 +198,7 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
     let mainSel = newSel && newSel.main.to <= changes.newLength ? newSel.main : undefined
     // Try to apply a composition change to all cursors
     if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
-      change.to <= sel.to && change.to >= sel.to - 10) {
+        change.to <= sel.to && change.to >= sel.to - 10) {
       let replaced = view.state.sliceDoc(change.from, change.to)
       let compositionRange: {from: number, to: number}, composition = newSel && findCompositionNode(view, newSel.main.head)
       if (composition) {
@@ -203,11 +213,11 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
           return {changes, range: mainSel || range.map(changes)}
         let to = range.to - offset, from = to - replaced.length
         if (range.to - range.from != size || view.state.sliceDoc(from, to) != replaced ||
-          // Unfortunately, there's no way to make multiple
-          // changes in the same node work without aborting
-          // composition, so cursors in the composition range are
-          // ignored.
-          range.to >= compositionRange.from && range.from <= compositionRange.to)
+            // Unfortunately, there's no way to make multiple
+            // changes in the same node work without aborting
+            // composition, so cursors in the composition range are
+            // ignored.
+            range.to >= compositionRange.from && range.from <= compositionRange.to)
           return {range}
         let rangeChanges = startState.changes({from, to, insert: change!.insert}), selOff = range.to - sel.to
         return {
