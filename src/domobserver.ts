@@ -585,6 +585,12 @@ class EditContextManager {
         this.revertPending(view.state)
         this.setSelection(view.state)
       }
+
+      // Work around missed compositionend events. See https://discuss.codemirror.net/t/a/9514
+      if (change.from < change.to && !change.insert.length && view.inputState.composing >= 0 &&
+          !/[\\p{Alphabetic}\\p{Number}_]/.test(context.text.slice(Math.max(0, e.updateRangeStart - 1),
+                                                                   Math.min(context.text.length, e.updateRangeStart + 1))))
+        this.handlers.compositionend(e)
     }
     this.handlers.characterboundsupdate = e => {
       let rects: DOMRect[] = [], prev: DOMRect | null = null
