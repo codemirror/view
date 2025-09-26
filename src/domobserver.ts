@@ -606,12 +606,13 @@ class EditContextManager {
       let deco = []
       for (let format of e.getTextFormats()) {
         let lineStyle = format.underlineStyle, thickness = format.underlineThickness
-        if (lineStyle != "None" && thickness != "None") {
+        if (!/none/i.test(lineStyle) && !/none/i.test(thickness)) {
           let from = this.toEditorPos(format.rangeStart), to = this.toEditorPos(format.rangeEnd)
           if (from < to) {
+            // These values changed from capitalized custom strings to lower-case CSS keywords in 2025
             let style = `text-decoration: underline ${
-              lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""
-            }${thickness == "Thin" ? 1 : 2}px`
+              /^[a-z]/.test(lineStyle) ? lineStyle + " " : lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""
+            }${/thin/i.test(thickness) ? 1 : 2}px`
             deco.push(Decoration.mark({attributes: {style}}).range(from, to))
           }
         }
