@@ -1,3 +1,9 @@
+## 6.38.4 (2025-09-28)
+
+### Bug fixes
+
+Work around a Chrome Android issue where the browser doesn't properly fire composition end events, leaving CodeMirror to believe the user was still composing.
+
 ## 6.38.3 (2025-09-22)
 
 ### Bug fixes
