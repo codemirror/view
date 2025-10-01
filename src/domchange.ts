@@ -246,8 +246,8 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
   return startState.update(tr, {userEvent, scrollIntoView: true})
 }
 
-function findDiff(a: string, b: string, preferredPos: number, preferredSide: string | null)
-    : {from: number, toA: number, toB: number} | null {
+export function findDiff(a: string, b: string, preferredPos: number, preferredSide: string | null):
+    {from: number, toA: number, toB: number} | null {
   let minLen = Math.min(a.length, b.length)
   let from = 0
   while (from < minLen && a.charCodeAt(from) == b.charCodeAt(from)) from++

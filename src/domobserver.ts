@@ -3,7 +3,7 @@ import {ContentView, ViewFlag} from "./contentview"
 import {EditorView} from "./editorview"
 import {editable, ViewUpdate, setEditContextFormatting, MeasureRequest} from "./extension"
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition, dispatchKey, atElementStart} from "./dom"
-import {DOMChange, applyDOMChange, applyDOMChangeInner} from "./domchange"
+import {DOMChange, applyDOMChange, applyDOMChangeInner, findDiff} from "./domchange"
 import type {EditContext} from "./editcontext"
 import {Decoration} from "./decoration"
 import {Text, EditorSelection, EditorState} from "@codemirror/state"
@@ -557,18 +557,22 @@ class EditContextManager {
       let from = this.toEditorPos(e.updateRangeStart), to = this.toEditorPos(e.updateRangeEnd)
       if (view.inputState.composing >= 0 && !this.composing)
         this.composing = {contextBase: e.updateRangeStart, editorBase: from, drifted: false}
-      let change = {from, to, insert: Text.of(e.text.split("\n"))}
+      let deletes = to - from > e.text.length
       // If the window doesn't include the anchor, assume changes
       // adjacent to a side go up to the anchor.
-      if (change.from == this.from && anchor < this.from) change.from = anchor
-      else if (change.to == this.to && anchor > this.to) change.to = anchor
+      if (from == this.from && anchor < this.from) from = anchor
+      else if (to == this.to && anchor > this.to) to = anchor
 
+      let diff = findDiff(view.state.sliceDoc(from, to), e.text, (deletes ? main.from : main.to) - from, deletes ? "end" : null)
       // Edit contexts sometimes fire empty changes
-      if (change.from == change.to && !change.insert.length) {
+      if (!diff) {
         let newSel = EditorSelection.single(this.toEditorPos(e.selectionStart), this.toEditorPos(e.selectionEnd))
         if (!newSel.main.eq(main)) view.dispatch({selection: newSel, userEvent: "select"})
         return
       }
+
+      let change = {from: diff.from + from, to: diff.toA + from,
+                    insert: Text.of(e.text.slice(diff.from, diff.toB).split("\n"))}
       if ((browser.mac || browser.android) && change.from == head - 1 &&
           /^\. ?$/.test(e.text) && view.contentDOM.getAttribute("autocorrect") == "off")
         change = {from, to, insert: Text.of([e.text.replace(".", " ")])}
