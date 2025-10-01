@@ -150,12 +150,12 @@ export function applyDOMChangeInner(
   // events and the pendingAndroidKey mechanism, but that's not
   // reliable in all situations.)
   if (browser.android &&
-    ((change.to == sel.to &&
-      // GBoard will sometimes remove a space it just inserted
-      // after a completion when you press enter
-      (change.from == sel.from || change.from == sel.from - 1 && view.state.sliceDoc(change.from, sel.from) == " ") &&
-      change.insert.length == 1 && change.insert.lines == 2 &&
-      dispatchKey(view.contentDOM, "Enter", 13)) ||
+      ((change.to == sel.to &&
+        // GBoard will sometimes remove a space it just inserted
+        // after a completion when you press enter
+        (change.from == sel.from || change.from == sel.from - 1 && view.state.sliceDoc(change.from, sel.from) == " ") &&
+        change.insert.length == 1 && change.insert.lines == 2 &&
+        dispatchKey(view.contentDOM, "Enter", 13)) ||
       ((change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 ||
         lastKey == 8 && change.insert.length < change.to - change.from && change.to > sel.head) &&
         dispatchKey(view.contentDOM, "Backspace", 8)) ||
