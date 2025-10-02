@@ -30,9 +30,10 @@ export class DOMReader {
       let next: Node | null = cur.nextSibling
       if (next == end) break
       let view = ContentView.get(cur), nextView = ContentView.get(next!)
-      if (view && nextView ? view.breakAfter :
-          (view ? view.breakAfter : isBlockElement(cur)) ||
-          (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore) && this.text.length > oldLen))
+      if ((view && nextView ? view.breakAfter :
+           (view ? view.breakAfter : isBlockElement(cur)) ||
+           (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore) && this.text.length > oldLen)) &&
+          !isEmptyToEnd(next, end))
         this.lineBreak()
       cur = next!
     }
@@ -103,6 +104,21 @@ function isAtEnd(parent: Node, node: Node | null, offset: number) {
     offset = domIndex(node) + 1
     node = node.parentNode
   }
+}
+
+function isEmptyToEnd(node: Node | null, end: Node | null) {
+  let widgets: ContentView[] | undefined
+  for (;; node = node.nextSibling) {
+    if (node == end || !node) break
+    let view = ContentView.get(node)
+    if (!(view?.isWidget || (node as any).cmIgnore)) return false
+    if (view) (widgets || (widgets = [])).push(view)
+  }
+  if (widgets) for (let w of widgets) {
+    let override = w.overrideDOMText
+    if (override?.length) return false
+  }
+  return true
 }
 
 export class DOMPoint {
