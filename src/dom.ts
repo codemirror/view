@@ -1,3 +1,5 @@
+import browser from "./browser"
+
 export function getSelection(root: DocumentOrShadowRoot): Selection | null {
   let target
   // Browsers differ on whether shadow roots have a getSelection
@@ -254,6 +256,8 @@ export class DOMSelectionState implements SelectionRange {
 }
 
 let preventScrollSupported: null | false | {preventScroll: boolean} = null
+// Safari 26 breaks preventScroll support
+if (browser.safari && browser.safari_version >= 26) preventScrollSupported = false
 // Feature-detects support for .focus({preventScroll: true}), and uses
 // a fallback kludge when not supported.
 export function focusPreventScroll(dom: HTMLElement) {
