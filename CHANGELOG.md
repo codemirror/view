@@ -1,3 +1,13 @@
+## 6.38.5 (2025-10-07)
+
+### Bug fixes
+
+Avoid firing text changes that cover unchanged text on Android.
+
+Fix an issue where the editor could, in some circumstances, insert a stray newline when typing over a document that ended in a block widget.
+
+Work around an issue in Safari 26 that causes inappropriate scrolling on focus in some circumstances.
+
 ## 6.38.4 (2025-09-28)
 
 ### Bug fixes
