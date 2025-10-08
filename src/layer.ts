@@ -285,7 +285,7 @@ class LayerView {
         old = next
       }
       this.drawn = markers
-      if (browser.ios) // Issue #1600
+      if (browser.safari && browser.safari_version >= 26) // Issue #1600, 1627
         this.dom.style.display = this.dom.firstChild ? "" : "none"
     }
   }
