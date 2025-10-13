@@ -1,3 +1,9 @@
+## 6.38.6 (2025-10-13)
+
+### Bug fixes
+
+Work around a regression in Safari 26 that causes fragments of old selections to remain visible.
+
 ## 6.38.5 (2025-10-07)
 
 ### Bug fixes
