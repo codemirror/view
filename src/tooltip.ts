@@ -254,16 +254,16 @@ const tooltipPlugin = ViewPlugin.fromClass(class {
     let scaleX = 1, scaleY = 1, makeAbsolute = false
     if (this.position == "fixed" && this.manager.tooltipViews.length) {
       let {dom} = this.manager.tooltipViews[0]
-      if (browser.gecko) {
-        // Firefox sets the element's `offsetParent` to the
-        // transformed element when a transform interferes with fixed
-        // positioning.
-        makeAbsolute = dom.offsetParent != this.container.ownerDocument.body
-      } else if (dom.style.top == Outside && dom.style.left == "0px") {
-        // On other browsers, we have to awkwardly try and use other
-        // information to detect a transform.
+      if (browser.safari) {
+        // Safari always sets offsetParent to null, even if a fixed
+        // element is positioned relative to a transformed parent. So
+        // we use this kludge to try and detect this.
         let rect = dom.getBoundingClientRect()
         makeAbsolute = Math.abs(rect.top + 10000) > 1 || Math.abs(rect.left) > 1
+      } else {
+        // More conforming browsers will set offsetParent to the
+        // transformed element.
+        makeAbsolute = !!dom.offsetParent && dom.offsetParent != this.container.ownerDocument.body
       }
     }
     if (makeAbsolute || this.position == "absolute") {
