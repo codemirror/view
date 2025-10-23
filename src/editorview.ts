@@ -1048,7 +1048,7 @@ export class EditorView {
   /// [`decorations`](#view.EditorView^decorations), but puts its
   /// inputs at the very bottom of the precedence stack, meaning mark
   /// decorations provided here will only be split by other, partially
-  /// overlapping \`outerDecorations\` ranges, and wrap around all
+  /// overlapping `outerDecorations` ranges, and wrap around all
   /// regular decorations. Use this for mark elements that should, as
   /// much as possible, remain in one piece.
   static outerDecorations = outerDecorations
