@@ -60,6 +60,10 @@ export class InputState {
   // the mutation events fire shortly after the compositionend event
   compositionPendingChange = false
 
+  // Set by beforeinput, used in DOM change reader
+  insertingText = ""
+  insertingTextAt = 0
+
   mouseSelection: MouseSelection | null = null
   // When a drag from the editor is active, this points at the range
   // being dragged.
@@ -857,6 +861,11 @@ observers.contextmenu = view => {
 }
 
 handlers.beforeinput = (view, event: InputEvent) => {
+  if (event.inputType == "insertText" || event.inputType == "insertCompositionText") {
+    view.inputState.insertingText = event.data!
+    view.inputState.insertingTextAt = Date.now()
+  }
+
   // In EditContext mode, we must handle insertReplacementText events
   // directly, to make spell checking corrections work
   if (event.inputType == "insertReplacementText" && view.observer.editContext) {

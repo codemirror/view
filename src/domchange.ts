@@ -109,6 +109,17 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       from: sel.from, to: sel.to,
       insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
     }
+  } else if (view.state.doc.lineAt(sel.from).to < sel.to && view.docView.lineHasWidget(sel.to) &&
+             view.inputState.insertingTextAt > Date.now() - 50) {
+    // For a cross-line insertion, Chrome and Safari will crudely take
+    // the text of the line after the selection, flattening any
+    // widgets, and move it into the joined line. This tries to detect
+    // such a situation, and replaces the change with a selection
+    // replace of the text provided by the beforeinput event.
+    change = {
+      from: sel.from, to: sel.to,
+      insert: view.state.toText(view.inputState.insertingText)
+    }
   } else if (browser.chrome && change && change.from == change.to && change.from == sel.head &&
              change.insert.toString() == "\n " && view.lineWrapping) {
     // In Chrome, if you insert a space at the start of a wrapped

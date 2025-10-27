@@ -1,7 +1,7 @@
 import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
 import {BlockView, LineView, BlockWidgetView, BlockGapWidget} from "./blockview"
-import {TextView, MarkView} from "./inlineview"
+import {TextView, MarkView, WidgetView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
 import {Decoration, DecorationSet, addRange, MarkDecoration} from "./decoration"
@@ -569,6 +569,13 @@ export class DocView extends ContentView {
                        Math.max(Math.min(target.xMargin, offsetWidth), -offsetWidth),
                        Math.max(Math.min(target.yMargin, offsetHeight), -offsetHeight),
                        this.view.textDirection == Direction.LTR)
+  }
+
+  lineHasWidget(pos: number) {
+    let {i} = this.childCursor().findPos(pos)
+    if (i == this.children.length) return false
+    let scan = (child: ContentView) => child instanceof WidgetView || child.children.some(scan)
+    return scan(this.children[i])
   }
 
   // Will never be called but needs to be present
