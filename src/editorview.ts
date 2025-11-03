@@ -116,7 +116,7 @@ export class EditorView {
   /// lot, since just putting the cursor on a word starts a
   /// composition there.
   get compositionStarted() { return !!this.inputState && this.inputState.composing >= 0 }
-  
+
   private dispatchTransactions: (trs: readonly Transaction[], view: EditorView) => void
 
   private _root: DocumentOrShadowRoot
