@@ -5,8 +5,8 @@ import {EditorView} from "./editorview"
 
 type DialogConfig = {
   /// A function to render the content of the dialog. The result
-  /// should contain at least one `<form>` element. Submit handlers a
-  /// handler for the Escape key will be added to the form.
+  /// should contain at least one `<form>` element. Submit handlers
+  /// and a handler for the Escape key will be added to the form.
   ///
   /// If this is not given, the `label`, `input`, and `submitLabel`
   /// fields will be used to create a simple form for you.
