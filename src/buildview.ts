@@ -1,15 +1,29 @@
-import {SpanIterator, RangeSet, Text, TextIterator} from "@codemirror/state"
-import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, WidgetType} from "./decoration"
+import {SpanIterator, RangeSet, RangeCursor, Text, TextIterator} from "@codemirror/state"
+import {DecorationSet, Decoration, PointDecoration, LineDecoration, MarkDecoration, WidgetType, BlockWrapper} from "./decoration"
 import {ContentView} from "./contentview"
-import {BlockView, LineView, BlockWidgetView} from "./blockview"
+import {BlockView, LineView, BlockWidgetView, BlockWrapperView} from "./blockview"
 import {WidgetView, TextView, MarkView, WidgetBufferView} from "./inlineview"
 
 const enum T { Chunk = 512 }
 
 const enum Buf { No = 0, Yes = 1, IfCursor = 2 }
 
+class OpenBlock {
+  constructor(readonly wrapper: BlockWrapper | null,
+              readonly from: number,
+              readonly to: number,
+              readonly parent: OpenBlock | null,
+              readonly content: BlockView[] = []) {}
+
+  wrapView() {
+    return new BlockWrapperView(this.wrapper!, this.content, this.content.reduce((l, ch) => ch.length + l, 0))
+  }
+}
+
 export class ContentBuilder implements SpanIterator<Decoration> {
   content: BlockView[] = []
+  cx: OpenBlock = new OpenBlock(null, 0, 1e9, null, this.content)
+  lastBlock: BlockView | null = null
   curLine: LineView | null = null
   breakAtStart = 0
   pendingBuffer = Buf.No
@@ -18,29 +32,63 @@ export class ContentBuilder implements SpanIterator<Decoration> {
   atCursorPos = true
   openStart = -1
   openEnd = -1
+  blockOpenStart = 0
   cursor: TextIterator
   text: string = ""
   skip: number
   textOff: number = 0
 
-  constructor(private doc: Text, public pos: number, public end: number, readonly disallowBlockEffectsFor: boolean[]) {
+  constructor(private doc: Text, public pos: number, public end: number,
+              readonly blockRanges: RangeCursor<BlockWrapper>,
+              readonly decorations: readonly DecorationSet[],
+              readonly disallowBlockEffectsFor: boolean[]) {
     this.cursor = doc.iter()
     this.skip = pos
   }
 
   posCovered() {
-    if (this.content.length == 0)
-      return !this.breakAtStart && this.doc.lineAt(this.pos).from != this.pos
-    let last = this.content[this.content.length - 1]
+    let last = this.lastBlock
+    if (!last) return !this.breakAtStart && this.doc.lineAt(this.pos).from != this.pos
     return !(last.breakAfter || last instanceof BlockWidgetView && last.deco.endSide < 0)
   }
 
   getLine() {
     if (!this.curLine) {
-      this.content.push(this.curLine = new LineView)
+      this.startBlock(this.curLine = new LineView)
       this.atCursorPos = true
     }
     return this.curLine
+  }
+
+  updateBlockWrappers(at: number) {
+    let spilled = 0
+    for (let cx = this.cx, top = true; cx.parent; cx = cx.parent) {
+      if (cx.to < at) {
+        if (!top) spilled++
+        cx.parent.content.push(cx.wrapView())
+        this.cx = cx.parent
+      } else {
+        top = false
+      }
+    }
+    while (spilled > 0) {
+      for (let cx = this.cx, dist = spilled;; cx = cx.parent!) {
+        if (cx.to >= at && !--dist) {
+          this.cx = new OpenBlock(cx.wrapper, cx.from, cx.to, this.cx)
+          break
+        }
+      }
+      spilled--
+    }
+    for (let cur = this.blockRanges; cur.value && cur.from <= at; cur.next()) if (cur.to >= at) {
+      if (!this.lastBlock) this.blockOpenStart++
+      this.cx = new OpenBlock(cur.value, cur.from, cur.to, this.cx)
+    }
+  }
+
+  startBlock(block: BlockView, start?: number) {
+    this.updateBlockWrappers(this.lastBlock ? this.pos : start ?? this.doc.lineAt(this.pos).from)
+    this.cx.content.push(this.lastBlock = block)
   }
 
   flushBuffer(active = this.bufferMarks) {
@@ -50,18 +98,23 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     }
   }
 
-  addBlockWidget(view: BlockWidgetView) {
+  addBlockWidget(view: BlockWidgetView, start: number) {
     this.flushBuffer()
     this.curLine = null
-    this.content.push(view)
+    this.startBlock(view, start)
   }
 
   finish(openEnd: number) {
     if (this.pendingBuffer && openEnd <= this.bufferMarks.length) this.flushBuffer()
     else this.pendingBuffer = Buf.No
-    if (!this.posCovered() &&
-        !(openEnd && this.content.length && this.content[this.content.length - 1] instanceof BlockWidgetView))
+    if (!this.posCovered() && !(openEnd && this.lastBlock instanceof BlockWidgetView))
       this.getLine()
+    while (this.cx.parent) {
+      this.cx.parent.content.push(this.cx.wrapView())
+      this.cx = this.cx.parent
+      this.openEnd++
+    }
+    this.openStart += this.blockOpenStart
   }
 
   buildText(length: number, active: readonly MarkDecoration[], openStart: number) {
@@ -72,7 +125,8 @@ export class ContentBuilder implements SpanIterator<Decoration> {
         if (done) throw new Error("Ran out of text content when drawing inline views")
         if (lineBreak) {
           if (!this.posCovered()) this.getLine()
-          if (this.content.length) this.content[this.content.length - 1].breakAfter = 1
+          let lastBlock = this.lastBlock
+          if (lastBlock) lastBlock.breakAfter = 1
           else this.breakAtStart = 1
           this.flushBuffer()
           this.curLine = null
@@ -111,8 +165,9 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     let len = to - from
     if (deco instanceof PointDecoration) {
       if (deco.block) {
+        let start = this.lastBlock || active.length >= openStart ? from : findPointStart(this.decorations, deco, from)
         if (deco.startSide > 0 && !this.posCovered()) this.getLine()
-        this.addBlockWidget(new BlockWidgetView(deco.widget || NullWidget.block, len, deco))
+        this.addBlockWidget(new BlockWidgetView(deco.widget || NullWidget.block, len, deco), start)
       } else {
         let view = WidgetView.create(deco.widget || NullWidget.inline, len, len ? 0 : deco.startSide)
         let cursorBefore = this.atCursorPos && !view.isEditable && openStart <= active.length &&
@@ -148,9 +203,13 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     if (this.openStart < 0) this.openStart = openStart
   }
 
-  static build(text: Text, from: number, to: number, decorations: readonly DecorationSet[], dynamicDecorationMap: boolean[]):
-    {content: BlockView[], breakAtStart: number, openStart: number, openEnd: number} {
-    let builder = new ContentBuilder(text, from, to, dynamicDecorationMap)
+  static build(
+    text: Text,
+    from: number, to: number,
+    decorations: readonly DecorationSet[], dynamicDecorationMap: boolean[],
+    blockWrappers: readonly RangeSet<BlockWrapper>[]
+  ): {content: BlockView[], breakAtStart: number, openStart: number, openEnd: number} {
+    let builder = new ContentBuilder(text, from, to, RangeSet.iter(blockWrappers, from), decorations, dynamicDecorationMap)
     builder.openEnd = RangeSet.spans(decorations, from, to, builder)
     if (builder.openStart < 0) builder.openStart = builder.openEnd
     builder.finish(builder.openEnd)
@@ -161,6 +220,15 @@ export class ContentBuilder implements SpanIterator<Decoration> {
 function wrapMarks(view: ContentView, active: readonly MarkDecoration[]) {
   for (let mark of active) view = new MarkView(mark, [view], view.length)
   return view
+}
+
+function findPointStart(decorations: readonly DecorationSet[], point: Decoration, pos: number) {
+  let found = -1
+  for (let set of decorations) {
+    set.between(pos, pos, (from, to, value) => { if (value == point) pos = from })
+    if (found > -1) break
+  }
+  return found < 0 ? pos : found
 }
 
 export class NullWidget extends WidgetType {

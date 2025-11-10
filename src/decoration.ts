@@ -395,7 +395,9 @@ interface BlockWrapperSpec {
 }
 
 /// A block wrapper defines a DOM node that wraps lines or other block
-/// wrappers at the top of the document.
+/// wrappers at the top of the document. It affects any line or block
+/// widget that starts inside its range, including blocks starting
+/// directly at `from` but not including `to`.
 export class BlockWrapper extends RangeValue {
   private constructor(readonly tagName: string, readonly attributes: Attrs) {
     super()

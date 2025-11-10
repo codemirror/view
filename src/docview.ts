@@ -4,12 +4,12 @@ import {BlockView, LineView, BlockWidgetView, BlockGapWidget, coordsInBlock, blo
 import {TextView, MarkView, WidgetView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
-import {Decoration, DecorationSet, addRange, MarkDecoration} from "./decoration"
+import {Decoration, DecorationSet, addRange, MarkDecoration, BlockWrapper} from "./decoration"
 import {getAttrs} from "./attributes"
 import {clientRectsFor, isEquivalentPosition, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState,
         textNodeBefore, textNodeAfter} from "./dom"
-import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRange, editable,
+import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRange, editable, blockWrappers,
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
@@ -25,6 +25,7 @@ export class DocView extends ContentView {
   declare children: BlockView[]
 
   decorations: readonly DecorationSet[] = []
+  blockWrappers: readonly RangeSet<BlockWrapper>[] = []
   dynamicDecorationMap: boolean[] = [false]
   domChanged: {newSel: SelectionRange | null} | null = null
   hasComposition: {from: number, to: number} | null = null
@@ -107,9 +108,11 @@ export class DocView extends ContentView {
         update.state.doc.lines != update.startState.doc.lines)
       this.forceSelection = true
 
-    let prevDeco = this.decorations, deco = this.updateDeco()
-    let decoDiff = findChangedDeco(prevDeco, deco, update.changes)
-    changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff)
+    let prevDeco = this.decorations, prevWrappers = this.blockWrappers
+    this.updateDeco()
+    let decoDiff = findChangedDeco(prevDeco, this.decorations, update.changes)
+    let blockDiff = findChangedWrappers(prevWrappers, this.blockWrappers, update.changes)
+    changedRanges = ChangedRange.extendWithRanges(ChangedRange.extendWithRanges(changedRanges, decoDiff), blockDiff)
 
     if (!(this.flags & ViewFlag.Dirty) && changedRanges.length == 0) {
       return false
@@ -160,9 +163,9 @@ export class DocView extends ContentView {
       let {fromA, toA, fromB, toB} = next, content, breakAtStart, openStart, openEnd
       if (composition && composition.range.fromB < toB && composition.range.toB > fromB) {
         let before = ContentBuilder.build(this.view.state.doc, fromB, composition.range.fromB, this.decorations,
-                                          this.dynamicDecorationMap)
+                                          this.dynamicDecorationMap, this.blockWrappers)
         let after = ContentBuilder.build(this.view.state.doc, composition.range.toB, toB, this.decorations,
-                                         this.dynamicDecorationMap)
+                                         this.dynamicDecorationMap, this.blockWrappers)
         breakAtStart = before.breakAtStart
         openStart = before.openStart; openEnd = after.openEnd
         let compLine = this.compositionView(composition)
@@ -180,7 +183,7 @@ export class DocView extends ContentView {
         content = before.content.concat(compLine).concat(after.content)
       } else {
         ;({content, breakAtStart, openStart, openEnd} =
-          ContentBuilder.build(this.view.state.doc, fromB, toB, this.decorations, this.dynamicDecorationMap))
+          ContentBuilder.build(this.view.state.doc, fromB, toB, this.decorations, this.dynamicDecorationMap, this.blockWrappers))
       }
       let {i: toI, off: toOff} = cursor.findPos(toA, 1)
       let {i: fromI, off: fromOff} = cursor.findPos(fromA, -1)
@@ -515,7 +518,7 @@ export class DocView extends ContentView {
       this.view.viewState.lineGapDeco
     ]
     while (i < this.decorations.length) this.dynamicDecorationMap[i++] = false
-    return this.decorations
+    this.blockWrappers = this.view.state.facet(blockWrappers).map(v => typeof v == "function" ? v(this.view) : v)
   }
 
   scrollIntoView(target: ScrollTarget) {
@@ -636,6 +639,19 @@ class DecorationComparator {
 
 function findChangedDeco(a: readonly DecorationSet[], b: readonly DecorationSet[], diff: ChangeSet) {
   let comp = new DecorationComparator
+  RangeSet.compare(a, b, diff, comp)
+  return comp.changes
+}
+
+class WrapperComparator {
+  changes: number[] = []
+  compareRange(from: number, to: number) { addRange(from, to, this.changes) }
+  comparePoint() {}
+  boundChange(pos: number) { addRange(pos, pos, this.changes) }
+}
+
+function findChangedWrappers(a: readonly RangeSet<BlockWrapper>[], b: readonly RangeSet<BlockWrapper>[], diff: ChangeSet) {
+  let comp = new WrapperComparator
   RangeSet.compare(a, b, diff, comp)
   return comp.changes
 }

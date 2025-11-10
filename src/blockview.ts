@@ -2,7 +2,7 @@ import {ContentView, DOMPos, ViewFlag, noChildren, mergeChildrenInto} from "./co
 import {DocView} from "./docview"
 import {TextView, MarkView, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
 import {clientRectsFor, Rect, flattenRect, clearAttributes} from "./dom"
-import {LineDecoration, WidgetType, PointDecoration, BlockDecoration} from "./decoration"
+import {LineDecoration, WidgetType, PointDecoration, BlockWrapper} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
 import browser from "./browser"
 import {EditorView} from "./editorview"
@@ -176,7 +176,7 @@ export class BlockWrapperView extends ContentView implements BlockView {
   declare parent: DocView | BlockWrapperView | null
   breakAfter = 0
 
-  constructor(readonly block: BlockDecoration,
+  constructor(readonly block: BlockWrapper,
               public children: BlockView[] = [],
               public length = 0) {
     super()
