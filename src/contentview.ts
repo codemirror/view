@@ -1,6 +1,7 @@
 import {Text} from "@codemirror/state"
 import {Rect, maxOffset, domIndex} from "./dom"
 import {EditorView} from "./editorview"
+import {type DocView} from "./docview"
 
 // Track mutated / outdated status of a view node's DOM
 export const enum ViewFlag {
@@ -185,10 +186,10 @@ export abstract class ContentView {
     ;(dom as any).cmView = this
   }
 
-  get rootView(): ContentView {
+  get rootView(): DocView | null {
     for (let v: ContentView = this;;) {
       let parent = v.parent
-      if (!parent) return v
+      if (!parent) return (v as DocView).view ? v as DocView : null
       v = parent
     }
   }
@@ -280,6 +281,7 @@ export class ChildCursor {
   }
 }
 
+// FIXME verify break handling for nested block nodes
 export function replaceRange(parent: ContentView, fromI: number, fromOff: number, toI: number, toOff: number,
                              insert: ContentView[], breakAtStart: number, openStart: number, openEnd: number) {
   let {children} = parent

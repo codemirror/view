@@ -1,7 +1,7 @@
 import {EditorState, Transaction, ChangeSet, ChangeDesc, Facet, Line,
         StateEffect, Extension, SelectionRange, RangeSet, EditorSelection} from "@codemirror/state"
 import {StyleModule} from "style-mod"
-import {DecorationSet, Decoration} from "./decoration"
+import {DecorationSet, Decoration, BlockWrapper} from "./decoration"
 import {EditorView, DOMEventHandlers} from "./editorview"
 import {Attrs} from "./attributes"
 import {Isolate, autoDirection} from "./bidi"
@@ -287,6 +287,8 @@ export const contentAttributes = Facet.define<AttrSource>()
 
 // Provide decorations
 export const decorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
+
+export const blockWrappers = Facet.define<(view: EditorView) => RangeSet<BlockWrapper>>()
 
 export const outerDecorations = Facet.define<DecorationSet | ((view: EditorView) => DecorationSet)>()
 

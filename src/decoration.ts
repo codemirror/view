@@ -1,6 +1,6 @@
 import {MapMode, RangeValue, Range, RangeSet} from "@codemirror/state"
 import {Direction} from "./bidi"
-import {attrsEq, Attrs} from "./attributes"
+import {attrsEq, Attrs, noAttrs} from "./attributes"
 import {EditorView} from "./editorview"
 import {Rect} from "./dom"
 
@@ -94,15 +94,6 @@ interface LineDecorationSpec {
   attributes?: {[key: string]: string}
   /// Shorthand for `{attributes: {class: value}}`.
   class?: string
-  /// Other properties are allowed.
-  [other: string]: any
-}
-
-interface BlockDecorationSpec {
-  /// Tag name of the wrapping element.
-  tagName: string
-  /// DOM attributes to add to the wrapping element.
-  attributes?: {[key: string]: string}
   /// Other properties are allowed.
   [other: string]: any
 }
@@ -272,18 +263,6 @@ export abstract class Decoration extends RangeValue {
     return new LineDecoration(spec)
   }
 
-  /// Create a line block decoration, which adds a wrapping element
-  /// around one or more lines of content. Every line whose start lies
-  /// inside the range covered by the decoration (including its start
-  /// and end) is considered to be inside it. Multiple line blocks may
-  /// nest, but those with higher precedence are always drawn inside
-  /// overlapping blocks with lower precedence. The block for a single
-  /// decoration can be split if that is required to satisfy this
-  /// rule.
-  static block(spec: BlockDecorationSpec): Decoration {
-    return new BlockDecoration(spec)
-  }
-
   /// Build a [`DecorationSet`](#view.DecorationSet) from the given
   /// decorated range or ranges. If the ranges aren't already sorted,
   /// pass `true` for `sort` to make the library sort them for you.
@@ -343,18 +322,6 @@ export class LineDecoration extends Decoration {
   range(from: number, to = from) {
     if (to != from) throw new RangeError("Line decoration ranges must be zero-length")
     return super.range(from, to)
-  }
-}
-
-export class BlockDecoration extends Decoration {
-  constructor(spec: BlockDecorationSpec) {
-    super(-1, 1, null, spec)
-  }
-
-  eq(other: Decoration): boolean {
-    return other instanceof BlockDecoration &&
-      this.spec.tagName == other.spec.tagName &&
-      attrsEq(this.spec.attributes, other.spec.attributes)
   }
 }
 
@@ -418,4 +385,35 @@ export function addRange(from: number, to: number, ranges: number[], margin = 0)
   let last = ranges.length - 1
   if (last >= 0 && ranges[last] + margin >= from) ranges[last] = Math.max(ranges[last], to)
   else ranges.push(from, to)
+}
+
+interface BlockWrapperSpec {
+  /// Tag name of the wrapping element.
+  tagName: string
+  /// DOM attributes to add to the wrapping element.
+  attributes?: {[key: string]: string}
+}
+
+/// A block wrapper defines a DOM node that wraps lines or other block
+/// wrappers at the top of the document.
+export class BlockWrapper extends RangeValue {
+  private constructor(readonly tagName: string, readonly attributes: Attrs) {
+    super()
+  }
+
+  eq(other: BlockWrapper): boolean {
+    return this.tagName == other.tagName &&
+      attrsEq(this.attributes, other.attributes)
+  }
+
+  /// Create a block wrapper object with the given tag name and
+  /// attributes.
+  static create(spec: BlockWrapperSpec) {
+    return new BlockWrapper(spec.tagName, spec.attributes || noAttrs)
+  }
+
+  /// Create a range set from the given block wrapper ranges.
+  static set(of: Range<BlockWrapper> | readonly Range<BlockWrapper>[], sort = false) {
+    return RangeSet.of<BlockWrapper>(of, sort)
+  }
 }

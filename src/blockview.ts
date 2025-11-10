@@ -2,7 +2,7 @@ import {ContentView, DOMPos, ViewFlag, noChildren, mergeChildrenInto} from "./co
 import {DocView} from "./docview"
 import {TextView, MarkView, inlineDOMAtPos, joinInlineInto, coordsInChildren} from "./inlineview"
 import {clientRectsFor, Rect, flattenRect, clearAttributes} from "./dom"
-import {LineDecoration, WidgetType, PointDecoration} from "./decoration"
+import {LineDecoration, WidgetType, PointDecoration, BlockDecoration} from "./decoration"
 import {Attrs, combineAttrs, attrsEq, updateAttrs} from "./attributes"
 import browser from "./browser"
 import {EditorView} from "./editorview"
@@ -20,7 +20,7 @@ export class LineView extends ContentView implements BlockView {
   prevAttrs: Attrs | null | undefined = undefined
   attrs: Attrs | null = null
   breakAfter = 0
-  declare parent: DocView | null
+  declare parent: DocView | BlockWrapperView | null
 
   // Consumes source
   merge(from: number, to: number, source: BlockView | null, hasStart: boolean, openStart: number, openEnd: number): boolean {
@@ -138,11 +138,11 @@ export class LineView extends ContentView implements BlockView {
   }
 
   coordsAt(pos: number, side: number): Rect | null {
-    let rect = coordsInChildren(this, pos, side)
+    let rect = coordsInChildren(this, pos, side), root
     // Correct rectangle height for empty lines when the returned
     // height is larger than the text height.
-    if (!this.children.length && rect && this.parent) {
-      let {heightOracle} = this.parent.view.viewState, height = rect.bottom - rect.top
+    if (!this.children.length && rect && (root = this.rootView)) {
+      let {heightOracle} = root.view.viewState, height = rect.bottom - rect.top
       if (Math.abs(height - heightOracle.lineHeight) < 2 && heightOracle.textHeight < height) {
         let dist = (height - heightOracle.textHeight) / 2
         return {top: rect.top + dist, bottom: rect.bottom - dist, left: rect.left, right: rect.left}
@@ -171,9 +171,53 @@ export class LineView extends ContentView implements BlockView {
   }
 }
 
+export class BlockWrapperView extends ContentView implements BlockView {
+  declare dom: HTMLElement | null
+  declare parent: DocView | BlockWrapperView | null
+  breakAfter = 0
+
+  constructor(readonly block: BlockDecoration,
+              public children: BlockView[] = [],
+              public length = 0) {
+    super()
+    for (let ch of children) ch.setParent(this)
+  }
+
+  covers(side: -1 | 1) {
+    return this.children[side < 0 ? 0 : this.children.length - 1].covers(side)
+  }
+
+  coordsAt(pos: number, side: number): Rect | null { return coordsInBlock(this, pos, side) }
+
+  domAtPos(pos: number) { return blockDOMAtPos(this, pos) }
+
+  append(child: BlockView) {
+    this.children.push(child)
+    child.setParent(this)
+    this.length += child.length
+  }
+
+  split(at: number) {
+    let end = new BlockWrapperView(this.block)
+    if (this.length == 0) return end
+    let {i, off} = this.childPos(at)
+    if (off) {
+      end.append(this.children[i].split(off) as BlockView)
+      this.children[i].merge(off, this.children[i].length, null, false, 0, 0)
+      i++
+    }
+    for (let j = i; j < this.children.length; j++) end.append(this.children[j])
+    while (i > 0 && this.children[i - 1].length == 0) this.children[--i].destroy()
+    this.children.length = i
+    this.markDirty()
+    this.length = at
+    return end
+  }
+}
+
 export class BlockWidgetView extends ContentView implements BlockView {
   declare dom: HTMLElement | null
-  declare parent: DocView | null
+  declare parent: DocView | BlockWrapperView | null
   breakAfter = 0
   prevWidget: WidgetType | null = null
 
@@ -213,7 +257,7 @@ export class BlockWidgetView extends ContentView implements BlockView {
   }
 
   get overrideDOMText() {
-    return this.parent ? this.parent!.view.state.doc.slice(this.posAtStart, this.posAtEnd) : Text.empty
+    return this.parent ? this.rootView!.view.state.doc.slice(this.posAtStart, this.posAtEnd) : Text.empty
   }
 
   domBoundsAround() { return null }
@@ -279,4 +323,32 @@ export class BlockGapWidget extends WidgetType {
   get estimatedHeight() { return this.height }
 
   ignoreEvent() { return false }
+}
+
+export function coordsInBlock(block: {length: number, children: readonly BlockView[]}, pos: number, side: number) {
+  let best = null, bestPos = 0
+  for (let off = block.length, i = block.children.length - 1; i >= 0; i--) {
+    let child = block.children[i], end = off - child.breakAfter, start = end - child.length
+    if (end < pos) break
+    if (start <= pos && (start < pos || child.covers(-1)) && (end > pos || child.covers(1)) &&
+      (!best || child instanceof LineView && !(best instanceof LineView && side >= 0))) {
+      best = child
+      bestPos = start
+    } else if (best && start == pos && end == pos && child instanceof BlockWidgetView && Math.abs(side) < 2) {
+      if (child.deco.startSide < 0) break
+      else if (i) best = null
+    }
+    off = start
+  }
+  return best ? best.coordsAt(pos - bestPos, side) : null
+}
+
+export function blockDOMAtPos(block: ContentView, pos: number) {
+  let {i, off} = block.childCursor().findPos(pos, -1)
+  for (; i < block.children.length - 1;) {
+    let child = block.children[i]
+    if (off < child.length || child instanceof LineView) break // FIXME use .covers instead?
+    i++; off = 0
+  }
+  return block.children[i].domAtPos(off)
 }

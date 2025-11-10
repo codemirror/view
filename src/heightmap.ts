@@ -1,5 +1,5 @@
-import {Text, ChangeSet, RangeSet, SpanIterator} from "@codemirror/state"
-import {DecorationSet, PointDecoration, Decoration, BlockType, addRange, WidgetType} from "./decoration"
+import {Text, ChangeSet, RangeSet, RangeComparator, SpanIterator} from "@codemirror/state"
+import {DecorationSet, PointDecoration, Decoration, BlockDecoration, BlockType, addRange, WidgetType} from "./decoration"
 import {ChangedRange} from "./extension"
 
 const wrappingWhiteSpace = ["pre-wrap", "normal", "pre-line", "break-spaces"]
@@ -691,7 +691,7 @@ export function heightRelevantDecoChanges(a: readonly DecorationSet[], b: readon
   return comp.changes
 }
 
-class DecorationComparator {
+class DecorationComparator implements RangeComparator<Decoration> {
   changes: number[] = []
 
   compareRange() {}

@@ -9,7 +9,7 @@ export function combineAttrs(source: Attrs, target: Attrs) {
   return target
 }
 
-const noAttrs = Object.create(null)
+export const noAttrs = Object.create(null)
 
 export function attrsEq(a: Attrs | null, b: Attrs | null, ignore?: string): boolean {
   if (a == b) return true

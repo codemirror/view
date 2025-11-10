@@ -14,8 +14,8 @@ import {ViewUpdate, styleModule,
         contentAttributes, editorAttributes, AttrSource,
         clickAddsSelectionRange, dragMovesSelection, mouseSelectionStyle,
         exceptionSink, updateListener, logException,
-        viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, outerDecorations, atomicRanges,
-        scrollMargins, MeasureRequest, editable, inputHandler, focusChangeEffect, perLineTextDirection,
+        viewPlugin, ViewPlugin, PluginValue, PluginInstance, decorations, outerDecorations, blockWrappers,
+        atomicRanges, scrollMargins, MeasureRequest, editable, inputHandler, focusChangeEffect, perLineTextDirection,
         scrollIntoView, UpdateFlag, ScrollTarget, bidiIsolatedRanges, getIsolatedRanges, scrollHandler,
         clipboardInputFilter, clipboardOutputFilter} from "./extension"
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
@@ -1044,6 +1044,9 @@ export class EditorView {
   /// [`EditorView.atomicRanges`](#view.EditorView^atomicRanges).
   static decorations = decorations
 
+  /// FIXME document
+  static blockWrappers = blockWrappers
+
   /// Facet that works much like
   /// [`decorations`](#view.EditorView^decorations), but puts its
   /// inputs at the very bottom of the precedence stack, meaning mark
@@ -1148,7 +1151,7 @@ export class EditorView {
   static findFromDOM(dom: HTMLElement): EditorView | null {
     let content = dom.querySelector(".cm-content")
     let cView = content && ContentView.get(content) || ContentView.get(dom)
-    return (cView?.rootView as DocView)?.view || null
+    return cView?.rootView?.view || null
   }
 }
 

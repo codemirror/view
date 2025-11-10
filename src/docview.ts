@@ -1,6 +1,6 @@
 import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
-import {BlockView, LineView, BlockWidgetView, BlockGapWidget} from "./blockview"
+import {BlockView, LineView, BlockWidgetView, BlockGapWidget, coordsInBlock, blockDOMAtPos} from "./blockview"
 import {TextView, MarkView, WidgetView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
@@ -375,31 +375,11 @@ export class DocView extends ContentView {
   }
 
   domAtPos(pos: number): DOMPos {
-    let {i, off} = this.childCursor().findPos(pos, -1)
-    for (; i < this.children.length - 1;) {
-      let child = this.children[i]
-      if (off < child.length || child instanceof LineView) break
-      i++; off = 0
-    }
-    return this.children[i].domAtPos(off)
+    return blockDOMAtPos(this, pos)
   }
 
   coordsAt(pos: number, side: number): Rect | null {
-    let best = null, bestPos = 0
-    for (let off = this.length, i = this.children.length - 1; i >= 0; i--) {
-      let child = this.children[i], end = off - child.breakAfter, start = end - child.length
-      if (end < pos) break
-      if (start <= pos && (start < pos || child.covers(-1)) && (end > pos || child.covers(1)) &&
-          (!best || child instanceof LineView && !(best instanceof LineView && side >= 0))) {
-        best = child
-        bestPos = start
-      } else if (best && start == pos && end == pos && child instanceof BlockWidgetView && Math.abs(side) < 2) {
-        if (child.deco.startSide < 0) break
-        else if (i) best = null
-      }
-      off = start
-    }
-    return best ? best.coordsAt(pos - bestPos, side) : null
+    return coordsInBlock(this, pos, side)
   }
 
   coordsForChar(pos: number) {
