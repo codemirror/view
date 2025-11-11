@@ -178,7 +178,7 @@ export class BlockWrapperView extends ContentView implements BlockView {
 
   constructor(readonly block: BlockWrapper,
               public children: BlockView[] = [],
-              public length = 0) {
+              public length = children.reduce((l, ch) => l + ch.length + ch.breakAfter, 0)) {
     super()
     for (let ch of children) ch.setParent(this)
   }
@@ -212,6 +212,14 @@ export class BlockWrapperView extends ContentView implements BlockView {
     this.markDirty()
     this.length = at
     return end
+  }
+
+  sync(view: EditorView, track?: {node: Node, written: boolean}) {
+    if (!this.dom) {
+      this.setDOM(document.createElement(this.block.tagName))
+      updateAttrs(this.dom!, null, this.block.attributes)
+    }
+    super.sync(view, track)
   }
 }
 

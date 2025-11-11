@@ -1,6 +1,6 @@
 export {EditorView, EditorViewConfig, DOMEventMap, DOMEventHandlers} from "./editorview"
 export {Command, ViewPlugin, PluginValue, PluginSpec, ViewUpdate, logException} from "./extension"
-export {Decoration, DecorationSet, WidgetType, BlockType} from "./decoration"
+export {Decoration, DecorationSet, WidgetType, BlockType, BlockWrapper} from "./decoration"
 export {BlockInfo} from "./heightmap"
 export {MouseSelectionStyle} from "./input"
 export {BidiSpan, Direction} from "./bidi"

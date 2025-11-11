@@ -1,6 +1,6 @@
 import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
 import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
-import {BlockView, LineView, BlockWidgetView, BlockGapWidget, coordsInBlock, blockDOMAtPos} from "./blockview"
+import {BlockView, LineView, BlockWidgetView, BlockGapWidget, coordsInBlock, blockDOMAtPos, BlockWrapperView} from "./blockview"
 import {TextView, MarkView, WidgetView} from "./inlineview"
 import {ContentBuilder} from "./buildview"
 import browser from "./browser"
@@ -176,6 +176,7 @@ export class DocView extends ContentView {
           compLine.breakAfter = after.content[0].breakAfter
           after.content.shift()
         }
+        // FIXME make this work with nested wrappers
         if (before.content.length &&
             compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, before.openEnd)) {
           before.content.pop()
@@ -408,33 +409,42 @@ export class DocView extends ContentView {
   }
 
   measureVisibleLineHeights(viewport: {from: number, to: number}) {
-    let result = [], {from, to} = viewport
+    let result: number[] = [], {from, to} = viewport
     let contentWidth = this.view.contentDOM.clientWidth
     let isWider = contentWidth > Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
     let widest = -1, ltr = this.view.textDirection == Direction.LTR
-    for (let pos = 0, i = 0; i < this.children.length; i++) {
-      let child = this.children[i], end = pos + child.length
-      if (end > to) break
-      if (pos >= from) {
-        let childRect = child.dom!.getBoundingClientRect()
-        result.push(childRect.height)
-        if (isWider) {
-          let last = child.dom!.lastChild
-          let rects = last ? clientRectsFor(last) : []
-          if (rects.length) {
-            let rect = rects[rects.length - 1]
-            let width = ltr ? rect.right - childRect.left : childRect.right - rect.left
-            if (width > widest) {
-              widest = width
-              this.minWidth = contentWidth
-              this.minWidthFrom = pos
-              this.minWidthTo = end
+    let scan = (node: DocView | BlockWrapperView = this, pos: number, measureBounds: DOMRect | null) => {
+      for (let i = 0; i < node.children.length; i++) {
+        if (pos > to) break
+        let child = node.children[i], end = pos + child.length
+        if (child instanceof BlockWrapperView) {
+          if (end > from) scan(child, pos, child.dom!.getBoundingClientRect())
+        } else if (pos >= from) {
+          let childRect = child.dom!.getBoundingClientRect(), {height} = childRect
+          if (measureBounds) {
+            if (i == 0) height += childRect.top - measureBounds.top
+            if (i == node.children.length - 1) height += measureBounds.bottom - childRect.bottom
+          }
+          result.push(height)
+          if (isWider) {
+            let last = child.dom!.lastChild
+            let rects = last ? clientRectsFor(last) : []
+            if (rects.length) {
+              let rect = rects[rects.length - 1]
+              let width = ltr ? rect.right - childRect.left : childRect.right - rect.left
+              if (width > widest) {
+                widest = width
+                this.minWidth = contentWidth
+                this.minWidthFrom = pos
+                this.minWidthTo = end
+              }
             }
           }
         }
+        pos = end + child.breakAfter
       }
-      pos = end + child.breakAfter
     }
+    scan(this, 0, null)
     return result
   }
 

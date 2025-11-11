@@ -16,7 +16,7 @@ class OpenBlock {
               readonly content: BlockView[] = []) {}
 
   wrapView() {
-    return new BlockWrapperView(this.wrapper!, this.content, this.content.reduce((l, ch) => ch.length + l, 0))
+    return new BlockWrapperView(this.wrapper!, this.content)
   }
 }
 
@@ -65,7 +65,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     for (let cx = this.cx, top = true; cx.parent; cx = cx.parent) {
       if (cx.to < at) {
         if (!top) spilled++
-        cx.parent.content.push(cx.wrapView())
+        cx.parent.content.push(this.lastBlock = cx.wrapView())
         this.cx = cx.parent
       } else {
         top = false
@@ -125,8 +125,8 @@ export class ContentBuilder implements SpanIterator<Decoration> {
         if (done) throw new Error("Ran out of text content when drawing inline views")
         if (lineBreak) {
           if (!this.posCovered()) this.getLine()
-          let lastBlock = this.lastBlock
-          if (lastBlock) lastBlock.breakAfter = 1
+          this.updateBlockWrappers(++this.pos)
+          if (this.lastBlock) this.lastBlock.breakAfter = 1
           else this.breakAtStart = 1
           this.flushBuffer()
           this.curLine = null
@@ -145,6 +145,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
       this.atCursorPos = true
       this.textOff += take
       length -= take
+      this.pos += take
       openStart = remaining <= take ? 0 : active.length
     }
   }
