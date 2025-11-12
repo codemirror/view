@@ -102,11 +102,12 @@ export class MarkView extends ContentView {
     super.sync(view, track)
   }
 
-  merge(from: number, to: number, source: ContentView | null, _hasStart: boolean, openStart: number, openEnd: number): boolean {
+  merge(from: number, to: number, source: ContentView | null, _hasStart: boolean,
+        _breakAtStart: number, openStart: number, openEnd: number): boolean {
     if (source && (!(source instanceof MarkView && source.mark.eq(this.mark)) ||
                    (from && openStart <= 0) || (to < this.length && openEnd <= 0)))
       return false
-    mergeChildrenInto(this, from, to, source ? source.children.slice() : [], openStart - 1, openEnd - 1)
+    mergeChildrenInto(this, from, to, source ? source.children.slice() : [], 0, openStart - 1, openEnd - 1)
     this.markDirty()
     return true
   }
@@ -188,7 +189,8 @@ export class WidgetView extends ContentView {
 
   getSide() { return this.side }
 
-  merge(from: number, to: number, source: ContentView | null, hasStart: boolean, openStart: number, openEnd: number) {
+  merge(from: number, to: number, source: ContentView | null, _hasStart: boolean,
+        _breakAtStart: number, openStart: number, openEnd: number) {
     if (source && (!(source instanceof WidgetView) || !this.widget.compare(source.widget) ||
                    from > 0 && openStart <= 0 || to < this.length && openEnd <= 0))
       return false

@@ -231,7 +231,8 @@ export abstract class ContentView {
 
   get isHidden() { return false }
 
-  merge(from: number, to: number, source: ContentView | null, hasStart: boolean, openStart: number, openEnd: number): boolean {
+  merge(from: number, to: number, source: ContentView | null, hasStart: boolean,
+        breakAtStart: number, openStart: number, openEnd: number): boolean {
     return false
   }
 
@@ -281,17 +282,23 @@ export class ChildCursor {
   }
 }
 
+const LOG_replaceRange = true
+
 // FIXME verify break handling for nested block nodes
 export function replaceRange(parent: ContentView, fromI: number, fromOff: number, toI: number, toOff: number,
                              insert: ContentView[], breakAtStart: number, openStart: number, openEnd: number) {
+  LOG_replaceRange && console.log("replaceRange", parent + "", fromI, fromOff, "-", toI, toOff,
+                                  "insert=" + insert, "open", openStart, openEnd, "break", breakAtStart)
   let {children} = parent
   let before = children.length ? children[fromI] : null
   let last = insert.length ? insert[insert.length - 1] : null
   let breakAtEnd = last ? last.breakAfter : breakAtStart
   // Change within a single child
-  if (fromI == toI && before && !breakAtStart && !breakAtEnd && insert.length < 2 &&
-      before.merge(fromOff, toOff, insert.length ? last : null, fromOff == 0, openStart, openEnd))
+  if (fromI == toI && before && (!breakAtStart || openStart > 0) && (!breakAtEnd || openEnd > 0) && insert.length < 2 &&
+      before.merge(fromOff, toOff, insert.length ? last : null, fromOff == 0, breakAtStart, openStart, openEnd)) {
+    LOG_replaceRange && console.log("==> " + parent)
     return
+  }
 
   if (toI < children.length) {
     let after = children[toI]
@@ -305,17 +312,18 @@ export function replaceRange(parent: ContentView, fromI: number, fromOff: number
       }
       // If the element after the replacement should be merged with
       // the last replacing element, update `content`
-      if (!breakAtEnd && last && after.merge(0, toOff, last, true, 0, openEnd)) {
+      if (!breakAtEnd && last && after.merge(0, toOff, last, true, 0, 0, openEnd)) {
         insert[insert.length - 1] = after
       } else {
         // Remove the start of the after element, if necessary, and
         // add it to `content`.
-        if (toOff || after.children.length && !after.children[0].length) after.merge(0, toOff, null, false, 0, openEnd)
+        if (toOff || after.children.length && !after.children[0].length) after.merge(0, toOff, null, false, 0, 0, openEnd)
         insert.push(after)
       }
     } else if (after?.breakAfter) {
       // The element at `toI` is entirely covered by this range.
       // Preserve its line break, if any.
+      console.log("passing through break after", !!last)
       if (last) last.breakAfter = 1
       else breakAtStart = 1
     }
@@ -325,12 +333,14 @@ export function replaceRange(parent: ContentView, fromI: number, fromOff: number
   }
 
   if (before) {
-    before.breakAfter = breakAtStart
+    console.log("set before break to", openStart > 0 ? 0 : breakAtStart)
+    before.breakAfter = openStart > 0 ? 0 : breakAtStart
     if (fromOff > 0) {
-      if (!breakAtStart && insert.length && before.merge(fromOff, before.length, insert[0], false, openStart, 0)) {
+      if ((!breakAtStart || openStart > 0) &&
+          insert.length && before.merge(fromOff, before.length, insert[0], false, openStart > 0 ? breakAtStart : 0, openStart, 0)) {
         before.breakAfter = insert.shift()!.breakAfter
       } else if (fromOff < before.length || before.children.length && before.children[before.children.length - 1].length == 0) {
-        before.merge(fromOff, before.length, null, false, openStart, 0)
+        before.merge(fromOff, before.length, null, false, breakAtStart, openStart, 0)
       }
       fromI++
     }
@@ -351,20 +361,21 @@ export function replaceRange(parent: ContentView, fromI: number, fromOff: number
     }
   }
   if (!insert.length && fromI && toI < children.length && !children[fromI - 1].breakAfter &&
-      children[toI].merge(0, 0, children[fromI - 1], false, openStart, openEnd))
+      children[toI].merge(0, 0, children[fromI - 1], false, openStart > 0 ? breakAtStart : 0, openStart, openEnd))
     fromI--
 
   if (fromI < toI || insert.length) parent.replaceChildren(fromI, toI, insert)
+  LOG_replaceRange && console.log("=> " + parent)
 }
 
 export function mergeChildrenInto(parent: ContentView, from: number, to: number,
-                                  insert: ContentView[], openStart: number, openEnd: number) {
+                                  insert: ContentView[], breakAtStart: number, openStart: number, openEnd: number) {
   let cur = parent.childCursor()
   let {i: toI, off: toOff} = cur.findPos(to, 1)
   let {i: fromI, off: fromOff} = cur.findPos(from, -1)
-  let dLen = from - to
-  for (let view of insert) dLen += view.length
+  let dLen = from - to + breakAtStart
+  for (let view of insert) dLen += view.length + view.breakAfter
   parent.length += dLen
 
-  replaceRange(parent, fromI, fromOff, toI, toOff, insert, 0, openStart, openEnd)
+  replaceRange(parent, fromI, fromOff, toI, toOff, insert, breakAtStart, openStart, openEnd)
 }

@@ -169,16 +169,16 @@ export class DocView extends ContentView {
         breakAtStart = before.breakAtStart
         openStart = before.openStart; openEnd = after.openEnd
         let compLine = this.compositionView(composition)
+        // FIXME make this work with nested wrappers
         if (after.breakAtStart) {
           compLine.breakAfter = 1
         } else if (after.content.length &&
-                   compLine.merge(compLine.length, compLine.length, after.content[0], false, after.openStart, 0)) {
+                   compLine.merge(compLine.length, compLine.length, after.content[0], false, 0, after.openStart, 0)) {
           compLine.breakAfter = after.content[0].breakAfter
           after.content.shift()
         }
-        // FIXME make this work with nested wrappers
         if (before.content.length &&
-            compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, before.openEnd)) {
+            compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, 0, before.openEnd)) {
           before.content.pop()
         }
         content = before.content.concat(compLine).concat(after.content)

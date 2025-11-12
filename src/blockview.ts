@@ -23,13 +23,14 @@ export class LineView extends ContentView implements BlockView {
   declare parent: DocView | BlockWrapperView | null
 
   // Consumes source
-  merge(from: number, to: number, source: BlockView | null, hasStart: boolean, openStart: number, openEnd: number): boolean {
+  merge(from: number, to: number, source: BlockView | null, hasStart: boolean, _breakAtStart: number,
+        openStart: number, openEnd: number): boolean {
     if (source) {
       if (!(source instanceof LineView)) return false
       if (!this.dom) source.transferDOM(this) // Reuse source.dom when appropriate
     }
     if (hasStart) this.setDeco(source ? source.attrs : null)
-    mergeChildrenInto(this, from, to, source ? source.children.slice() : [], openStart, openEnd)
+    mergeChildrenInto(this, from, to, source ? source.children.slice() : [], 0, openStart, openEnd)
     return true
   }
 
@@ -40,7 +41,7 @@ export class LineView extends ContentView implements BlockView {
     let {i, off} = this.childPos(at)
     if (off) {
       end.append(this.children[i].split(off), 0)
-      this.children[i].merge(off, this.children[i].length, null, false, 0, 0)
+      this.children[i].merge(off, this.children[i].length, null, false, 0, 0, 0)
       i++
     }
     for (let j = i; j < this.children.length; j++) end.append(this.children[j], 0)
@@ -187,6 +188,21 @@ export class BlockWrapperView extends ContentView implements BlockView {
     return this.children[side < 0 ? 0 : this.children.length - 1].covers(side)
   }
 
+  merge(from: number, to: number, source: BlockView | null, hasStart: boolean,
+        breakAtStart: number, openStart: number, openEnd: number): boolean {
+    if (source) {
+      if (!(source instanceof BlockWrapperView && source.block.eq(this.block)) ||
+          (from && openStart <= 0) || (to < this.length && openEnd <= 0)) return false
+      if (!this.dom && source.dom) {
+        source.markDirty()
+        this.setDOM(source.dom)
+        source.dom = null
+      }
+    }
+    mergeChildrenInto(this, from, to, source ? source.children.slice() : [], breakAtStart, openStart - 1, openEnd - 1)
+    return true
+  }
+
   coordsAt(pos: number, side: number): Rect | null { return coordsInBlock(this, pos, side) }
 
   domAtPos(pos: number) { return blockDOMAtPos(this, pos) }
@@ -203,7 +219,7 @@ export class BlockWrapperView extends ContentView implements BlockView {
     let {i, off} = this.childPos(at)
     if (off) {
       end.append(this.children[i].split(off) as BlockView)
-      this.children[i].merge(off, this.children[i].length, null, false, 0, 0)
+      this.children[i].merge(off, this.children[i].length, null, false, 0, 0, 0)
       i++
     }
     for (let j = i; j < this.children.length; j++) end.append(this.children[j])
@@ -233,7 +249,8 @@ export class BlockWidgetView extends ContentView implements BlockView {
     super()
   }
 
-  merge(from: number, to: number, source: ContentView | null, _takeDeco: boolean, openStart: number, openEnd: number): boolean {
+  merge(from: number, to: number, source: ContentView | null, _takeDeco: boolean,
+        _breakAtStart: number, openStart: number, openEnd: number): boolean {
     if (source && (!(source instanceof BlockWidgetView) || !this.widget.compare(source.widget) ||
                    from > 0 && openStart <= 0 || to < this.length && openEnd <= 0))
       return false
@@ -351,11 +368,11 @@ export function coordsInBlock(block: {length: number, children: readonly BlockVi
   return best ? best.coordsAt(pos - bestPos, side) : null
 }
 
-export function blockDOMAtPos(block: ContentView, pos: number) {
+export function blockDOMAtPos(block: DocView | BlockWrapperView, pos: number) {
   let {i, off} = block.childCursor().findPos(pos, -1)
   for (; i < block.children.length - 1;) {
     let child = block.children[i]
-    if (off < child.length || child instanceof LineView) break // FIXME use .covers instead?
+    if (off < child.length || child.covers(1)) break
     i++; off = 0
   }
   return block.children[i].domAtPos(off)

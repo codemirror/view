@@ -81,7 +81,7 @@ export class ContentBuilder implements SpanIterator<Decoration> {
       spilled--
     }
     for (let cur = this.blockRanges; cur.value && cur.from <= at; cur.next()) if (cur.to >= at) {
-      if (!this.lastBlock) this.blockOpenStart++
+      if (!this.lastBlock && cur.from < this.pos) this.blockOpenStart++
       this.cx = new OpenBlock(cur.value, cur.from, cur.to, this.cx)
     }
   }
@@ -110,9 +110,9 @@ export class ContentBuilder implements SpanIterator<Decoration> {
     if (!this.posCovered() && !(openEnd && this.lastBlock instanceof BlockWidgetView))
       this.getLine()
     while (this.cx.parent) {
+      if (this.cx.to > this.pos) this.openEnd++
       this.cx.parent.content.push(this.cx.wrapView())
       this.cx = this.cx.parent
-      this.openEnd++
     }
     this.openStart += this.blockOpenStart
   }
