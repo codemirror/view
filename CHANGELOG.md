@@ -1,3 +1,13 @@
+## 6.38.7 (2025-11-14)
+
+### Bug fixes
+
+Make detection of transformed tooltip parent elements (forcing absolute positioning) more robust on current browsers.
+
+Avoid an issue where on Chrome and Safari, typing over a cross-line selection can replace widgets on the line after the selection with their plain text content.
+
+Fix a bug that broke insertion of composed input at multiple cursors when the IME keeps the selection at the start of the composed text.
+
 ## 6.38.6 (2025-10-13)
 
 ### Bug fixes
