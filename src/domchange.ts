@@ -208,7 +208,7 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
     let changes = startState.changes(change)
     let mainSel = newSel && newSel.main.to <= changes.newLength ? newSel.main : undefined
     // Try to apply a composition change to all cursors
-    if (startState.selection.ranges.length > 1 && view.inputState.composing >= 0 &&
+    if (startState.selection.ranges.length > 1 && (view.inputState.composing >= 0 || view.inputState.compositionPendingChange) &&
         change.to <= sel.to + 10 && change.to >= sel.to - 10) {
       let replaced = view.state.sliceDoc(change.from, change.to)
       let compositionRange: {from: number, to: number}, composition = newSel && findCompositionNode(view, newSel.main.head)
