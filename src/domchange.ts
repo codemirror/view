@@ -54,7 +54,10 @@ export class DOMChange {
           anchor = view.state.doc.length
         }
       }
-      this.newSel = EditorSelection.single(anchor, head)
+      if (view.inputState.composing > -1 && view.state.selection.ranges.length > 1)
+        this.newSel = view.state.selection.replaceRange(EditorSelection.range(anchor, head))
+      else
+        this.newSel = EditorSelection.single(anchor, head)
     }
   }
 }
@@ -218,17 +221,17 @@ function applyDefaultInsert(view: EditorView, change: {from: number, to: number,
       } else {
         compositionRange = view.state.doc.lineAt(sel.head)
       }
-      let offset = sel.to - change.to, size = sel.to - sel.from
+      let offset = sel.to - change.to
       tr = startState.changeByRange(range => {
         if (range.from == sel.from && range.to == sel.to)
           return {changes, range: mainSel || range.map(changes)}
         let to = range.to - offset, from = to - replaced.length
-        if (range.to - range.from != size || view.state.sliceDoc(from, to) != replaced ||
+        if (view.state.sliceDoc(from, to) != replaced ||
             // Unfortunately, there's no way to make multiple
             // changes in the same node work without aborting
             // composition, so cursors in the composition range are
             // ignored.
-            range.to >= compositionRange.from && range.from <= compositionRange.to)
+            to >= compositionRange.from && from <= compositionRange.to)
           return {range}
         let rangeChanges = startState.changes({from, to, insert: change!.insert}), selOff = range.to - sel.to
         return {
