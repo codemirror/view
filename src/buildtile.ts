@@ -11,7 +11,9 @@ class TilePointer {
               readonly parent: TilePointer | null) {}
 }
 
-export class TileBuilder implements SpanIterator<Decoration> {
+const fullPointRanges = {fullPointRanges: true}
+
+export class TileBuilder {
   new: CompositeTile
   old: TilePointer
   curLine: LineTile | null = null
@@ -35,21 +37,27 @@ export class TileBuilder implements SpanIterator<Decoration> {
   }
 
   run(changes: readonly ChangedRange[]) {
-    for (let pos = 0, i = 0;;) {
+    for (let posA = 0, posB = 0, i = 0;;) {
       let next = i < changes.length ? changes[i++] : null
-      let skipTo = next ? next.fromA : this.doc.length
-      if (skipTo > pos) this.preserve(pos, skipTo)
+      let skipB = next ? next.fromB : this.doc.length
+      if (skipB > posB) {
+        let len = this.preserve(skipB - posB)
+        posA += len
+        posB += len
+      }
       if (!next) break
-      this.emit(next.fromB, next.toB)
-      this.forward(next.fromA, next.toA)
-      pos = next.toA
+      let len = this.emit(posB, next.toB)
+      posB += len
+      let endA = next.toA + (posB - next.toB)
+      this.forward(endA - posA)
+      posA = endA
     }
   }
 
-  preserve(from: number, to: number) {
+  preserve(length: number) {
+    let dist = length
     // FIXME proper handling of point nodes at boundaries
     let {tile, index, parent} = this.old
-    let dist = to - from
     while (dist > 0) {
       if (tile instanceof TextTile) {
         if (index == tile.length) {
@@ -60,9 +68,14 @@ export class TileBuilder implements SpanIterator<Decoration> {
           if (index == 0 && takeTo == tile.length) this.addTile(tile)
           // FIXME have an addText method
           else this.addTile(TextTile.of(tile.text.slice(index, takeTo)))
+          dist -= takeTo - index
           index = takeTo
         }
       } else if (index == tile.children.length) {
+        if (tile.breakAfter) {
+          // FIXME attach to newly built tree
+          dist--
+        }
         ;({tile, index, parent} = parent!)
         index++
       } else {
@@ -70,17 +83,35 @@ export class TileBuilder implements SpanIterator<Decoration> {
         if (next.length <= dist) {
           this.addTile(next)
           index++
+          dist -= next.length + next.breakAfter
         } else if (next instanceof CompositeTile || next instanceof TextTile) {
           parent = new TilePointer(tile, index, parent)
           tile = next
           index = 0
         } else {
-          
-          // FIXME what to do with partial atomic tiles?
+          break
         }
       }
     }
+    return length - dist
   }
+
+  emit(from: number, to: number) {
+    let end = to
+    RangeSet.spans(this.decorations, from, to, {
+      point: (from, to, value, active, openStart, index) => {
+        this.emitPoint(from, to, value, active, openStart, index)
+        end = Math.max(end, to)
+      },
+      span: (from, to, active, openStart) => {
+        this.emitText(to - from, active, openStart)
+        this.pos = to
+      }
+    }, fullPointRanges)
+    return end
+  }
+
+  
 
   addTile(tile: Tile) {
     let last
@@ -196,11 +227,6 @@ export class TileBuilder implements SpanIterator<Decoration> {
     }
   }
 
-  span(from: number, to: number, active: MarkDecoration[], openStart: number) {
-    this.buildText(to - from, active, openStart)
-    this.pos = to
-    if (this.openStart < 0) this.openStart = openStart
-  }
 
   point(from: number, to: number, deco: Decoration, active: MarkDecoration[], openStart: number, index: number) {
     if (this.disallowBlockEffectsFor[index] && deco instanceof PointDecoration) {
