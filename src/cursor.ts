@@ -112,7 +112,7 @@ function domPosInText(node: Text, x: number, y: number): {node: Node, offset: nu
           // Check for RTL on browsers that support getting client
           // rects for empty ranges.
           let rectBefore = textRange(node, i).getBoundingClientRect()
-          if (rectBefore.left == rect.right) after = !right
+          if (Math.abs(rectBefore.left - rect.right) < 0.1) after = !right
         }
         if (dy <= 0) return {node, offset: i + (after ? 1 : 0)}
         closestOffset = i + (after ? 1 : 0)
