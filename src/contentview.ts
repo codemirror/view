@@ -282,7 +282,7 @@ export class ChildCursor {
   }
 }
 
-const LOG_replaceRange = true
+const LOG_replaceRange = false
 
 // FIXME verify break handling for nested block nodes
 export function replaceRange(parent: ContentView, fromI: number, fromOff: number, toI: number, toOff: number,
@@ -333,7 +333,6 @@ export function replaceRange(parent: ContentView, fromI: number, fromOff: number
   }
 
   if (before) {
-    console.log("set before break to", openStart > 0 ? 0 : breakAtStart)
     before.breakAfter = openStart > 0 ? 0 : breakAtStart
     if (fromOff > 0) {
       if ((!breakAtStart || openStart > 0) &&
