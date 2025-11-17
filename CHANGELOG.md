@@ -1,3 +1,11 @@
+## 6.38.8 (2025-11-17)
+
+### Bug fixes
+
+Improve handling of composition with multiple cursors on MacOS.
+
+Fix an issue where computing a document position from screen coordinates would sometimes go wrong in right-to-left text.
+
 ## 6.38.7 (2025-11-14)
 
 ### Bug fixes
