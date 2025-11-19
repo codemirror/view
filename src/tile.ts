@@ -34,6 +34,10 @@ export class Tile {
     this.flags |= TileFlag.Synced
     return this
   }
+
+  toString() {
+    return this.constructor.name + (this.children.length ? `(${this.children})` : "") + (this.breakAfter ? "#" : "")
+  }
 }
 
 export class CompositeTile extends Tile {
@@ -49,17 +53,19 @@ export class CompositeTile extends Tile {
   get lastChild() { return this.children.length ? this.children[this.children.length - 1] : null }
 
   append(child: Tile) {
+    if (this.flags & TileFlag.Synced) throw new Error("Adding to synced tile")
     this.children.push(child)
     child.parent = this
-    this.length += child.length + child.breakAfter
   }
 
   sync() {
     if (this.flags & TileFlag.Synced) return
     super.sync()
     let parent = this.dom, prev: Node | null = null, next
+    let length = 0
     for (let child of this.children) {
       child.sync()
+      length += child.length + child.breakAfter
       next = prev ? prev.nextSibling : parent.firstChild
       if (child.dom!.parentNode == parent) {
         while (next && next != child.dom) next = rm(next)
@@ -70,6 +76,7 @@ export class CompositeTile extends Tile {
     }
     next = prev ? prev.nextSibling : parent.firstChild
     while (next) next = rm(next)
+    this.length = length
   }
 }
 
@@ -93,7 +100,9 @@ export class BlockWidgetTile extends Tile {
   get isEditable() { return false }
 
   static of(widget: WidgetType, view: EditorView, length: number, side: number) {
-    return new BlockWidgetTile(widget.toDOM(view), widget, length, side).synced()
+    let dom = widget.toDOM(view)
+    if (!widget.editable) dom.contentEditable = "false"
+    return new BlockWidgetTile(dom, widget, length, side).synced()
   }
 }
 
@@ -108,6 +117,7 @@ export class LineTile extends CompositeTile {
   declare dom: HTMLElement
   constructor(dom: HTMLElement, public attrs: Attrs | null) {
     super(dom)
+    if (attrs) this.flags |= TileFlag.AttrsDirty
   }
 
   // Only called when building a line view in ContentBuilder
@@ -128,8 +138,8 @@ export class LineTile extends CompositeTile {
     }
   }
 
-  static start() {
-    let line = new LineTile(document.createElement("div"), null)
+  static start(attrs: Attrs | null = null) {
+    let line = new LineTile(document.createElement("div"), attrs)
     line.dom.className = "cm-line"
     return line
   }
@@ -162,6 +172,8 @@ export class TextTile extends Tile {
     if (this.dom.nodeValue != this.text) this.dom.nodeValue = this.text
   }
 
+  toString() { return JSON.stringify(this.text) }
+
   static of(text: string) {
     return new TextTile(document.createTextNode(text), text).synced()
   }
@@ -175,7 +187,9 @@ export class WidgetTile extends Tile {
   get isEditable() { return false }
 
   static of(widget: WidgetType, view: EditorView, length: number, side: number) {
-    return new WidgetTile(widget.toDOM(view), length, widget, side).synced()
+    let dom = widget.toDOM(view)
+    if (!widget.editable) dom.contentEditable = "false"
+    return new WidgetTile(dom, length, widget, side).synced()
   }
 }
 

@@ -323,7 +323,6 @@ export function replaceRange(parent: ContentView, fromI: number, fromOff: number
     } else if (after?.breakAfter) {
       // The element at `toI` is entirely covered by this range.
       // Preserve its line break, if any.
-      console.log("passing through break after", !!last)
       if (last) last.breakAfter = 1
       else breakAtStart = 1
     }

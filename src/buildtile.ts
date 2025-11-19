@@ -5,6 +5,7 @@ import {Decoration, DecorationSet, MarkDecoration, PointDecoration, WidgetType, 
 import {RangeSet, TextIterator, SpanIterator, ChangeSet} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {ViewUpdate, decorations} from "./extension"
+import browser from "./browser"
 
 // FIXME rename to tilemanager.ts?
 
@@ -18,6 +19,7 @@ interface TileWalker {
   leave(tile: CompositeTile): void
   skip(tile: Tile, from: number, to: number): void
   break(): void
+  early(n: number): void
 }
 
 class TilePointer {
@@ -35,12 +37,14 @@ class TilePointer {
     return new TilePointer(doc, 1, null)
   }
 
-  advance(dist: number, walker?: TileWalker) {
+  advance(dist: number, side: -1 | 1, walker?: TileWalker) {
     let {tile, offset, parent} = this
-    while (dist > 0) {
+    while (dist || side > 0) {
       if (tile instanceof TextTile) {
         if (offset == tile.length) {
           ;({tile, offset, parent} = parent!)
+        } else if (!dist) {
+          break
         } else {
           let take = Math.min(dist, tile.length - offset)
           if (walker) walker.skip(tile, offset, offset + take)
@@ -48,21 +52,32 @@ class TilePointer {
           offset += take
         }
       } else if (offset == (tile.children.length << 1) + 1) {
+        if (!parent && !dist) break
         if (walker) walker.leave(tile)
         ;({tile, offset, parent} = parent!)
       } else if (!(offset & 1)) { // Low bit not set, are in front of break
+        if (!dist) break
+        if (walker) walker.break()
         offset++
         dist--
       } else {
         let next = tile.children[offset >> 1]
-        if (next.length <= dist) {
+        if (side > 0 ? next.length <= dist : next.length < dist) {
           if (walker) walker.skip(next, 0, next.length)
           offset += 2 - next.breakAfter
           dist -= next.length
         } else if (next instanceof CompositeTile || next instanceof TextTile) {
           parent = new TilePointer(tile, offset + (2 - next.breakAfter), parent)
           tile = next
-          offset = 1
+          if (next instanceof TextTile) {
+            offset = 0
+          } else {
+            offset = 1
+            if (walker) walker.enter(next)
+          }
+        } else if (dist < next.length) {
+          if (dist && walker) walker.early(dist)
+          break
         } else {
           if (walker) walker.skip(next, 0, dist)
           offset += 2 - next.breakAfter
@@ -83,8 +98,8 @@ export class TileBuilder {
   // Used by the builder to run through document text
   cursor: TextIterator
   text: string = ""
-  skip: number = 0
   textOff: number = 0
+  skip: number = 0
 
   constructor(readonly view: EditorView,
               old: DocTile,
@@ -101,54 +116,60 @@ export class TileBuilder {
       let next = i < changes.length ? changes[i++] : null
       let skipB = next ? next.fromB : this.view.state.doc.length
       if (skipB > posB) {
-        let len = this.preserve(skipB - posB)
+        let len = this.preserve(skipB - posB, i == 0, !next)
         posA += len
         posB += len
       }
       if (!next) break
-      let len = this.emit(posB, next.toB)
-      posB += len
+      posB = this.emit(posB, next.toB)
       let endA = next.toA + (posB - next.toB)
       this.forward(endA - posA)
       posA = endA
     }
-    while (this.new.parent) this.new = this.new.parent
+    while (this.new.parent) this.leaveTile()
     return this.new
   }
 
-  preserve(length: number) {
-    this.old = this.old.advance(length, {
+  preserve(length: number, incStart: boolean, incEnd: boolean) {
+    if (!incStart) this.syncBlockContext()
+    this.old = this.old.advance(length, incEnd ? 1 : -1, {
       skip: (tile, from, to) => {
         if (tile instanceof TextTile) {
           if (from == 0 && to == tile.length) this.addTile(tile)
           else this.addText(tile.text.slice(from, to))
         } else {
-          if (to < tile.length) length += tile.length - to
           this.addTile(tile)
         }
       },
       enter: (tile) => {
-        this.new.append(tile)
-        this.new = tile
+        if (tile instanceof LineTile) {
+          this.enterTile(LineTile.start(tile.attrs))
+        } else if (tile instanceof MarkTile) {
+          this.enterTile(MarkTile.of(tile.mark))
+        } else {
+          throw new Error("FIXME")
+        }
       },
       leave: (tile) => {
-        this.new = this.new.parent!
+        this.leaveTile()
       },
       break: () => {
         this.new.lastChild!.breakAfter = 1
-      }
+      },
+      early: n => length -= n
     })
+    this.skipText(length)
     return length
   }
 
   forward(dist: number) {
-    this.old = this.old.advance(dist)
+    this.old = this.old.advance(dist, 1)
   }
 
   emit(from: number, to: number) {
     let iter = new TileDecoIterator(this)
-    let openEnd = RangeSet.spans(this.decorations, from, to, iter, fullPointRanges)
-    iter.finish(openEnd)
+    RangeSet.spans(this.decorations, from, to, iter, fullPointRanges)
+    iter.finish()
     return Math.max(to, iter.pointEnd)
   }
 
@@ -172,6 +193,30 @@ export class TileBuilder {
     }
   }
 
+  leaveTile() {
+    if (this.new instanceof LineTile) {
+      let last = this.new.lastChild
+      if (!last || !hasContent(this.new, false) ||
+          last.dom.nodeName != "BR" && !last.isEditable && !(browser.ios && hasContent(this.new, true)))
+        this.new.append(WidgetTile.of(BreakWidget, this.view, 0, 1))
+    }
+    this.new = this.new.parent!
+  }
+
+  enterTile(tile: CompositeTile) {
+    this.new.append(tile)
+    this.new = tile
+  }
+
+  syncBlockContext() {
+    // FIXME handle block wrappers
+    let inLine = false
+    for (let cur = this.old as TilePointer | null; cur; cur = cur.parent) {
+      if (cur.tile instanceof LineTile) inLine = true
+    }
+    while (!inLine && !(this.new instanceof DocTile)) this.leaveTile()
+  }
+
   skipText(len: number) {
     // Advance the iterator past the replaced content
     if (this.textOff + len <= this.text.length) {
@@ -181,6 +226,21 @@ export class TileBuilder {
       this.text = ""
       this.textOff = 0
     }
+  }
+
+  nextChars(maxLen: number): null | string { // Null indicates a line break
+    if (this.textOff == this.text.length) {
+      let {value, lineBreak, done} = this.cursor.next(this.skip)
+      this.skip = 0
+      if (done) throw new Error("Ran out of text content when drawing inline views")
+      this.text = value
+      let len = this.textOff = Math.min(maxLen, value.length)
+      return lineBreak ? null : value.slice(0, len)
+    }
+    let end = Math.min(this.text.length, this.textOff + maxLen)
+    let chars = this.text.slice(this.textOff, end)
+    this.textOff = end
+    return chars
   }
 }
 
@@ -209,6 +269,7 @@ class TileDecoIterator implements SpanIterator<Decoration> {
   }
 
   point(from: number, to: number, deco: Decoration, active: readonly MarkDecoration[], openStart: number, index: number) {
+    from = Math.max(this.pointEnd, from)
     if (deco instanceof PointDecoration) {
       if (this.build.disallowBlockEffectsFor[index]) {
         if (deco.block)
@@ -217,8 +278,9 @@ class TileDecoIterator implements SpanIterator<Decoration> {
           throw new RangeError("Decorations that replace line breaks may not be specified via plugins")
       }
       this.buildPoint(from, to, deco, active, openStart)
-    } else if (this.curLine && !this.curLine.length) { // Line decoration
-      this.curLine.addLineDeco(deco)
+    } else if ((this.curLine || (!this.blockPosCovered() && this.getLine())) &&
+               !hasContent(this.curLine!, false)) { // Line decoration
+      this.curLine!.addLineDeco(deco)
     }
 
     if (to > from) this.build.skipText(to - from)
@@ -228,8 +290,7 @@ class TileDecoIterator implements SpanIterator<Decoration> {
   getLine() {
     if (!this.curLine) {
       this.curLine = LineTile.start()
-      this.build.new.append(this.curLine)
-      this.build.new = this.curLine
+      this.build.enterTile(this.curLine)
       this.atCursorPos = true
     }
     return this.curLine
@@ -237,10 +298,10 @@ class TileDecoIterator implements SpanIterator<Decoration> {
 
   endLine() {
     let b = this.build
-    while (b.new instanceof MarkTile) b.new = b.new.parent!
+    while (b.new instanceof MarkTile) b.leaveTile()
     if (b.new instanceof LineTile) {
       let line = b.new
-      b.new = line.parent!
+      while (b.new != line.parent) b.leaveTile()
       this.curLine = null
       return line
     }
@@ -261,15 +322,15 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     if (this.pendingBuffer) {
       let line = this.getLine()
       this.syncInlineMarks(line, active, active.length)
-      line.append(new WidgetBufferTile(-1))
+      this.build.new.append(new WidgetBufferTile(-1))
       this.pendingBuffer = Buf.No
     }
   }
 
   syncInlineMarks(line: LineTile, active: readonly MarkDecoration[], openStart: number) {
     let parent: LineTile | MarkTile = line
-    for (let mark of active) {
-      let last
+    for (let i = active.length - 1; i >= 0; i--) {
+      let mark = active[i], last
       if (parent && openStart > 0 && (last = parent.lastChild) && last instanceof MarkTile && last.mark.eq(mark)) {
         parent = last
         openStart--
@@ -280,6 +341,8 @@ class TileDecoIterator implements SpanIterator<Decoration> {
         openStart = 0
       }
     }
+    // FIXME go through leaveTile/enterTile somehow
+    this.build.new = parent
   }
 
   addBlockWidget(view: BlockWidgetTile, start: number) {
@@ -289,43 +352,33 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     this.build.new.append(view)
   }
 
-  finish(openEnd: number) {
-    if (this.pendingBuffer && openEnd <= this.bufferMarks.length) this.flushBuffer()
-    else this.pendingBuffer = Buf.No
+  finish() {
+    this.flushBuffer()
     if (!this.blockPosCovered()) this.getLine()
   }
 
   buildText(length: number, active: readonly MarkDecoration[], openStart: number) {
     let b = this.build
     while (length > 0) {
-      if (b.textOff == b.text.length) {
-        let {value, lineBreak, done} = b.cursor.next(b.skip)
-        b.skip = 0
-        if (done) throw new Error("Ran out of text content when drawing inline views")
-        if (lineBreak) {
-          if (!this.blockPosCovered()) this.getLine()
-          console.log("doing break")
-          // FIXME this.updateBlockWrappers(++this.pos)
-          this.flushBuffer()
-          this.endLine()!.breakAfter = 1
-          this.atCursorPos = true
-          length--
-          continue
-        } else {
-          b.text = value
-          b.textOff = 0
-        }
+      let chars = b.nextChars(Math.min(T.Chunk, length))
+      if (chars == null) { // Line break
+        if (!this.blockPosCovered()) this.getLine()
+        // FIXME this.updateBlockWrappers(++this.pos)
+        this.flushBuffer()
+        this.endLine()!.breakAfter = 1
+        this.atCursorPos = true
+        length--
+        openStart = 0
+        continue
       }
-      let remaining = Math.min(b.text.length - b.textOff, length)
-      let take = Math.min(remaining, T.Chunk)
+      let take = Math.min(chars.length, length)
       this.flushBuffer(active.slice(active.length - openStart))
       let line = this.getLine()
       this.syncInlineMarks(line, active, openStart)
-      line.append(TextTile.of(b.text.slice(b.textOff, b.textOff + take)))
+      this.build.new.append(TextTile.of(chars))
       this.atCursorPos = true
-      b.textOff += take
       length -= take
-      openStart = remaining <= take ? 0 : active.length
+      openStart = take == T.Chunk ? 0 : active.length
     }
   }
 
@@ -341,18 +394,24 @@ class TileDecoIterator implements SpanIterator<Decoration> {
       let cursorAfter = !tile.isEditable && (from < to || deco.startSide <= 0)
       let line = this.getLine()
       if (this.pendingBuffer == Buf.IfCursor && !cursorBefore && !tile.isEditable) this.pendingBuffer = Buf.No
-      this.flushBuffer(active)
-      if (cursorBefore) {
-        this.syncInlineMarks(line, active, openStart)
-        line.append(new WidgetBufferTile(1))
-        openStart = active.length + Math.max(0, openStart - active.length)
-      }
-      line.append(tile)
+      else this.flushBuffer(active)
+      this.syncInlineMarks(line, active, openStart)
+      if (cursorBefore) this.build.new.append(new WidgetBufferTile(1))
+      this.build.new.append(tile)
       this.atCursorPos = cursorAfter
       this.pendingBuffer = !cursorAfter ? Buf.No : from < to || openStart > active.length ? Buf.Yes : Buf.IfCursor
       if (this.pendingBuffer) this.bufferMarks = active.slice()
     }
   }
+}
+
+function hasContent(tile: Tile, requireText: boolean) {
+  let scan = (tile: Tile) => {
+    for (let ch of tile.children)
+      if ((requireText ? ch instanceof TextTile : ch.length) || scan(ch)) return true
+    return false
+  }
+  return scan(tile)
 }
 
 export class NullWidget extends WidgetType {
@@ -365,6 +424,12 @@ export class NullWidget extends WidgetType {
   static block = new NullWidget("div")
 }
 
+export const BreakWidget = new class extends WidgetType {
+  toDOM() { return document.createElement("br") }
+  get isHidden() { return true }
+  get editable() { return true }
+}
+
 export class TileManager {
   decorations: readonly DecorationSet[]
   tile: DocTile
@@ -375,7 +440,7 @@ export class TileManager {
     build.run([new ChangedRange(0, 0, 0, view.state.doc.length)])
     build.new.sync()
     this.tile = build.new
-    console.log("==> " + this.tile.dom.innerHTML)
+//    console.log("==> " + this.tile.dom.innerHTML)
   }
 
   update(update: ViewUpdate) {
@@ -395,7 +460,7 @@ export class TileManager {
     let builder = new TileBuilder(this.view, this.tile, this.decorations, [])
     this.tile = builder.run(changedRanges)
     this.tile.sync()
-    console.log("=!=> " + this.tile.dom.innerHTML)
+//    console.log("=!=> " + this.tile.dom.innerHTML)
   }
 
   getDecorations() {

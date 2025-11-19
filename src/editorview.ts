@@ -468,6 +468,8 @@ export class EditorView {
           this.updateAttrs()
           redrawn = this.docView.update(update)
           this.tileManager.update(update) // FIXME
+          if (this.docView.dom!.innerHTML != this.tileManager.tile.dom.innerHTML)
+            throw new Error(`DOM mismatch:\n  ${this.docView.dom!.innerHTML}\n  ${this.tileManager.tile.dom.innerHTML}`) 
           if (redrawn) this.docViewUpdate()
         }
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {
