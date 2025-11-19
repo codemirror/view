@@ -1,5 +1,5 @@
 import {WidgetType, BlockWrapper, MarkDecoration, LineDecoration} from "./decoration"
-import {Attrs, updateAttrs, combineAttrs} from "./attributes"
+import {Attrs, setAttrs, combineAttrs} from "./attributes"
 import {EditorView} from "./editorview"
 
 export const enum TileFlag {
@@ -7,6 +7,8 @@ export const enum TileFlag {
   Synced = 2,
   AttrsDirty = 4
 }
+
+export const enum Reused { Full = 1, DOM = 2 }
 
 const noChildren: readonly Tile[] = []
 
@@ -37,6 +39,15 @@ export class Tile {
 
   toString() {
     return this.constructor.name + (this.children.length ? `(${this.children})` : "") + (this.breakAfter ? "#" : "")
+  }
+
+  destroy() {}
+
+  destroyDropped(reused: Map<Tile, Reused>) {
+    if (reused.get(this) != Reused.Full) {
+      this.destroy()
+      for (let ch of this.children) ch.destroyDropped(reused)
+    }
   }
 }
 
@@ -97,11 +108,15 @@ export class BlockWidgetTile extends Tile {
     super(dom, length)
   }
 
+  destroy() { this.widget.destroy(this.dom) }
+
   get isEditable() { return false }
 
-  static of(widget: WidgetType, view: EditorView, length: number, side: number) {
-    let dom = widget.toDOM(view)
-    if (!widget.editable) dom.contentEditable = "false"
+  static of(widget: WidgetType, view: EditorView, length: number, side: number, dom?: HTMLElement) {
+    if (!dom) {
+      dom = widget.toDOM(view)
+      if (!widget.editable) dom.contentEditable = "false"
+    }
     return new BlockWidgetTile(dom, widget, length, side).synced()
   }
 }
@@ -115,17 +130,19 @@ export class BlockWrapperTile extends CompositeTile {
 
 export class LineTile extends CompositeTile {
   declare dom: HTMLElement
-  constructor(dom: HTMLElement, public attrs: Attrs | null) {
+  constructor(dom: HTMLElement, public attrs: Attrs) {
     super(dom)
-    if (attrs) this.flags |= TileFlag.AttrsDirty
   }
 
   // Only called when building a line view in ContentBuilder
   addLineDeco(deco: LineDecoration) {
     let attrs = deco.spec.attributes, cls = deco.spec.class
-    if (attrs) this.attrs = combineAttrs(attrs, this.attrs || {})
-    if (cls) this.attrs = combineAttrs({class: cls}, this.attrs || {});
-    if (attrs || cls) this.flags |= TileFlag.AttrsDirty
+    if (attrs || cls) {
+      if (this.attrs == LineTile.baseAttrs) this.attrs = {class: "cm-line"}
+      if (attrs) combineAttrs(attrs, this.attrs)
+      if (cls) this.attrs.class += " " + cls
+      this.flags |= TileFlag.AttrsDirty
+    }
   }
 
   sync() {
@@ -133,16 +150,17 @@ export class LineTile extends CompositeTile {
     if (this.flags & TileFlag.AttrsDirty) {
       this.flags &= ~TileFlag.AttrsDirty
       // FIXME proper update, possibly compare to DOM
-      updateAttrs(this.dom, null, this.attrs)
-      this.dom.classList.add("cm-line")
+      setAttrs(this.dom, this.attrs)
     }
   }
 
-  static start(attrs: Attrs | null = null) {
-    let line = new LineTile(document.createElement("div"), attrs)
-    line.dom.className = "cm-line"
+  static start(attrs: Attrs, dom?: HTMLElement, keepAttrs?: boolean) {
+    let line = new LineTile(dom || document.createElement("div"), attrs)
+    if (!dom || !keepAttrs) line.flags |= TileFlag.AttrsDirty
     return line
   }
+
+  static baseAttrs = {class: "cm-line"}
 }
 
 export class MarkTile extends CompositeTile {
@@ -151,11 +169,12 @@ export class MarkTile extends CompositeTile {
     super(dom)
   }
 
-  static of(mark: MarkDecoration) {
-    // FIXME incremental DOM updates
-    let dom = document.createElement(mark.tagName)
-    if (mark.class) dom.className = mark.class
-    if (mark.attrs) for (let name in mark.attrs) dom.setAttribute(name, mark.attrs[name])
+  static of(mark: MarkDecoration, dom?: HTMLElement) {
+    if (!dom) {
+      dom = document.createElement(mark.tagName)
+      if (mark.class) dom.className = mark.class
+      if (mark.attrs) for (let name in mark.attrs) dom.setAttribute(name, mark.attrs[name])
+    }
     return new MarkTile(dom, mark)
   }
 }
@@ -180,15 +199,21 @@ export class TextTile extends Tile {
 }
 
 export class WidgetTile extends Tile {
-  constructor(dom: HTMLElement | Text, length: number, readonly widget: WidgetType, readonly side: number) {
+  declare dom: HTMLElement
+
+  constructor(dom: HTMLElement, length: number, readonly widget: WidgetType, readonly side: number) {
     super(dom, length)
   }
 
   get isEditable() { return false }
 
-  static of(widget: WidgetType, view: EditorView, length: number, side: number) {
-    let dom = widget.toDOM(view)
-    if (!widget.editable) dom.contentEditable = "false"
+  destroy() { this.widget.destroy(this.dom) }
+
+  static of(widget: WidgetType, view: EditorView, length: number, side: number, dom?: HTMLElement | null) {
+    if (!dom) {
+      dom = widget.toDOM(view)
+      if (!widget.editable) dom.contentEditable = "false"
+    }
     return new WidgetTile(dom, length, widget, side).synced()
   }
 }
