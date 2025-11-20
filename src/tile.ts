@@ -12,7 +12,7 @@ export const enum Reused { Full = 1, DOM = 2 }
 
 const noChildren: readonly Tile[] = []
 
-export class Tile {
+export abstract class Tile {
   parent: CompositeTile | null = null
   flags = 0 as TileFlag
 
@@ -27,6 +27,7 @@ export class Tile {
   get children() { return noChildren }
 
   get isEditable() { return true }
+  isComposite(): this is CompositeTile { return false }
 
   sync() {
     this.flags |= TileFlag.Synced
@@ -51,13 +52,15 @@ export class Tile {
   }
 }
 
-export class CompositeTile extends Tile {
+export abstract class CompositeTile extends Tile {
   declare dom: HTMLElement
   _children: Tile[] = []
 
   constructor(dom: HTMLElement) {
     super(dom, 0)
   }
+
+  isComposite(): this is CompositeTile { return true }
 
   get children() { return this._children }
 
@@ -74,6 +77,9 @@ export class CompositeTile extends Tile {
     super.sync()
     let parent = this.dom, prev: Node | null = null, next
     let length = 0
+    if (this instanceof DocTile) for (let i = 0; i < this.children.length; i++) for (let j = i + 1; j < this.children.length; j++) {
+      if (this.children[i].dom == this.children[j].dom) console.log("DOUBLE DOM ", i, j, "" + this.children[i], this.children[i].dom)
+    }
     for (let child of this.children) {
       child.sync()
       length += child.length + child.breakAfter
@@ -89,6 +95,8 @@ export class CompositeTile extends Tile {
     while (next) next = rm(next)
     this.length = length
   }
+
+  abstract clone(dom?: HTMLElement): CompositeTile
 }
 
 // Remove a DOM node and return its next sibling.
@@ -99,26 +107,7 @@ function rm(dom: Node): Node | null {
 }
 
 export class DocTile extends CompositeTile {
-  declare dom: HTMLElement
-}
-
-export class BlockWidgetTile extends Tile {
-  declare dom: HTMLElement
-  constructor(dom: HTMLElement, readonly widget: WidgetType, length: number, readonly side: number) {
-    super(dom, length)
-  }
-
-  destroy() { this.widget.destroy(this.dom) }
-
-  get isEditable() { return false }
-
-  static of(widget: WidgetType, view: EditorView, length: number, side: number, dom?: HTMLElement) {
-    if (!dom) {
-      dom = widget.toDOM(view)
-      if (!widget.editable) dom.contentEditable = "false"
-    }
-    return new BlockWidgetTile(dom, widget, length, side).synced()
-  }
+  clone(dom?: HTMLElement) { return new DocTile(dom!) }
 }
 
 export class BlockWrapperTile extends CompositeTile {
@@ -126,10 +115,19 @@ export class BlockWrapperTile extends CompositeTile {
   constructor(dom: HTMLElement, readonly wrapper: BlockWrapper) {
     super(dom)
   }
+
+  clone(dom?: HTMLElement) { return BlockWrapperTile.of(this.wrapper, dom) }
+
+  static of(wrapper: BlockWrapper, dom?: HTMLElement) {
+    if (!dom) {
+      dom = document.createElement(wrapper.tagName)
+      setAttrs(dom, wrapper.attributes)
+    }
+    return new BlockWrapperTile(dom, wrapper)
+  }
 }
 
 export class LineTile extends CompositeTile {
-  declare dom: HTMLElement
   constructor(dom: HTMLElement, public attrs: Attrs) {
     super(dom)
   }
@@ -154,6 +152,8 @@ export class LineTile extends CompositeTile {
     }
   }
 
+  clone(dom?: HTMLElement) { return LineTile.start(this.attrs, dom) }
+
   static start(attrs: Attrs, dom?: HTMLElement, keepAttrs?: boolean) {
     let line = new LineTile(dom || document.createElement("div"), attrs)
     if (!dom || !keepAttrs) line.flags |= TileFlag.AttrsDirty
@@ -164,10 +164,11 @@ export class LineTile extends CompositeTile {
 }
 
 export class MarkTile extends CompositeTile {
-  declare dom: HTMLElement
   constructor(dom: HTMLElement, readonly mark: MarkDecoration) {
     super(dom)
   }
+
+  clone(dom?: HTMLElement) { return MarkTile.of(this.mark, dom) }
 
   static of(mark: MarkDecoration, dom?: HTMLElement) {
     if (!dom) {
