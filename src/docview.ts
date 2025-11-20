@@ -13,6 +13,8 @@ import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRa
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
+import {DocTile} from "./tile"
+import {TileBuilder} from "./buildtile"
 
 type Composition = {
   range: ChangedRange,
@@ -22,6 +24,7 @@ type Composition = {
 }
 
 export class DocView extends ContentView {
+  tile: DocTile
   declare children: BlockView[]
 
   decorations: readonly DecorationSet[] = []
@@ -65,6 +68,11 @@ export class DocView extends ContentView {
     this.children[0].setParent(this)
     this.updateDeco()
     this.updateInner([new ChangedRange(0, 0, 0, view.state.doc.length)], 0, null)
+
+    let build = new TileBuilder(view, new DocTile(document.createElement("div")), this.decorations, [])
+    build.run([new ChangedRange(0, 0, 0, view.state.doc.length)])
+    build.new.sync()
+    this.tile = build.new
   }
 
   // Update the document view to a given state.
@@ -118,6 +126,15 @@ export class DocView extends ContentView {
       return false
     } else {
       this.updateInner(changedRanges, update.startState.doc.length, composition)
+
+      let builder = new TileBuilder(this.view, this.tile, this.decorations, [])
+      for (let ch of this.tile.children) ch.destroyDropped(builder.reused)
+      this.tile = builder.run(changedRanges)
+      this.tile.sync()
+      if (this.dom!.innerHTML != this.tile.dom.innerHTML) {
+        throw new Error(`DOM mismatch:\n  ${this.dom!.innerHTML}\n  ${this.tile.dom.innerHTML}`)
+      }
+
       if (update.transactions.length) this.lastUpdate = Date.now()
       return true
     }

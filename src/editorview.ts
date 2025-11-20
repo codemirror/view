@@ -24,7 +24,6 @@ import {Attrs, updateAttrs, combineAttrs} from "./attributes"
 import browser from "./browser"
 import {computeOrder, trivialOrder, BidiSpan, Direction, Isolate, isolatesEq} from "./bidi"
 import {applyDOMChange, DOMChange} from "./domchange"
-import {TileManager} from "./buildtile"
 
 /// The type of object given to the [`EditorView`](#view.EditorView)
 /// constructor.
@@ -152,8 +151,6 @@ export class EditorView {
   public viewState: ViewState
   /// @internal
   public docView: DocView
-  /// @internal
-  public tileManager: TileManager
 
   private plugins: PluginInstance[] = []
   private pluginMap: Map<ViewPlugin<any, any>, PluginInstance | null> = new Map
@@ -212,7 +209,6 @@ export class EditorView {
     this.inputState = new InputState(this)
     this.inputState.ensureHandlers(this.plugins)
     this.docView = new DocView(this)
-    this.tileManager = new TileManager(this)
 
     this.mountStyles()
     this.updateAttrs()
@@ -319,7 +315,6 @@ export class EditorView {
         this.inputState.update(update)
       }
       redrawn = this.docView.update(update)
-      this.tileManager.update(update) // FIXME
       if (this.state.facet(styleModule) != this.styleModules) this.mountStyles()
       attrsChanged = this.updateAttrs()
       this.showAnnouncements(transactions)
@@ -467,9 +462,6 @@ export class EditorView {
           this.inputState.update(update)
           this.updateAttrs()
           redrawn = this.docView.update(update)
-          this.tileManager.update(update) // FIXME
-          if (this.docView.dom!.innerHTML != this.tileManager.tile.dom.innerHTML)
-            throw new Error(`DOM mismatch:\n  ${this.docView.dom!.innerHTML}\n  ${this.tileManager.tile.dom.innerHTML}`) 
           if (redrawn) this.docViewUpdate()
         }
         for (let i = 0; i < measuring.length; i++) if (measured[i] != BadMeasure) {

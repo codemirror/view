@@ -1,10 +1,9 @@
 import {Tile, DocTile, CompositeTile, LineTile, MarkTile, BlockWidgetTile, BlockWrapperTile,
-        WidgetTile, TextTile, WidgetBufferTile, TileFlag, Reused} from "./tile"
+        WidgetTile, TextTile, WidgetBufferTile, Reused} from "./tile"
 import {ChangedRange} from "./extension"
-import {Decoration, DecorationSet, MarkDecoration, PointDecoration, WidgetType, addRange} from "./decoration"
-import {RangeSet, TextIterator, SpanIterator, ChangeSet} from "@codemirror/state"
+import {Decoration, DecorationSet, MarkDecoration, PointDecoration, WidgetType} from "./decoration"
+import {RangeSet, TextIterator, SpanIterator} from "@codemirror/state"
 import {EditorView} from "./editorview"
-import {ViewUpdate, decorations} from "./extension"
 import browser from "./browser"
 
 const enum Buf { No = 0, Yes = 1, IfCursor = 2 }
@@ -101,9 +100,12 @@ class TilePointer {
 
 const fullPointRanges = {fullPointRanges: true}
 
+const LOG_builder = true
+
 export class TileBuilder {
   new: CompositeTile
   old: TilePointer
+  oldLen: number
   reused: Map<Tile, Reused> = new Map
 
   // Used by the builder to run through document text
@@ -119,31 +121,39 @@ export class TileBuilder {
               readonly disallowBlockEffectsFor: boolean[]) {
     this.cursor = view.state.doc.iter()
     this.old = TilePointer.start(old)
+    this.oldLen = old.length
     this.new = new DocTile(old.dom)
   }
 
   run(changes: readonly ChangedRange[]) {
+    LOG_builder && console.log("Build with changes", JSON.stringify(changes))
+    LOG_builder && console.log("<<< " + this.old.tile)
     for (let posA = 0, posB = 0, i = 0;;) {
       let next = i < changes.length ? changes[i++] : null
-      let skipB = next ? next.fromB : this.view.state.doc.length
-      if (skipB > posB) {
-        let len = this.preserve(skipB - posB, i == 0, !next)
+      let skipA = next ? next.fromA : this.oldLen
+      if (skipA > posA) {
+        LOG_builder && console.log("Preserve", posA, "to", skipA)
+        let len = this.preserve(skipA - posA, i == 0, !next)
+        LOG_builder && console.log("@ " + this.new + " / " + this.old.tile, this.old.offset)
         posA += len
         posB += len
       }
       if (!next) break
       if (next.toB >= posB) {
+        LOG_builder && console.log("Emit", posB, "to", next.toB, "over", posA, "to", next.toA)
         let len = this.emit(posB, next.toB, next.toA - posA)
+        LOG_builder && console.log("@ " + this.new + " / " + this.old.tile, this.old.offset)
         posB += len
         posA = next.toA + (posB - next.toB)
       }
     }
     while (this.new.parent) this.leaveTile()
+    LOG_builder && console.log(">>> " + this.new)
     return this.new
   }
 
   preserve(length: number, incStart: boolean, incEnd: boolean) {
-    if (!incStart) this.syncBlockContext()
+    if (!incStart) this.syncContext()
     this.old = this.old.advance(length, incEnd ? 1 : -1, {
       skip: (tile, from, to) => {
         if (tile instanceof TextTile && (from > 0 || to < tile.length)) {
@@ -165,6 +175,7 @@ export class TileBuilder {
         }
       },
       leave: (tile) => {
+        console.log("leaving " + tile, "from " + this.new)
         this.leaveTile()
       },
       break: () => {
@@ -195,8 +206,9 @@ export class TileBuilder {
       reusable.push(prev)
     }
     let iter = new TileDecoIterator(this, reusable)
-    RangeSet.spans(this.decorations, from, to, iter, fullPointRanges)
-    iter.finish()
+    let openEnd = RangeSet.spans(this.decorations, from, to, iter, fullPointRanges)
+    console.log("OPEN END IS", openEnd)
+    iter.finish(openEnd)
     if (iter.pointEnd > to) {
       // FIXME if the point at the end of the iterated range covers another change, this isn't valid
       this.old = this.old.advance(iter.pointEnd - to, 1)
@@ -232,6 +244,7 @@ export class TileBuilder {
         this.new.append(WidgetTile.of(BreakWidget, this.view, 0, 1))
     }
     this.new = this.new.parent!
+    if (!this.new) throw new Error("Left doc tile")
   }
 
   enterTile(tile: CompositeTile) {
@@ -239,13 +252,18 @@ export class TileBuilder {
     this.new = tile
   }
 
-  syncBlockContext() {
+  syncContext() {
     // FIXME handle block wrappers
-    let inLine = false
+    let line = false, marks: MarkDecoration[] = []
     for (let cur = this.old as TilePointer | null; cur; cur = cur.parent) {
-      if (cur.tile instanceof LineTile) inLine = true
+      if (cur.tile instanceof MarkTile) marks.unshift(cur.tile.mark)
+      if (cur.tile instanceof LineTile) line = true
     }
-    while (!inLine && !(this.new instanceof DocTile)) this.leaveTile()
+    if (line) {
+      // FIXME
+    } else {
+      while (!(this.new instanceof DocTile)) this.leaveTile()
+    }
   }
 
   skipText(len: number) {
@@ -275,7 +293,6 @@ export class TileBuilder {
   }
 }
 
-// FIXME DOM reuse
 class TileDecoIterator implements SpanIterator<Decoration> {
   pointEnd: number = -1
   // Set to false directly after a widget that covers the position after it
@@ -344,7 +361,7 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     let tile = this.build.new
     if (tile instanceof DocTile || tile instanceof BlockWrapperTile) {
       let last = tile.lastChild
-      return last && !last.breakAfter && (last instanceof BlockWidgetTile ? last.side > 0 : true)
+      return last && !last.breakAfter && (last instanceof BlockWidgetTile ? last.side >= 0 : true)
     } else {
       return true
     }
@@ -384,9 +401,17 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     this.build.new.append(view)
   }
 
-  finish() {
+  finish(openEnd: number) {
     this.flushBuffer()
-    if (!this.blockPosCovered()) this.getLine()
+    // Start a line if current position isn't covered properly
+    let line = this.blockPosCovered() ? this.curLine : this.getLine()
+    // Sync mark context to openEnd
+    if (line) for (let parent: CompositeTile = line;; openEnd--) {
+      if (openEnd < 1) { this.build.new = parent; break }
+      let last = parent.lastChild
+      if (!(last instanceof MarkTile)) break
+      parent = last
+    }
   }
 
   buildText(length: number, active: readonly MarkDecoration[], openStart: number) {
@@ -475,56 +500,4 @@ export const BreakWidget = new class extends WidgetType {
   toDOM() { return document.createElement("br") }
   get isHidden() { return true }
   get editable() { return true }
-}
-
-// FIXME put in own file? Better name?
-export class TileManager {
-  decorations: readonly DecorationSet[]
-  tile: DocTile
-
-  constructor(readonly view: EditorView) {
-    this.decorations = this.getDecorations()
-    let build = new TileBuilder(view, new DocTile(document.createElement("div")), this.decorations, [])
-    build.run([new ChangedRange(0, 0, 0, view.state.doc.length)])
-    build.new.sync()
-    this.tile = build.new
-  }
-
-  update(update: ViewUpdate) {
-    let changedRanges = update.changedRanges
-    // FIXME track minWidth somewhere
-    // FIXME this.updateEditContextFormatting(update)
-    // FIXME composition should probably be passed in
-    // FIXME manage selection
-
-    let prevDeco = this.decorations
-    this.decorations = this.getDecorations()
-    let decoDiff = findChangedDeco(prevDeco, this.decorations, update.changes)
-    changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff)
-
-    if (!changedRanges.length && (this.tile.flags & TileFlag.Synced)) return false
-
-    let builder = new TileBuilder(this.view, this.tile, this.decorations, [])
-    for (let ch of this.tile.children) ch.destroyDropped(builder.reused)
-    this.tile = builder.run(changedRanges)
-    this.tile.sync()
-  }
-
-  getDecorations() {
-    // FIXME add spacers and such
-    return this.view.state.facet(decorations).map(d => typeof d == "function" ? d(this.view) : d)
-  }
-}
-
-class DecorationComparator {
-  changes: number[] = []
-  compareRange(from: number, to: number) { addRange(from, to, this.changes) }
-  comparePoint(from: number, to: number) { addRange(from, to, this.changes) }
-  boundChange(pos: number) { addRange(pos, pos, this.changes) }
-}
-
-function findChangedDeco(a: readonly DecorationSet[], b: readonly DecorationSet[], diff: ChangeSet) {
-  let comp = new DecorationComparator
-  RangeSet.compare(a, b, diff, comp)
-  return comp.changes
 }
