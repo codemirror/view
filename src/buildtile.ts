@@ -1,120 +1,17 @@
 import {Tile, DocTile, CompositeTile, LineTile, MarkTile, BlockWrapperTile,
-        WidgetTile, TextTile, WidgetBufferTile, Reused} from "./tile"
+        WidgetTile, TextTile, WidgetBufferTile, Reused, TileFlag, TilePointer} from "./tile"
 import {ChangedRange} from "./extension"
 import {Decoration, DecorationSet, MarkDecoration, PointDecoration, WidgetType} from "./decoration"
 import {RangeSet, TextIterator, SpanIterator} from "@codemirror/state"
 import {EditorView} from "./editorview"
+import {Composition} from "./docview"
 import browser from "./browser"
 
 const enum Buf { No = 0, Yes = 1, IfCursor = 2 }
 
 const enum T { Chunk = 512 }
 
-interface TileWalker {
-  enter(tile: CompositeTile): void
-  leave(tile: CompositeTile): void
-  skip(tile: Tile, from: number, to: number): void
-  break(): void
-}
-
-class TilePointer {
-  constructor(
-    public tile: Tile,
-    // For non-composite tiles this is the offset into the tile. For
-    // composite tiles, this is (2 * the index) + 1 in most cases,
-    // and (2 * the index) + 0 when pointing in front of the break
-    // after the child at index - 1.
-    public offset: number,
-    readonly parents: {tile: CompositeTile, offset: number}[] = []
-  ) {}
-
-  static start(doc: DocTile) {
-    return new TilePointer(doc, 1)
-  }
-
-  advance(dist: number, side: -1 | 1, walker?: TileWalker) {
-    let {tile, offset, parents} = this
-    while (dist || side > 0) {
-      if (!tile.isComposite()) {
-        if (offset == tile.length) {
-          ;({tile, offset} = parents.pop()!)
-          offset += 2
-        } else if (!dist) {
-          break
-        } else {
-          let take = Math.min(dist, tile.length - offset)
-          if (walker) walker.skip(tile, offset, offset + take)
-          dist -= take
-          offset += take
-        }
-      } else if (offset == (tile.children.length << 1) + 1) {
-        if (!dist && !parents.length) break
-        if (walker) walker.leave(tile)
-        let brk = tile.breakAfter
-        ;({tile, offset} = parents.pop()!)
-        offset += 2 - brk
-      } else if (!(offset & 1)) { // Low bit not set, are in front of break
-        if (!dist) break
-        if (walker) walker.break()
-        offset++
-        dist--
-      } else {
-        let next = tile.children[offset >> 1]
-        if (side > 0 ? next.length <= dist : next.length < dist) {
-          if (walker) walker.skip(next, 0, next.length)
-          offset += 2 - next.breakAfter
-          dist -= next.length
-        } else {
-          parents.push({tile, offset})
-          tile = next
-          if (next.isComposite()) {
-            offset = 1
-            if (walker) walker.enter(next)
-          } else {
-            offset = 0
-          }
-        }
-      }
-    }
-    this.tile = tile
-    this.offset = offset
-  }
-
-  findReusableAfter<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
-    outer: for (let i = this.parents.length, {tile, offset} = this;;) {
-      if (tile instanceof CompositeTile) {
-        if (offset & 1) return null
-        let index = offset >> 1
-        while (index < tile.children.length) {
-          let next = tile.children[index++]
-          if (next instanceof cls && test(next)) return next
-          if (next.length || next.breakAfter) return null
-        }
-      }
-      if (!i) return null
-      ;({tile, offset} = this.parents[--i])
-    }
-  }
-
-  findReusableBefore<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
-    outer: for (let i = this.parents.length, {tile, offset} = this;;) {
-      if (tile instanceof CompositeTile) {
-        if (!(offset & 1)) return null
-        let index = offset >> 1
-        while (index > 0) {
-          let prev = tile.children[--index]
-          if (prev.breakAfter && index != (offset >> 1)) return null
-          if (prev instanceof cls && test(prev)) return prev
-          if (prev.length) return null
-        }
-      }
-      if (!i) return null
-      ;({tile, offset} = this.parents[--i])
-    }
-  }
-}
-
-const LOG_builder = false
+const LOG_builder = true
 
 export class TileBuilder {
   old: TilePointer
@@ -134,33 +31,42 @@ export class TileBuilder {
 
   constructor(readonly view: EditorView,
               old: DocTile,
-              //              readonly blockRanges: RangeCursor<BlockWrapper>,
+              // FIXME readonly blockRanges: RangeCursor<BlockWrapper>,
               readonly decorations: readonly DecorationSet[],
               readonly disallowBlockEffectsFor: boolean[]) {
     this.cursor = view.state.doc.iter()
-    this.old = TilePointer.start(old)
+    this.old = new TilePointer(old)
     this.oldLen = old.length
     this.new = this.newRoot = new DocTile(old.dom)
   }
 
-  run(changes: readonly ChangedRange[]) {
+  run(changes: readonly ChangedRange[], composition: Composition | null) {
     LOG_builder && console.log("Build with changes", JSON.stringify(changes))
+    LOG_builder && composition && console.log("Composition", JSON.stringify(composition.range), composition.text.nodeValue)
     LOG_builder && console.log("<<< " + this.old.tile)
+
     for (let posA = 0, posB = 0, i = 0;;) {
       let next = i < changes.length ? changes[i++] : null
       let skipA = next ? next.fromA : this.oldLen
       if (skipA > posA) {
         LOG_builder && console.log("Preserve", posA, "to", skipA)
         let len = skipA - posA
-        this.preserve(len, i == 0, !next)
-        LOG_builder && console.log("@ " + this.new + " / " + this.old.tile, this.old.offset)
+        this.preserve(len, !i, !next)
+        LOG_builder && console.log("@ " + this.new + " / " + this.old.tile, this.old.index)
         posA = skipA
         posB += len
       }
       if (!next) break
-      LOG_builder && console.log("Emit", posB, "to", next.toB, "over", posA, "to", next.toA)
-      this.emit(posB, next.toB, next.toA - posA)
-      LOG_builder && console.log("@ " + this.new + " / " + this.old.tile, this.old.offset)
+      if (composition && next == composition.range) {
+        LOG_builder && console.log("Composition", posB, "to", next.toB, "over", posA, "to", next.toA)
+        this.emit(posB, posB, 0, false)
+        this.composition(composition)
+        this.emit(next.toB, next.toB, 0)
+      } else {
+        LOG_builder && console.log("Emit", posB, "to", next.toB, "over", posA, "to", next.toA)
+        this.emit(posB, next.toB, next.toA - posA)
+      }
+      LOG_builder && console.log("@ " + this.new + " / " + this.old.tile, this.old.index)
       posB = next.toB
       posA = next.toA
     }
@@ -208,12 +114,49 @@ export class TileBuilder {
     this.skipText(length)
   }
 
-  emit(from: number, to: number, lenA: number) {
+  emit(from: number, to: number, lenA: number, sync = true) {
     let iter = new TileDecoIterator(this, () => this.old.advance(lenA, 1))
     let openEnd = RangeSet.spans(this.decorations, from, to, iter)
     iter.finish(openEnd)
 
-    if (to < this.view.state.doc.length) this.syncContext(openEnd)
+    if (sync && to < this.view.state.doc.length) this.syncContext(openEnd)
+  }
+
+  composition(composition: Composition) {
+    let marks: MarkTile[] = [], head: CompositeTile | undefined
+    let ptr = this.old.root.resolveDOM(composition.text, 0)
+    for (let tile = ptr.tile, depth = ptr.parents.length;;) {
+      if (tile instanceof MarkTile) {
+        marks.push(tile)
+      } else if (tile instanceof LineTile) {
+        head = tile
+      }
+      if (!depth) break
+      tile = ptr.parents[--depth].tile
+    }
+    if (!head) throw new Error("not in a line")
+    for (let i = marks.length - 1; i >= 0; i--) {
+      let mark = marks[i]
+      let last: Tile | null = head.lastChild
+      if (last instanceof MarkTile && last.mark.eq(mark.mark)) {
+        if (last.dom != mark.dom) last.setDOM(freeNode(mark.dom))
+        head = last
+      } else {
+        if (this.reused.get(mark)) {
+          let tile = Tile.get(mark.dom)
+          if (tile) tile.setDOM(freeNode(mark.dom))
+        }
+        let nw = MarkTile.of(mark.mark, mark.dom)
+        head.append(nw)
+        head = nw
+      }
+      this.reused.set(mark, Reused.DOM)
+    }
+    let text = new TextTile(composition.text, composition.text.nodeValue!)
+    text.flags |= TileFlag.Composition
+    head.append(text)
+    this.new = head
+    this.old.advance(composition.range.toA - composition.range.fromA, -1)
   }
 
   addTile(tile: Tile) {
@@ -321,6 +264,12 @@ export class TileBuilder {
     this.reused.set(tile, Reused.DOM)
     return tile.dom
   }
+}
+
+function freeNode<N extends HTMLElement | Text>(node: N): N {
+  let tile = Tile.get(node)
+  if (tile) tile.setDOM(node.cloneNode())
+  return node
 }
 
 class TileDecoIterator implements SpanIterator<Decoration> {

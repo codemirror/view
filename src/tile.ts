@@ -1,11 +1,13 @@
 import {WidgetType, BlockWrapper, MarkDecoration, LineDecoration} from "./decoration"
 import {Attrs, setAttrs, combineAttrs} from "./attributes"
+import {domIndex} from "./dom"
 import {EditorView} from "./editorview"
 
 export const enum TileFlag {
   BreakAfter = 1,
   Synced = 2,
-  AttrsDirty = 4
+  AttrsDirty = 4,
+  Composition = 8
 }
 
 export const enum Reused { Full = 1, DOM = 2 }
@@ -17,9 +19,11 @@ export abstract class Tile {
   flags = 0 as TileFlag
 
   constructor(
-    readonly dom: HTMLElement | Text,
+    public dom: HTMLElement | Text,
     public length: number
-  ) {}
+  ) {
+    ;(dom as any).cmTile = this
+  }
 
   get breakAfter(): 0 | 1 { return (this.flags & TileFlag.BreakAfter) as 0 | 1 }
   set breakAfter(value: 0 | 1) { this.flags |= value }
@@ -50,6 +54,15 @@ export abstract class Tile {
       for (let ch of this.children) ch.destroyDropped(reused)
     }
   }
+
+  setDOM(dom: this["dom"]) {
+    this.dom = dom
+    ;(dom as any).cmTile = this
+  }
+
+  static get(dom: Node) {
+    return (dom as any).cmTile
+  }
 }
 
 export abstract class CompositeTile extends Tile {
@@ -77,9 +90,6 @@ export abstract class CompositeTile extends Tile {
     super.sync()
     let parent = this.dom, prev: Node | null = null, next
     let length = 0
-    if (this instanceof DocTile) for (let i = 0; i < this.children.length; i++) for (let j = i + 1; j < this.children.length; j++) {
-      if (this.children[i].dom == this.children[j].dom) console.log("DOUBLE DOM ", i, j, "" + this.children[i], this.children[i].dom)
-    }
     for (let child of this.children) {
       child.sync()
       length += child.length + child.breakAfter
@@ -108,6 +118,19 @@ function rm(dom: Node): Node | null {
 
 export class DocTile extends CompositeTile {
   clone(dom?: HTMLElement) { return new DocTile(dom!) }
+
+  resolve(pos: number, side: -1 | 1) {
+    return new TilePointer(this).advance(pos, side)
+  }
+
+  resolveDOM(node: Node, offset: number) {
+    return TilePointer.fromDOM(this, node, offset)
+  }
+
+  owns(tile: Tile | null) {
+    for (; tile; tile = tile.parent) if (tile == this) return true
+    return false
+  }
 }
 
 export class BlockWrapperTile extends CompositeTile {
@@ -230,5 +253,144 @@ export class WidgetBufferTile extends Tile {
     img.className = "cm-widgetBuffer"
     img.setAttribute("aria-hidden", "true")
     super(img, 0)
+  }
+}
+
+
+interface TileWalker {
+  enter(tile: CompositeTile): void
+  leave(tile: CompositeTile): void
+  skip(tile: Tile, from: number, to: number): void
+  break(): void
+}
+
+export class TilePointer {
+  public tile: Tile
+  public index: number = 0
+  public beforeBreak: boolean = false
+  readonly parents: {tile: CompositeTile, index: number}[] = []
+
+  constructor(top: DocTile) {
+    this.tile = top
+  }
+
+  // Advance by the given distance. If side is -1, stop leaving or
+  // entering tiles, or skipping zero-length tiles, once the distance
+  // has been traversed. When side is 1, leave, enter, or skip
+  // everything at the end position.
+  advance(dist: number, side: -1 | 1, walker?: TileWalker) {
+    let {tile, index, beforeBreak, parents} = this
+    while (dist || side > 0) {
+      if (!tile.isComposite()) {
+        if (index == tile.length) {
+          beforeBreak = !!tile.breakAfter
+          ;({tile, index} = parents.pop()!)
+          index++
+        } else if (!dist) {
+          break
+        } else {
+          let take = Math.min(dist, tile.length - index)
+          if (walker) walker.skip(tile, index, index + take)
+          dist -= take
+          index += take
+        }
+      } else if (beforeBreak) {
+        if (!dist) break
+        if (walker) walker.break()
+        dist--
+        beforeBreak = false
+      } else if (index == tile.children.length) {
+        if (!dist && !parents.length) break
+        if (walker) walker.leave(tile)
+        beforeBreak = !!tile.breakAfter
+        ;({tile, index} = parents.pop()!)
+        index++
+      } else {
+        let next = tile.children[index]
+        if (side > 0 ? next.length <= dist : next.length < dist) {
+          if (walker) walker.skip(next, 0, next.length)
+          index++
+          dist -= next.length
+        } else {
+          parents.push({tile, index})
+          tile = next
+          index = 0
+          if (walker && next.isComposite()) walker.enter(next)
+        }
+      }
+    }
+    this.tile = tile
+    this.index = index
+    this.beforeBreak = beforeBreak
+    return this
+  }
+
+  findReusableAfter<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
+    if (this.beforeBreak) return null
+    outer: for (let i = this.parents.length, {tile, index} = this;;) {
+      if (tile instanceof CompositeTile) {
+        while (index < tile.children.length) {
+          let next = tile.children[index++]
+          if (next instanceof cls && test(next)) return next
+          if (next.length || next.breakAfter) return null
+        }
+      }
+      if (!i) return null
+      ;({tile, index} = this.parents[--i])
+    }
+  }
+
+  findReusableBefore<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
+    outer: for (let i = this.parents.length, {tile, index, beforeBreak} = this;;) {
+      if (tile instanceof CompositeTile) {
+        while (index > 0) {
+          let prev = tile.children[--index]
+          if (!beforeBreak && prev.breakAfter) return null
+          if (prev instanceof cls && test(prev)) return prev
+          if (prev.length) return null
+        }
+      }
+      if (!i) return null
+      beforeBreak = false
+      ;({tile, index} = this.parents[--i])
+    }
+  }
+
+  get root() { return (this.parents.length ? this.parents[0].tile : this.tile) as DocTile }
+
+  static fromDOM(doc: DocTile, node: Node, offset: number) {
+    let ptr = new TilePointer(doc), tile: Tile | undefined
+    for (let cur: Node = node;;) {
+      tile = Tile.get(cur)
+      if (tile && doc.owns(tile)) break
+      let parent = cur.parentNode
+      if (!parent) break
+      offset = domIndex(cur)
+      cur = parent
+    }
+    if (!tile) return ptr
+    if (tile instanceof TextTile) {
+      ptr.tile = tile
+      ptr.index = offset
+    } else if (tile instanceof CompositeTile) {
+      ptr.tile = tile
+      if (offset > 0) {
+        let before = node.childNodes[offset - 1]
+        for (let i = 0; i < tile.children.length; i++) {
+          if (tile.children[i].dom.compareDocumentPosition(before) & 2 /* PRECEDING */) ptr.index++
+          else break
+        }
+      }
+    } else {
+      ptr.tile = tile.parent!
+      ptr.index = ptr.tile.children.indexOf(tile) + (offset ? 1 : 0)
+    }
+    for (let t = ptr.tile;;) {
+      let parent = t.parent
+      if (!parent) break
+      ptr.parents.unshift({tile: parent, index: parent.children.indexOf(t)})
+      t = parent
+    }
+    return ptr
   }
 }

@@ -16,9 +16,10 @@ import {Direction} from "./bidi"
 import {DocTile} from "./tile"
 import {TileBuilder} from "./buildtile"
 
-type Composition = {
+export type Composition = {
   range: ChangedRange,
   text: Text,
+  // FIXME no longer needed
   marks: {node: HTMLElement, deco: MarkDecoration}[],
   line: HTMLElement
 }
@@ -32,7 +33,6 @@ export class DocView extends ContentView {
   dynamicDecorationMap: boolean[] = [false]
   domChanged: {newSel: SelectionRange | null} | null = null
   hasComposition: {from: number, to: number} | null = null
-  markedForComposition: Set<ContentView> = new Set
   editContextFormatting = Decoration.none
   lastCompositionAfterCursor = false
 
@@ -70,7 +70,7 @@ export class DocView extends ContentView {
     this.updateInner([new ChangedRange(0, 0, 0, view.state.doc.length)], 0, null)
 
     let build = new TileBuilder(view, new DocTile(document.createElement("div")), this.decorations, [])
-    build.run([new ChangedRange(0, 0, 0, view.state.doc.length)])
+    build.run([new ChangedRange(0, 0, 0, view.state.doc.length)], null)
     build.new.sync()
     this.tile = build.new
   }
@@ -99,12 +99,7 @@ export class DocView extends ContentView {
     let composition = readCompositionAt > -1 ? findCompositionRange(this.view, update.changes, readCompositionAt) : null
     this.domChanged = null
 
-    if (this.hasComposition) {
-      this.markedForComposition.clear()
-      let {from, to} = this.hasComposition
-      changedRanges = new ChangedRange(from, to, update.changes.mapPos(from, -1), update.changes.mapPos(to, 1))
-        .addToSet(changedRanges.slice())
-    }
+    // FIXME make sure old composition is redrawn
     this.hasComposition = composition ? {from: composition.range.fromB, to: composition.range.toB} : null
 
     // When the DOM nodes around the selection are moved to another
@@ -118,18 +113,24 @@ export class DocView extends ContentView {
 
     let prevDeco = this.decorations, prevWrappers = this.blockWrappers
     this.updateDeco()
+    if (composition) {
+      let isolated = addCompositionRange(changedRanges, composition.range)
+      if (!isolated) composition = null
+      else changedRanges = isolated
+    }
     let decoDiff = findChangedDeco(prevDeco, this.decorations, update.changes)
+    if (decoDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff, composition?.range)
     let blockDiff = findChangedWrappers(prevWrappers, this.blockWrappers, update.changes)
-    changedRanges = ChangedRange.extendWithRanges(ChangedRange.extendWithRanges(changedRanges, decoDiff), blockDiff)
+    if (blockDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, blockDiff, composition?.range)
 
     if (!(this.flags & ViewFlag.Dirty) && changedRanges.length == 0) {
       return false
     } else {
       this.updateInner(changedRanges, update.startState.doc.length, composition)
 
-      let builder = new TileBuilder(this.view, this.tile, this.decorations, [])
+      let builder = new TileBuilder(this.view, this.tile, this.decorations, this.dynamicDecorationMap)
       for (let ch of this.tile.children) ch.destroyDropped(builder.reused)
-      this.tile = builder.run(changedRanges)
+      this.tile = builder.run(changedRanges, composition)
       this.tile.sync()
       if (this.dom!.innerHTML != this.tile.dom.innerHTML) {
         throw new Error(`DOM mismatch:\n  ${this.dom!.innerHTML}\n  ${this.tile.dom.innerHTML}`)
@@ -164,7 +165,6 @@ export class DocView extends ContentView {
       if (track && (track.written || observer.selectionRange.focusNode != track.node)) this.forceSelection = true
       this.dom.style.height = ""
     })
-    this.markedForComposition.forEach(cView => cView.flags &= ~ViewFlag.Composition)
     let gaps = []
     if (this.view.viewport.from || this.view.viewport.to < this.view.state.doc.length) for (let child of this.children)
       if (child instanceof BlockWidgetView && child.widget instanceof BlockGapWidget) gaps.push(child.dom!)
@@ -230,7 +230,6 @@ export class DocView extends ContentView {
   private fixCompositionDOM(composition: Composition) {
     let fix = (dom: Node, cView: ContentView) => {
       cView.flags |= ViewFlag.Composition | (cView.children.some(c => c.flags & ViewFlag.Dirty) ? ViewFlag.ChildDirty : 0)
-      this.markedForComposition.add(cView)
       let prev = ContentView.get(dom)
       if (prev && prev != cView) prev.dom = null
       cView.setDOM(dom)
@@ -647,6 +646,24 @@ function findCompositionRange(view: EditorView, changes: ChangeSet, headPos: num
     else
       return null
   }
+}
+
+function addCompositionRange(changes: readonly ChangedRange[], composition: ChangedRange) {
+  let result: ChangedRange[] = [], added = false
+  for (let change of changes) {
+    if (change.toA < composition.fromA) {
+      result.push(change)
+    } else {
+      if (!added) {
+        result.push(composition)
+        added = true
+      }
+      if (change.fromA > composition.toA) result.push(change)
+      else if (change.fromA < composition.fromA || change.toA > composition.toA) return null
+    }
+  }
+  if (!added) result.push(composition)
+  return result
 }
 
 const enum NextTo { Before = 1, After = 2 }

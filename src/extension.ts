@@ -353,6 +353,7 @@ export class ChangedRange {
                             Math.min(this.fromB, other.fromB), Math.max(this.toB, other.toB))
   }
 
+  // FIXME can be removed
   addToSet(set: ChangedRange[]): ChangedRange[] {
     let i = set.length, me: ChangedRange = this
     for (; i > 0; i--) {
@@ -366,23 +367,44 @@ export class ChangedRange {
     return set
   }
 
-  static extendWithRanges(diff: readonly ChangedRange[], ranges: number[]): readonly ChangedRange[] {
+  // Extend a set to cover all the content in `ranges`, which is a
+  // flat array with each pair of numbers representing fromB/toB
+  // positions. These pairs are generated in unchanged ranges, so the
+  // offset between doc A and doc B is the same for their start and
+  // end points.
+  static extendWithRanges(diff: readonly ChangedRange[], ranges: number[], separate?: ChangedRange): readonly ChangedRange[] {
     if (ranges.length == 0) return diff
     let result: ChangedRange[] = []
-    for (let dI = 0, rI = 0, posA = 0, posB = 0;; dI++) {
-      let next = dI == diff.length ? null : diff[dI], off = posA - posB
-      let end = next ? next.fromB : 1e9
-      while (rI < ranges.length && ranges[rI] < end) {
-        let from = ranges[rI], to = ranges[rI + 1]
-        let fromB = Math.max(posB, from), toB = Math.min(end, to)
-        if (fromB <= toB) new ChangedRange(fromB + off, toB + off, fromB, toB).addToSet(result)
-        if (to > end) break
-        else rI += 2
+    outer: for (let dI = 0, rI = 0, off = 0; rI < ranges.length;) {
+      let nextD = dI < diff.length ? diff[dI].fromB : 1e9
+      let nextR = rI < ranges.length ? ranges[rI] : 1e9
+      let fromB = Math.min(nextD, nextR)
+      if (fromB == 1e9) break
+      let fromA = fromB + off, toB = fromB, toA = fromA
+      for (;;) {
+        if (rI < ranges.length && ranges[rI] <= toB) {
+          let end = ranges[rI + 1]
+          rI += 2
+          toB = Math.max(toB, end)
+          toA = Math.max(toA, end + off)
+        } else if (dI < diff.length && diff[dI].fromB <= toB) {
+          let next = diff[dI++]
+          if (next == separate) {
+            if (fromB < next.fromB) result.push(new ChangedRange(fromA, next.fromA, fromB, next.fromB))
+            result.push(next)
+            while (rI < ranges.length && ranges[rI + 1] <= next.toB) rI += 2
+            continue outer
+          }
+          toB = Math.max(toB, next.toB)
+          toA = Math.max(toA, next.toA)
+          off = next.toA - next.toB
+        } else {
+          break
+        }
       }
-      if (!next) return result
-      new ChangedRange(next.fromA, next.toA, next.fromB, next.toB).addToSet(result)
-      posA = next.toA; posB = next.toB
+      result.push(new ChangedRange(fromA, toA, fromB, toB))
     }
+    return result
   }
 }
 
