@@ -32,7 +32,7 @@ export class DOMReader {
       let tile = Tile.get(cur), nextTile = Tile.get(next!)
       if ((tile && nextTile ? tile.breakAfter :
            (tile ? tile.breakAfter : isBlockElement(cur)) ||
-           (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore) && this.text.length > oldLen)) &&
+           (isBlockElement(next!) && (cur.nodeName != "BR" || tile?.isWidget()) && this.text.length > oldLen)) &&
           !isEmptyToEnd(next, end))
         this.lineBreak()
       cur = next!
@@ -66,7 +66,6 @@ export class DOMReader {
   }
 
   readNode(node: Node) {
-    if ((node as any).cmIgnore) return
     let tile = Tile.get(node)
     let fromView = tile && tile.overrideDOMText
     if (fromView != null) {
@@ -111,7 +110,7 @@ function isEmptyToEnd(node: Node | null, end: Node | null) {
   for (;; node = node.nextSibling) {
     if (node == end || !node) break
     let view = Tile.get(node)
-    if (!(view?.isWidget || (node as any).cmIgnore)) return false
+    if (!view?.isWidget()) return false
     if (view) (widgets || (widgets = [])).push(view)
   }
   if (widgets) for (let w of widgets) {

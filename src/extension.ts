@@ -353,7 +353,6 @@ export class ChangedRange {
                             Math.min(this.fromB, other.fromB), Math.max(this.toB, other.toB))
   }
 
-  // FIXME can be removed
   addToSet(set: ChangedRange[]): ChangedRange[] {
     let i = set.length, me: ChangedRange = this
     for (; i > 0; i--) {

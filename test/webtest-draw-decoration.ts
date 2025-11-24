@@ -176,6 +176,15 @@ describe("EditorView decoration", () => {
     })
   })
 
+  it("reuses mark nodes", () => {
+    let cm = decoEditor("one two three", [d(0, 3, {tagName: "strong"}), d(8, 13, {tagName: "strong", inclusive: true})])
+    let marks = Array.from(cm.contentDOM.querySelectorAll("strong"))
+    cm.dispatch({changes: [{from: 0, to: 1}, {from: 8, insert: "!"}]})
+    ist(marks.every(m => cm.contentDOM.contains(m)))
+    cm.dispatch({changes: [{from: 1, to: 3}, {from: 6, to: 7, insert: "-"}]})
+    ist(marks.every(m => cm.contentDOM.contains(m)))
+  })
+
   class WordWidget extends WidgetType {
     constructor(readonly word: string) { super() }
     eq(other: WordWidget) { return this.word.toLowerCase() == other.word.toLowerCase() }
@@ -269,8 +278,10 @@ describe("EditorView decoration", () => {
     it("preserves widgets alongside edits regardless of side", () => {
       let cm = decoEditor("abc", [w(1, new WordWidget("x"), -1), w(1, new WordWidget("y"), 1),
                                   w(2, new WordWidget("z"), -1), w(2, new WordWidget("q"), 1)])
+      let nodes = Array.from(cm.contentDOM.querySelectorAll("strong"))
       cm.dispatch({changes: {from: 1, to: 2, insert: "B"}})
       ist(text(cm.contentDOM), "axyBzqc")
+      ist(nodes.every(n => cm.contentDOM.contains(n)))
     })
 
     it("can update widgets in an empty document", () => {
@@ -426,6 +437,23 @@ describe("EditorView decoration", () => {
       ist(b.previousSibling, a.parentNode)
       ist(b.nextSibling, c.parentNode)
     })
+
+    it("updates widgets when appropriate", () => {
+      class ColorWidget extends WidgetType {
+        constructor(readonly color: string) { super() }
+        eq(other: ColorWidget) { return this.color == other.color }
+        toDOM() { let d = document.createElement("span"); d.setAttribute("color", this.color); return d }
+        updateDOM(dom: HTMLElement) { dom.setAttribute("color", this.color); return true }
+      }
+      let cm = decoEditor("ab", [Decoration.widget({widget: new ColorWidget("red")}).range(1)])
+      let w = cm.contentDOM.querySelector("span")!
+      cm.dispatch({effects: [
+        filterDeco.of(() => false),
+        addDeco.of([Decoration.widget({widget: new ColorWidget("blue")}).range(1)])
+      ]})
+      ist(cm.contentDOM.contains(w))
+      ist(w.getAttribute("color"), "blue")
+    })
   })
 
   function r(from: number, to: number, spec: any = {}) { return Decoration.replace(spec).range(from, to) }
@@ -545,8 +573,11 @@ describe("EditorView decoration", () => {
 
     it("updates when line attributes are added", () => {
       let cm = decoEditor("foo\nbar", [l(0, "a")])
+      let line1 = cm.contentDOM.firstChild, line2 = cm.contentDOM.lastChild
       cm.dispatch({effects: addDeco.of([l(0, "b"), l(4, "c")])})
       classes(cm, "a b", "c")
+      ist(cm.contentDOM.firstChild, line1)
+      ist(cm.contentDOM.lastChild, line2)
     })
 
     it("updates when line attributes are removed", () => {

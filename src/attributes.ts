@@ -50,3 +50,12 @@ export function updateAttrs(dom: HTMLElement, prev: Attrs | null, attrs: Attrs |
   }
   return changed
 }
+
+export function getAttrs(dom: HTMLElement) {
+  let attrs = Object.create(null)
+  for (let i = 0; i < dom.attributes.length; i++) {
+    let attr = dom.attributes[i]
+    attrs[attr.name] = attr.value
+  }
+  return attrs
+}

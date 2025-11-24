@@ -343,4 +343,16 @@ describe("EditorView drawing", () => {
     let line2 = cm.viewportLineBlocks[1], dom2 = cm.contentDOM.querySelectorAll(".cm-line")[1]
     ist(Math.abs(cm.documentTop + line2.top - (dom2 as HTMLElement).getBoundingClientRect().top), 1, "<")
   })
+
+  it("reuses line nodes", () => {
+    let cm = tempView("ab\ncd")
+    let line1 = cm.contentDOM.firstChild, line2 = cm.contentDOM.lastChild
+    cm.dispatch({changes: [{from: 0, insert: "!"}, {from: 5, insert: "?"}]})
+    ist(cm.contentDOM.firstChild, line1)
+    ist(cm.contentDOM.lastChild, line2)
+    cm.dispatch({changes: {from: 0, to: 3, insert: ""}})
+    ist(cm.contentDOM.firstChild, line1)
+    cm.dispatch({changes: {from: 0, to: 1, insert: ""}})
+    ist(cm.contentDOM.firstChild, line1)
+  })
 })

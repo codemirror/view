@@ -3,13 +3,13 @@ import browser from "./browser"
 import {Decoration, DecorationSet, addRange, BlockWrapper, WidgetType} from "./decoration"
 import {clientRectsFor, isEquivalentPosition, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState,
-        textNodeBefore, textNodeAfter, DOMPos} from "./dom"
+        textNodeBefore, textNodeAfter, DOMPos, maxOffset} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRange, editable, blockWrappers,
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 import {Tile, LineTile, DocTile, TileFlag, BlockWrapperTile} from "./tile"
-import {TileBuilder} from "./buildtile"
+import {TileBuilder, Reused} from "./buildtile"
 
 // FIXME check for unused code
 
@@ -80,7 +80,11 @@ export class DocView {
     let composition = readCompositionAt > -1 ? findCompositionRange(this.view, update.changes, readCompositionAt) : null
     this.domChanged = null
 
-    // FIXME make sure old composition is redrawn
+    if (this.hasComposition) {
+      let {from, to} = this.hasComposition
+      changedRanges = new ChangedRange(from, to, update.changes.mapPos(from, -1), update.changes.mapPos(to, 1))
+        .addToSet(changedRanges.slice())
+    }
     this.hasComposition = composition ? {from: composition.range.fromB, to: composition.range.toB} : null
 
     // When the DOM nodes around the selection are moved to another
@@ -94,15 +98,12 @@ export class DocView {
 
     let prevDeco = this.decorations, prevWrappers = this.blockWrappers
     this.updateDeco()
-    if (composition) {
-      let isolated = addCompositionRange(changedRanges, composition.range)
-      if (!isolated) composition = null
-      else changedRanges = isolated
-    }
     let decoDiff = findChangedDeco(prevDeco, this.decorations, update.changes)
     if (decoDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff, composition?.range)
     let blockDiff = findChangedWrappers(prevWrappers, this.blockWrappers, update.changes)
     if (blockDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, blockDiff, composition?.range)
+    if (composition && !changedRanges.some(r => r.fromA <= composition!.range.fromA && r.toA >= composition!.range.toA))
+      changedRanges = composition.range.addToSet(changedRanges.slice())
 
     if ((this.tile.flags & TileFlag.Synced) && changedRanges.length == 0) {
       return false
@@ -119,8 +120,9 @@ export class DocView {
     this.view.viewState.mustMeasureContent = true
 
     let builder = new TileBuilder(this.view, this.tile, this.decorations, this.dynamicDecorationMap)
-    this.tile.destroyDropped(builder.reused)
+    let oldTile = this.tile
     this.tile = builder.run(changes, composition)
+    destroyDropped(oldTile, builder.reused)
 
     let {observer} = this.view
     observer.ignore(() => {
@@ -295,17 +297,48 @@ export class DocView {
 
   posFromDOM(node: Node, offset: number): number {
     let tile = this.tile.nearest(node)
-    if (!tile) throw new RangeError("Trying to find position for a DOM position outside of the document")
-    return 0 // FIXME tile.localPosFromDOM(node, offset) + view.posAtStart
+    if (!tile) return this.tile.dom.compareDocumentPosition(node) & 2 /* PRECEDING */ ? 0 : this.view.state.doc.length
+
+    let start = tile.posAtStart
+    if (tile.isComposite()) {
+      let after: Node | null
+      if (node == tile.dom) {
+        after = tile.dom.childNodes[offset]
+      } else {
+        let bias = maxOffset(node) == 0 ? 0 : offset == 0 ? -1 : 1
+        for (;;) {
+          let parent = node.parentNode!
+          if (parent == tile.dom) break
+          if (bias == 0 && parent.firstChild != parent.lastChild) {
+            if (node == parent.firstChild) bias = -1
+            else bias = 1
+          }
+          node = parent
+        }
+        if (bias < 0) after = node
+        else after = node.nextSibling
+      }
+      if (after == tile.dom!.firstChild) return start
+      while (after && !Tile.get(after)) after = after.nextSibling
+      if (!after) return start + tile.length
+      for (let i = 0, pos = start;; i++) {
+        let child = tile.children[i]
+        if (child.dom == after) return pos
+        pos += child.length + child.breakAfter
+      }
+    } else if (tile.isText()) {
+      return node == tile.dom ? start + offset : start + (offset ? tile.length : 0)
+    } else {
+      return start
+    }
   }
 
   domAtPos(pos: number, side: number): DOMPos {
     let {tile, offset} = this.tile.resolveBlock(pos, side)
-    if (tile.isWidget()) return tile.domPosNextTo(tile.length ? pos > 0 : side > 0)
+    if (tile.isWidget()) return tile.domPosFor(pos, side)
     return tile.domIn(offset, side)
   }
 
-  // FIXME copy old side==-2/2 behavior
   coordsAt(pos: number, side: number): Rect | null {
     let {tile, offset} = this.tile.resolveBlock(pos, side)
     if (tile.isWidget()) {
@@ -510,6 +543,18 @@ export class DocView {
     let scan = (child: Tile) => child.isWidget() || child.children.some(scan)
     return scan(this.tile.resolveBlock(pos, 1).tile)
   }
+
+  destroy() {
+    destroyDropped(this.tile)
+  }
+}
+
+function destroyDropped(tile: Tile, reused?: Map<Tile, Reused>) {
+  let r = reused?.get(tile)
+  if (r != Reused.Full) {
+    if (r == null) tile.destroy()
+    for (let ch of tile.children) destroyDropped(ch, reused)
+  }
 }
 
 function betweenUneditable(pos: DOMPos) {
@@ -551,24 +596,6 @@ function findCompositionRange(view: EditorView, changes: ChangeSet, headPos: num
 
   let inv = changes.invertedDesc
   return {range: new ChangedRange(inv.mapPos(from), inv.mapPos(to), from, to), text: textNode}
-}
-
-function addCompositionRange(changes: readonly ChangedRange[], composition: ChangedRange) {
-  let result: ChangedRange[] = [], added = false
-  for (let change of changes) {
-    if (change.toA < composition.fromA) {
-      result.push(change)
-    } else {
-      if (!added) {
-        result.push(composition)
-        added = true
-      }
-      if (change.fromA > composition.toA) result.push(change)
-      else if (change.fromA < composition.fromA || change.toA > composition.toA) return null
-    }
-  }
-  if (!added) result.push(composition)
-  return result
 }
 
 const enum NextTo { Before = 1, After = 2 }

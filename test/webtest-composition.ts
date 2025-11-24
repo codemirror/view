@@ -189,7 +189,7 @@ describe("Composition", () => {
 
   it("works for composition in the middle of a mark", () => {
     let cm = requireFocus(tempView("one three", [wordHighlighter, deco([Decoration.mark({class: "a"}).range(0, 9)])]))
-    compose(cm, () => up(cm.domAtPos(4).node as Text, "-"), [n => {
+    compose(cm, () => up(cm.domAtPos(4, -1).node as Text, "-"), [n => {
       let a = n.parentNode as HTMLElement
       ist(a.className, "a")
       ist(a.innerHTML, '<span class="word">one</span> -<span class="word">three</span>')
@@ -201,7 +201,7 @@ describe("Composition", () => {
   it("works when composition rewraps the middle of a mark", () => {
     let cm = requireFocus(tempView("one three", [wordHighlighter, deco([Decoration.mark({class: "a"}).range(0, 9)])]))
     compose(cm, () => {
-      let space = cm.domAtPos(4).node as Text, a = space.parentNode as HTMLElement
+      let space = cm.domAtPos(4, -1).node as Text, a = space.parentNode as HTMLElement
       let wrap1 = a.cloneNode(), wrap2 = a.cloneNode()
       wrap2.appendChild(a.lastChild!)
       a.parentNode!.insertBefore(wrap2, a.nextSibling)

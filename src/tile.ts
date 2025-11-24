@@ -12,8 +12,6 @@ export const enum TileFlag {
   Composition = 8
 }
 
-export const enum Reused { Full = 1, DOM = 2 }
-
 const noChildren: readonly Tile[] = []
 
 export abstract class Tile {
@@ -42,6 +40,8 @@ export abstract class Tile {
 
   isComposite(): this is CompositeTile { return false }
 
+  // FIXME isLine?
+
   isText(): this is TextTile { return false }
 
   isBlock() { return false }
@@ -59,14 +59,7 @@ export abstract class Tile {
     return this.constructor.name + (this.children.length ? `(${this.children})` : "") + (this.breakAfter ? "#" : "")
   }
 
-  destroy() {
-    for (let ch of this.children) ch.destroy()
-  }
-
-  destroyDropped(reused: Map<Tile, Reused>) {
-    if (reused.get(this) != Reused.Full) this.destroy()
-    else for (let ch of this.children) ch.destroyDropped(reused)
-  }
+  destroy() { this.parent = null }
 
   setDOM(dom: this["dom"]) {
     this.dom = dom
@@ -98,9 +91,10 @@ export abstract class Tile {
 
   coordsIn(pos: number, side: number): Rect | null { return null }
 
-  domPosNextTo(after: boolean) {
+  domPosFor(off: number, side: number) {
     let index = domIndex(this.dom)
-    return new DOMPos(this.parent!.dom, index + (after ? 1 : 0))
+    let after = this.length ? off > 0 : side > 0
+    return new DOMPos(this.parent!.dom, index + (after ? 1 : 0), off == 0 || off == this.length)
   }
 
   markDirty(attrs: boolean) {
@@ -160,11 +154,6 @@ export abstract class CompositeTile extends Tile {
     next = prev ? prev.nextSibling : parent.firstChild
     while (next) next = rm(next)
     this.length = length
-  }
-
-  covers(side: -1 | 1) {
-    if (!this.children.length) return false
-    return side < 0 ? this.children[0].covers(-1) : this.lastChild!.covers(1)
   }
 
   abstract clone(dom?: HTMLElement): CompositeTile
@@ -227,17 +216,28 @@ export class DocTile extends CompositeTile {
     }
   }
 
+  // Find the block at the given position. If side < -1, make sure to
+  // stay before block widgets at that position, if side > 1, after
+  // such widgets (used for selection drawing, which needs to be able
+  // to get coordinates for positions that aren't valid cursor positions).
   resolveBlock(pos: number, side: number): {tile: LineTile | WidgetTile, offset: number} {
     let before: LineTile | WidgetTile | undefined, beforeOff = -1, after: LineTile | WidgetTile | undefined, afterOff = -1
     this.blockTiles((tile, off) => {
-      if (pos >= off && pos <= pos + tile.length) {
-        if ((pos > off || tile.covers(-1)) && (!before || !tile.isWidget() && before.isWidget())) {
-          before = tile
-          beforeOff = off
+      let end = off + tile.length
+      if (pos >= off && pos <= end) {
+        if (tile.isWidget() && side >= -1 && side <= 1) {
+          if (tile.side & Side.After) return true
+          if (tile.side & Side.Before) before = undefined
         }
-        if ((pos < pos + tile.length || tile.covers(1)) && (!after || !tile.isWidget() && after.isWidget())) {
+        if ((off < pos || pos == end && (side < -1 ? tile.length : tile.covers(1))) &&
+            (!before || !tile.isWidget() && before.isWidget())) {
+          before = tile
+          beforeOff = pos - off
+        }
+        if ((end > pos || pos == off && (side > 1 ? tile.length : tile.covers(-1))) &&
+            (!after || !tile.isWidget() && after.isWidget())) {
           after = tile
-          afterOff = off
+          afterOff = pos - off
         }
       }
     })
@@ -255,6 +255,11 @@ export class BlockWrapperTile extends CompositeTile {
   clone(dom?: HTMLElement) { return BlockWrapperTile.of(this.wrapper, dom) }
 
   isBlock() { return true }
+
+  covers(side: -1 | 1) {
+    if (!this.children.length) return false
+    return side < 0 ? this.children[0].covers(-1) : this.lastChild!.covers(1)
+  }
 
   static of(wrapper: BlockWrapper, dom?: HTMLElement) {
     if (!dom) {
@@ -307,7 +312,7 @@ export class LineTile extends CompositeTile {
     tile: TextTile | WidgetTile | WidgetBufferTile,
     offset: number
   } | null {
-    let before: Tile | null = null, beforePos = -1, after: Tile | null = null, afterPos = -1
+    let before: Tile | null = null, beforeOff = -1, after: Tile | null = null, afterOff = -1
     function scan(tile: Tile, pos: number) {
       for (let i = 0, off = 0; i < tile.children.length && off <= pos; i++) {
         let child = tile.children[i], end = off + child.length
@@ -317,10 +322,10 @@ export class LineTile extends CompositeTile {
           } else if ((!after || after.isHidden && (side > 0 || forCoords && onSameLine(after, child))) &&
                      (end > pos || child.isPointAfter)) {
             after = child
-            afterPos = pos - off
+            afterOff = pos - off
           } else if (off < pos || child.isPointBefore && !child.isHidden) {
             before = child
-            beforePos = pos - off
+            beforeOff = pos - off
           }
         }
         off = end
@@ -328,7 +333,7 @@ export class LineTile extends CompositeTile {
     }
     scan(this, pos)
     let target = ((side < 0 ? before : after) || before || after) as TextTile | WidgetTile | WidgetBufferTile | null
-    return target ? {tile: target, offset: target == before ? beforePos : afterPos} : null
+    return target ? {tile: target, offset: target == before ? beforeOff : afterOff} : null
   }
 
   coordsIn(pos: number, side: number) {
@@ -343,7 +348,7 @@ export class LineTile extends CompositeTile {
       let {tile, offset} = found
       if (this.dom.contains(tile.dom)) {
         if (tile.isText()) return new DOMPos(tile.dom, Math.min(tile.dom.nodeValue!.length, offset))
-        return tile.domPosNextTo(tile.length ? offset > 0 : side > 0)
+        return tile.domPosFor(offset, side)
       }
       let parent = found.tile.parent!, saw = false, last: Tile | undefined
       for (let ch of parent.children) {
@@ -412,8 +417,9 @@ export class TextTile extends Tile {
     return flatten ? flattenRect(rect!, flatten < 0) : rect || null
   }
 
-  static of(text: string) {
-    return new TextTile(document.createTextNode(text), text).synced()
+  static of(text: string, dom?: Text) {
+    let tile = new TextTile(dom || document.createTextNode(text), text)
+    return dom ? tile : tile.synced()
   }
 }
 
@@ -433,8 +439,6 @@ export class WidgetTile extends Tile {
   get isPointBefore() { return (this.side & Side.Before) > 0 }
 
   get isPointAfter() { return (this.side & Side.After) > 0 }
-
-  destroy() { this.widget.destroy(this.dom) }
 
   covers(side: -1 | 1) {
     if (this.side & (Side.Before | Side.After)) return false
@@ -466,6 +470,11 @@ export class WidgetTile extends Tile {
     if (!root) return DocText.empty
     let start = this.posAtStart
     return root.view.state.doc.slice(start, start + this.length)
+  }
+
+  destroy() {
+    super.destroy()
+    this.widget.destroy(this.dom)
   }
 
   static of(widget: WidgetType, view: EditorView, length: number, side: Side, dom?: HTMLElement | null) {
@@ -554,6 +563,7 @@ export class TilePointer {
         if (side > 0 ? next.length <= dist : next.length < dist) {
           if (walker) walker.skip(next, 0, next.length)
           index++
+          beforeBreak = !!next.breakAfter
           dist -= next.length
         } else {
           parents.push({tile, index})
@@ -567,37 +577,6 @@ export class TilePointer {
     this.index = index
     this.beforeBreak = beforeBreak
     return this
-  }
-
-  findReusableAfter<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
-    if (this.beforeBreak) return null
-    outer: for (let i = this.parents.length, {tile, index} = this;;) {
-      if (tile.isComposite()) {
-        while (index < tile.children.length) {
-          let next = tile.children[index++]
-          if (next instanceof cls && test(next)) return next
-          if (next.length || next.breakAfter) return null
-        }
-      }
-      if (!i) return null
-      ;({tile, index} = this.parents[--i])
-    }
-  }
-
-  findReusableBefore<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
-    outer: for (let i = this.parents.length, {tile, index, beforeBreak} = this;;) {
-      if (tile.isComposite()) {
-        while (index > 0) {
-          let prev = tile.children[--index]
-          if (!beforeBreak && prev.breakAfter) return null
-          if (prev instanceof cls && test(prev)) return prev
-          if (prev.length) return null
-        }
-      }
-      if (!i) return null
-      beforeBreak = false
-      ;({tile, index} = this.parents[--i])
-    }
   }
 
   get root() { return (this.parents.length ? this.parents[0].tile : this.tile) as DocTile }
