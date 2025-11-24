@@ -1,4 +1,4 @@
-import {Tile, DocTile, CompositeTile, LineTile, MarkTile, BlockWrapperTile,
+import {Tile, DocTile, CompositeTile, LineTile, MarkTile, BlockWrapperTile, Side,
         WidgetTile, TextTile, WidgetBufferTile, Reused, TileFlag, TilePointer} from "./tile"
 import {ChangedRange} from "./extension"
 import {Decoration, DecorationSet, MarkDecoration, PointDecoration, WidgetType} from "./decoration"
@@ -11,7 +11,7 @@ const enum Buf { No = 0, Yes = 1, IfCursor = 2 }
 
 const enum T { Chunk = 512 }
 
-const LOG_builder = true
+const LOG_builder = false
 
 export class TileBuilder {
   old: TilePointer
@@ -37,7 +37,8 @@ export class TileBuilder {
     this.cursor = view.state.doc.iter()
     this.old = new TilePointer(old)
     this.oldLen = old.length
-    this.new = this.newRoot = new DocTile(old.dom)
+    this.new = this.newRoot = old.clone(old.dom)
+    this.reused.set(old, Reused.DOM)
   }
 
   run(changes: readonly ChangedRange[], composition: Composition | null) {
@@ -72,7 +73,7 @@ export class TileBuilder {
     }
     while (this.new.parent) this.leaveTile()
     LOG_builder && console.log(">>> " + this.new)
-    return this.new
+    return this.new as DocTile
   }
 
   preserve(length: number, incStart: boolean, incEnd: boolean) {
@@ -83,7 +84,7 @@ export class TileBuilder {
           openWidget.length += to - from
           this.openWidget = null
         } else if (from > 0 || to < tile.length) { // Partial leaf node
-          if (tile instanceof TextTile) {
+          if (tile.isText()) {
             this.addText(tile.text.slice(from, to))
           } else if (tile instanceof WidgetTile) {
             this.addTile(WidgetTile.of(tile.widget, this.view, to - from, tile.side, this.maybeReuse(tile)))
@@ -124,15 +125,9 @@ export class TileBuilder {
 
   composition(composition: Composition) {
     let marks: MarkTile[] = [], head: CompositeTile | undefined
-    let ptr = this.old.root.resolveDOM(composition.text, 0)
-    for (let tile = ptr.tile, depth = ptr.parents.length;;) {
-      if (tile instanceof MarkTile) {
-        marks.push(tile)
-      } else if (tile instanceof LineTile) {
-        head = tile
-      }
-      if (!depth) break
-      tile = ptr.parents[--depth].tile
+    for (let scan = this.old.root.nearest(composition.text); scan; scan = scan.parent) {
+      if (scan instanceof MarkTile) marks.push(scan)
+      else if (scan instanceof LineTile) head = scan
     }
     if (!head) throw new Error("not in a line")
     for (let i = marks.length - 1; i >= 0; i--) {
@@ -161,7 +156,7 @@ export class TileBuilder {
 
   addTile(tile: Tile) {
     let last
-    if (tile instanceof TextTile && ((last = this.new.lastChild) instanceof TextTile)) {
+    if (tile.isText() && ((last = this.new.lastChild) instanceof TextTile)) {
       this.new.children[this.new.children.length - 1] = new TextTile(last.dom, last.text + tile.text)
     } else {
       this.new.append(tile)
@@ -170,7 +165,7 @@ export class TileBuilder {
 
   addText(text: string) {
     let last = this.new.lastChild
-    if (last instanceof TextTile) {
+    if (last?.isText()) {
       this.new.children[this.new.children.length - 1] = new TextTile(last.dom, last.text + text)
       this.new.length += text.length
     } else {
@@ -181,8 +176,8 @@ export class TileBuilder {
   ensureBreak(tile: LineTile) {
     let last = tile.lastChild
     if (!last || !hasContent(tile, false) ||
-        last.dom.nodeName != "BR" && !last.isEditable && !(browser.ios && hasContent(tile, true)))
-      tile.append(WidgetTile.of(BreakWidget, this.view, 0, 1))
+        last.dom.nodeName != "BR" && last.isWidget() && !(browser.ios && hasContent(tile, true)))
+      tile.append(WidgetTile.of(BreakWidget, this.view, 0, Side.After))
   }
 
   leaveTile() {
@@ -268,7 +263,7 @@ export class TileBuilder {
 
 function freeNode<N extends HTMLElement | Text>(node: N): N {
   let tile = Tile.get(node)
-  if (tile) tile.setDOM(node.cloneNode())
+  if (tile) tile.setDOM(node.cloneNode() as any)
   return node
 }
 
@@ -341,7 +336,7 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     let tile = this.build.new
     if (tile instanceof DocTile || tile instanceof BlockWrapperTile) {
       let last = tile.lastChild
-      return last && !last.breakAfter && (last instanceof WidgetTile ? last.side >= 0 : true)
+      return last && !last.breakAfter && last.covers(1)
     } else {
       return true
     }
@@ -415,34 +410,35 @@ class TileDecoIterator implements SpanIterator<Decoration> {
   }
 
   buildPoint(from: number, to: number, deco: PointDecoration, active: readonly MarkDecoration[], openStart: number) {
+    let empty = from == to && openStart <= active.length
     if (openStart > active.length) { // Continued point
       let last = this.build.new.lastChild
       if (!(last instanceof WidgetTile)) throw new Error("Bad continued widget")
       last.length += to - from
       if (!deco.block) {
-        this.pendingBuffer = deco.block || last.isEditable ? Buf.No : Buf.Yes
+        this.pendingBuffer = deco.block || !last.isWidget() ? Buf.No : Buf.Yes
         if (this.pendingBuffer) this.bufferMarks = active.slice()
       }
     } else if (deco.block) {
       if (deco.startSide > 0 && !this.blockPosCovered()) this.getLine()
       let widget = deco.widget || NullWidget.block
       let reuse = this.findReusable(WidgetTile, t => t.widget.eq(widget))
-      this.addBlockWidget(WidgetTile.of(widget, this.build.view, to - from, from == to ? deco.startSide : 0, reuse?.dom), from)
+      this.addBlockWidget(WidgetTile.of(widget, this.build.view, to - from, widgetSide(deco, empty), reuse?.dom), from)
       if (reuse) this.build.reused.set(reuse, Reused.DOM)
     } else {
       let widget = deco.widget || NullWidget.inline
       let reuse = this.findReusable(WidgetTile, t => t.widget.eq(widget))
-      let tile = WidgetTile.of(widget, this.build.view, to - from, from == to ? deco.startSide : 0, reuse?.dom)
-      let cursorBefore = this.atCursorPos && !tile.isEditable && (from < to || deco.startSide > 0)
-      let cursorAfter = !tile.isEditable && (from < to || deco.startSide <= 0)
+      let tile = WidgetTile.of(widget, this.build.view, to - from, widgetSide(deco, empty), reuse?.dom)
+      let cursorBefore = this.atCursorPos && tile.isWidget() && (!empty || deco.startSide > 0)
+      let cursorAfter = tile.isWidget() && (!empty || deco.startSide <= 0)
       let line = this.getLine()
-      if (this.pendingBuffer == Buf.IfCursor && !cursorBefore && !tile.isEditable) this.pendingBuffer = Buf.No
+      if (this.pendingBuffer == Buf.IfCursor && !cursorBefore && tile.isWidget()) this.pendingBuffer = Buf.No
       else this.flushBuffer(active)
       this.syncInlineMarks(line, active, openStart)
       if (cursorBefore) this.build.new.append(new WidgetBufferTile(1))
       this.build.new.append(tile)
       this.atCursorPos = cursorAfter
-      this.pendingBuffer = !cursorAfter ? Buf.No : from < to || openStart > active.length ? Buf.Yes : Buf.IfCursor
+      this.pendingBuffer = !cursorAfter ? Buf.No : !empty ? Buf.Yes : Buf.IfCursor
       if (this.pendingBuffer) this.bufferMarks = active.slice()
     }
   }
@@ -463,10 +459,15 @@ class TileDecoIterator implements SpanIterator<Decoration> {
 function hasContent(tile: Tile, requireText: boolean) {
   let scan = (tile: Tile) => {
     for (let ch of tile.children)
-      if ((requireText ? ch instanceof TextTile : ch.length) || scan(ch)) return true
+      if ((requireText ? ch.isText() : ch.length) || scan(ch)) return true
     return false
   }
   return scan(tile)
+}
+
+function widgetSide(deco: Decoration, empty: boolean) {
+  return empty ? (deco.startSide > 0 ? Side.After : Side.Before)
+    : (deco.startSide < 0 ? Side.IncStart : 0) | (deco.endSide > 0 ? Side.IncEnd : 0)
 }
 
 export class NullWidget extends WidgetType {

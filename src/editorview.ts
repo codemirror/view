@@ -3,7 +3,6 @@ import {EditorState, Transaction, TransactionSpec, Extension, Prec, ChangeDesc,
 import {StyleModule, StyleSpec} from "style-mod"
 
 import {DocView} from "./docview"
-import {ContentView} from "./contentview"
 import {InputState, focusChangeTransaction, isFocusChange} from "./input"
 import {Rect, focusPreventScroll, flattenRect, getRoot, ScrollStrategy,
         isScrolledToBottom, dispatchKey} from "./dom"
@@ -21,6 +20,7 @@ import {ViewUpdate, styleModule,
 import {theme, darkTheme, buildTheme, baseThemeID, baseLightID, baseDarkID, lightDarkIDs, baseTheme} from "./theme"
 import {DOMObserver} from "./domobserver"
 import {Attrs, updateAttrs, combineAttrs} from "./attributes"
+import {Tile} from "./tile"
 import browser from "./browser"
 import {computeOrder, trivialOrder, BidiSpan, Direction, Isolate, isolatesEq} from "./bidi"
 import {applyDOMChange, DOMChange} from "./domchange"
@@ -359,7 +359,7 @@ export class EditorView {
       this.plugins = newState.facet(viewPlugin).map(spec => new PluginInstance(spec))
       this.pluginMap.clear()
       for (let plugin of this.plugins) plugin.update(this)
-      this.docView.destroy()
+      this.docView.tile.destroy()
       this.docView = new DocView(this)
       this.inputState.ensureHandlers(this.plugins)
       this.mountStyles()
@@ -719,8 +719,8 @@ export class EditorView {
   /// `visibleRanges`, the resulting DOM position isn't necessarily
   /// meaningful (it may just point before or after a placeholder
   /// element).
-  domAtPos(pos: number): {node: Node, offset: number} {
-    return this.docView.domAtPos(pos)
+  domAtPos(pos: number, side: -1 | 1 = 1): {node: Node, offset: number} {
+    return this.docView.domAtPos(pos, side)
   }
 
   /// Find the document position at the given DOM node. Can be useful
@@ -857,7 +857,7 @@ export class EditorView {
     for (let plugin of this.plugins) plugin.destroy(this)
     this.plugins = []
     this.inputState.destroy()
-    this.docView.destroy()
+    this.docView.tile.destroy()
     this.dom.remove()
     this.observer.destroy()
     if (this.measureScheduled > -1) this.win.cancelAnimationFrame(this.measureScheduled)
@@ -1150,8 +1150,8 @@ export class EditorView {
   /// representation.
   static findFromDOM(dom: HTMLElement): EditorView | null {
     let content = dom.querySelector(".cm-content")
-    let cView = content && ContentView.get(content) || ContentView.get(dom)
-    return cView?.rootView?.view || null
+    let tile = content && Tile.get(content) || Tile.get(dom)
+    return tile?.root?.view || null
   }
 }
 

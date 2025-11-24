@@ -1,5 +1,5 @@
 import browser from "./browser"
-import {ContentView, ViewFlag} from "./contentview"
+import {Tile} from "./tile"
 import {EditorView} from "./editorview"
 import {editable, ViewUpdate, setEditContextFormatting, MeasureRequest} from "./extension"
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition, dispatchKey, atElementStart} from "./dom"
@@ -174,8 +174,8 @@ export class DOMObserver {
     if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(this.dom, sel))
       return
 
-    let context = sel.anchorNode && view.docView.nearest(sel.anchorNode)
-    if (context && context.ignoreEvent(event)) {
+    let context = sel.anchorNode && view.docView.tile.nearest(sel.anchorNode)
+    if (context && context.isWidget() && context.widget.ignoreEvent(event)) {
       if (!wasChanged) this.selectionChanged = false
       return
     }
@@ -400,18 +400,17 @@ export class DOMObserver {
   }
 
   readMutation(rec: MutationRecord): {from: number, to: number, typeOver: boolean} | null {
-    let cView = this.view.docView.nearest(rec.target)
-    if (!cView || cView.ignoreMutation(rec)) return null
-    cView.markDirty(rec.type == "attributes")
-    if (rec.type == "attributes") cView.flags |= ViewFlag.AttrsDirty
+    let tile = this.view.docView.tile.nearest(rec.target)
+    if (!tile || tile.isWidget()) return null
+    tile.markDirty(rec.type == "attributes")
 
     if (rec.type == "childList") {
-      let childBefore = findChild(cView, rec.previousSibling || rec.target.previousSibling, -1)
-      let childAfter = findChild(cView, rec.nextSibling || rec.target.nextSibling, 1)
-      return {from: childBefore ? cView.posAfter(childBefore) : cView.posAtStart,
-              to: childAfter ? cView.posBefore(childAfter) : cView.posAtEnd, typeOver: false}
+      let childBefore = findChild(tile, rec.previousSibling || rec.target.previousSibling, -1)
+      let childAfter = findChild(tile, rec.nextSibling || rec.target.nextSibling, 1)
+      return {from: childBefore ? tile.posAfter(childBefore) : tile.posAtStart,
+              to: childAfter ? tile.posBefore(childAfter) : tile.posAtEnd, typeOver: false}
     } else if (rec.type == "characterData") {
-      return {from: cView.posAtStart, to: cView.posAtEnd, typeOver: rec.target.nodeValue == rec.oldValue}
+      return {from: tile.posAtStart, to: tile.posAtEnd, typeOver: rec.target.nodeValue == rec.oldValue}
     } else {
       return null
     }
@@ -473,12 +472,12 @@ export class DOMObserver {
   }
 }
 
-function findChild(cView: ContentView, dom: Node | null, dir: number): ContentView | null {
+function findChild(tile: Tile, dom: Node | null, dir: number): Tile | null {
   while (dom) {
-    let curView = ContentView.get(dom)
-    if (curView && curView.parent == cView) return curView
+    let curTile = Tile.get(dom)
+    if (curTile && curTile.parent == tile) return curTile
     let parent = dom.parentNode
-    dom = parent != cView.dom ? parent : dir > 0 ? dom.nextSibling : dom.previousSibling
+    dom = parent != tile.dom ? parent : dir > 0 ? dom.nextSibling : dom.previousSibling
   }
   return null
 }
@@ -486,7 +485,7 @@ function findChild(cView: ContentView, dom: Node | null, dir: number): ContentVi
 function buildSelectionRangeFromRange(view: EditorView, range: StaticRange) {
   let anchorNode = range.startContainer, anchorOffset = range.startOffset
   let focusNode = range.endContainer, focusOffset = range.endOffset
-  let curAnchor = view.docView.domAtPos(view.state.selection.main.anchor)
+  let curAnchor = view.docView.domAtPos(view.state.selection.main.anchor, 1)
   // Since such a range doesn't distinguish between anchor and head,
   // use a heuristic that flips it around if its end matches the
   // current anchor.

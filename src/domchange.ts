@@ -6,6 +6,7 @@ import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
 import {findCompositionNode} from "./docview"
 import {EditorSelection, Text, Transaction, TransactionSpec} from "@codemirror/state"
 import {skipAtomsForSelection, skipAtomicRanges} from "./cursor"
+import {Tile} from "./tile"
 
 export class DOMChange {
   bounds: {
@@ -24,7 +25,7 @@ export class DOMChange {
     if (view.state.readOnly && start > -1) {
       // Ignore changes when the editor is read-only
       this.newSel = null
-    } else if (start > -1 && (this.bounds = view.docView.domBoundsAround(start, end, 0))) {
+    } else if (start > -1 && (this.bounds = domBoundsAround(view.docView.tile, start, end, 0))) {
       let selPoints = iHead || iAnchor ? [] : selectionPoints(view)
       let reader = new DOMReader(selPoints, view.state)
       reader.readRange(this.bounds.startDOM, this.bounds.endDOM)
@@ -59,6 +60,39 @@ export class DOMChange {
       else
         this.newSel = EditorSelection.single(anchor, head)
     }
+  }
+}
+
+function domBoundsAround(tile: Tile, from: number, to: number, offset: number): {
+  startDOM: Node | null,
+  endDOM: Node | null,
+  from: number,
+  to: number
+} | null {
+  if (tile.isComposite()) {
+    let fromI = -1, fromStart = -1, toI = -1, toEnd = -1
+    for (let i = 0, pos = offset, prevEnd = offset; i < tile.children.length; i++) {
+      let child = tile.children[i], end = pos + child.length
+      if (pos < from && end > to) return domBoundsAround(child, from, to, pos)
+      if (end >= from && fromI == -1) {
+        fromI = i
+        fromStart = pos
+      }
+      if (pos > to && child.dom!.parentNode == tile.dom) {
+        toI = i
+        toEnd = prevEnd
+        break
+      }
+      prevEnd = end
+      pos = end + child.breakAfter
+    }
+    return {from: fromStart, to: toEnd < 0 ? offset + tile.length : toEnd,
+            startDOM: (fromI ? tile.children[fromI - 1].dom.nextSibling : null) || tile.dom.firstChild,
+            endDOM: toI < tile.children.length && toI >= 0 ? tile.children[toI].dom : null}
+  } else if (tile.isText()) {
+    return {from: offset, to: offset + tile.length, startDOM: tile.dom, endDOM: tile.dom.nextSibling}
+  } else {
+    return null
   }
 }
 

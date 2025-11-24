@@ -1,10 +1,9 @@
 import {EditorSelection, EditorState, SelectionRange, RangeSet, Annotation, Text, Facet} from "@codemirror/state"
 import {EditorView, UpdateState} from "./editorview"
-import {ContentView} from "./contentview"
-import {LineView} from "./blockview"
 import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as dragBehavior, atomicRanges,
         logException, mouseSelectionStyle, PluginInstance, focusChangeEffect, getScrollMargins,
         clipboardInputFilter, clipboardOutputFilter} from "./extension"
+import {Tile} from "./tile"
 import browser from "./browser"
 import {groupAt, skipAtomsForSelection} from "./cursor"
 import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParents} from "./dom"
@@ -427,8 +426,8 @@ function isInPrimarySelection(view: EditorView, event: MouseEvent) {
 function eventBelongsToEditor(view: EditorView, event: Event): boolean {
   if (!event.bubbles) return true
   if (event.defaultPrevented) return false
-  for (let node: Node | null = event.target as Node, cView; node != view.contentDOM; node = node.parentNode)
-    if (!node || node.nodeType == 11 || ((cView = ContentView.get(node)) && cView.ignoreEvent(event)))
+  for (let node: Node | null = event.target as Node, tile; node != view.contentDOM; node = node.parentNode)
+    if (!node || node.nodeType == 11 || ((tile = Tile.get(node)) && tile.isWidget() && tile.widget.ignoreEvent(event)))
       return false
   return true
 }
@@ -544,7 +543,7 @@ function rangeForClick(view: EditorView, pos: number, bias: -1 | 1, type: number
   } else if (type == 2) { // Double click
     return groupAt(view.state, pos, bias)
   } else { // Triple click
-    let visual = LineView.find(view.docView, pos), line = view.state.doc.lineAt(visual ? visual.posAtEnd : pos)
+    let visual = view.docView.lineAt(pos), line = view.state.doc.lineAt(visual ? visual.posAtEnd : pos)
     let from = visual ? visual.posAtStart : line.from, to = visual ? visual.posAtEnd : line.to
     if (to < view.state.doc.length && to == line.to) to++
     return EditorSelection.range(from, to)
@@ -557,7 +556,7 @@ let inside = (x: number, y: number, rect: Rect) => y >= rect.top && y <= rect.bo
 // given position, whether they are related to the element before or
 // the element after the position.
 function findPositionSide(view: EditorView, pos: number, x: number, y: number) {
-  let line = LineView.find(view.docView, pos)
+  let line = view.docView.lineAt(pos)
   if (!line) return 1
   let off = pos - line.posAtStart
   // Line boundaries point into the line
@@ -565,9 +564,9 @@ function findPositionSide(view: EditorView, pos: number, x: number, y: number) {
   if (off == line.length) return -1
 
   // Positions on top of an element point at that element
-  let before = line.coordsAt(off, -1)
+  let before = line.coordsIn(off, -1)
   if (before && inside(x, y, before)) return -1
-  let after = line.coordsAt(off, 1)
+  let after = line.coordsIn(off, 1)
   if (after && inside(x, y, after)) return 1
   // This is probably a line wrap point. Pick before if the point is
   // above its bottom.
@@ -634,9 +633,9 @@ function removeRangeAround(sel: EditorSelection, pos: number) {
 handlers.dragstart = (view, event: DragEvent) => {
   let {selection: {main: range}} = view.state
   if ((event.target as HTMLElement).draggable) {
-    let cView = view.docView.nearest(event.target as HTMLElement)
-    if (cView && cView.isWidget) {
-      let from = cView.posAtStart, to = from + cView.length
+    let tile = view.docView.tile.nearest(event.target as HTMLElement)
+    if (tile && tile.isWidget()) {
+      let from = tile.posAtStart, to = from + tile.length
       if (from >= range.to || to <= range.from) range = EditorSelection.range(from, to)
     }
   }

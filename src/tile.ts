@@ -1,7 +1,9 @@
+import {Text as DocText} from "@codemirror/state"
 import {WidgetType, BlockWrapper, MarkDecoration, LineDecoration} from "./decoration"
 import {Attrs, setAttrs, combineAttrs} from "./attributes"
-import {domIndex} from "./dom"
-import {EditorView} from "./editorview"
+import {type EditorView} from "./editorview"
+import {Rect, textRange, maxOffset, domIndex, flattenRect, clientRectsFor, DOMPos} from "./dom"
+import browser from "./browser"
 
 export const enum TileFlag {
   BreakAfter = 1,
@@ -30,8 +32,19 @@ export abstract class Tile {
 
   get children() { return noChildren }
 
-  get isEditable() { return true }
+  isWidget(): this is WidgetTile { return false }
+
+  get isHidden() { return false }
+
+  get isPointBefore() { return false }
+
+  get isPointAfter() { return false }
+
   isComposite(): this is CompositeTile { return false }
+
+  isText(): this is TextTile { return false }
+
+  isBlock() { return false }
 
   sync() {
     this.flags |= TileFlag.Synced
@@ -46,13 +59,13 @@ export abstract class Tile {
     return this.constructor.name + (this.children.length ? `(${this.children})` : "") + (this.breakAfter ? "#" : "")
   }
 
-  destroy() {}
+  destroy() {
+    for (let ch of this.children) ch.destroy()
+  }
 
   destroyDropped(reused: Map<Tile, Reused>) {
-    if (reused.get(this) != Reused.Full) {
-      this.destroy()
-      for (let ch of this.children) ch.destroyDropped(reused)
-    }
+    if (reused.get(this) != Reused.Full) this.destroy()
+    else for (let ch of this.children) ch.destroyDropped(reused)
   }
 
   setDOM(dom: this["dom"]) {
@@ -60,8 +73,51 @@ export abstract class Tile {
     ;(dom as any).cmTile = this
   }
 
+  get posAtStart(): number {
+    return this.parent ? this.parent.posBefore(this) : 0
+  }
+
+  get posAtEnd(): number {
+    return this.posAtStart + this.length
+  }
+
+  posBefore(tile: Tile): number {
+    let pos = this.posAtStart
+    for (let child of this.children) {
+      if (child == tile) return pos
+      pos += child.length + child.breakAfter
+    }
+    throw new RangeError("Invalid child in posBefore")
+  }
+
+  posAfter(tile: Tile): number {
+    return this.posBefore(tile) + tile.length
+  }
+
+  covers(side: -1 | 1) { return true }
+
+  coordsIn(pos: number, side: number): Rect | null { return null }
+
+  domPosNextTo(after: boolean) {
+    let index = domIndex(this.dom)
+    return new DOMPos(this.parent!.dom, index + (after ? 1 : 0))
+  }
+
+  markDirty(attrs: boolean) {
+    // FIXME handle dirty attrs on non-line tiles somehow
+    this.flags &= ~TileFlag.Synced
+    if (this.parent) this.parent.markDirty(false)
+  }
+
+  get overrideDOMText(): DocText | null { return null }
+
+  get root(): DocTile | null {
+    for (let t: Tile | null = this; t; t = t.parent) if (t instanceof DocTile) return t
+    return null
+  }
+
   static get(dom: Node) {
-    return (dom as any).cmTile
+    return (dom as any).cmTile as Tile | undefined
   }
 }
 
@@ -106,6 +162,11 @@ export abstract class CompositeTile extends Tile {
     this.length = length
   }
 
+  covers(side: -1 | 1) {
+    if (!this.children.length) return false
+    return side < 0 ? this.children[0].covers(-1) : this.lastChild!.covers(1)
+  }
+
   abstract clone(dom?: HTMLElement): CompositeTile
 }
 
@@ -117,19 +178,71 @@ function rm(dom: Node): Node | null {
 }
 
 export class DocTile extends CompositeTile {
-  clone(dom?: HTMLElement) { return new DocTile(dom!) }
+  constructor(readonly view: EditorView, dom: HTMLElement) {
+    super(dom)
+  }
+
+  clone(dom?: HTMLElement) { return new DocTile(this.view, dom!) }
 
   resolve(pos: number, side: -1 | 1) {
     return new TilePointer(this).advance(pos, side)
   }
 
-  resolveDOM(node: Node, offset: number) {
-    return TilePointer.fromDOM(this, node, offset)
-  }
-
   owns(tile: Tile | null) {
     for (; tile; tile = tile.parent) if (tile == this) return true
     return false
+  }
+
+  isBlock() { return true }
+
+  nearest(dom: Node | null): Tile | null {
+    for (;;) {
+      if (!dom) return null
+      let tile = Tile.get(dom)
+      if (tile && this.owns(tile)) return tile
+      dom = dom.parentNode
+    }
+  }
+
+  blockTiles<T>(f: (tile: WidgetTile | LineTile, pos: number) => T | undefined) {
+    for (let stack: number[] = [], cur: CompositeTile = this, i = 0, pos = 0;;) {
+      if (i == cur.children.length) {
+        if (!stack.length) return
+        cur = cur.parent!
+        if (cur.breakAfter) pos++
+        i = stack.pop()!
+      } else {
+        let next = cur.children[i++]
+        if (next instanceof BlockWrapperTile) {
+          stack.push(i)
+          cur = next
+          i = 0
+        } else {
+          let end = pos + next.length
+          let result = f(next as WidgetTile | LineTile, pos)
+          if (result !== undefined) return result
+          pos = end + next.breakAfter
+        }
+      }
+    }
+  }
+
+  resolveBlock(pos: number, side: number): {tile: LineTile | WidgetTile, offset: number} {
+    let before: LineTile | WidgetTile | undefined, beforeOff = -1, after: LineTile | WidgetTile | undefined, afterOff = -1
+    this.blockTiles((tile, off) => {
+      if (pos >= off && pos <= pos + tile.length) {
+        if ((pos > off || tile.covers(-1)) && (!before || !tile.isWidget() && before.isWidget())) {
+          before = tile
+          beforeOff = off
+        }
+        if ((pos < pos + tile.length || tile.covers(1)) && (!after || !tile.isWidget() && after.isWidget())) {
+          after = tile
+          afterOff = off
+        }
+      }
+    })
+    if (!before && !after) throw new Error("No tile at position " + pos)
+    return before && side < 0 || !after ? {tile: before!, offset: beforeOff} : {tile: after, offset: afterOff}
   }
 }
 
@@ -140,6 +253,8 @@ export class BlockWrapperTile extends CompositeTile {
   }
 
   clone(dom?: HTMLElement) { return BlockWrapperTile.of(this.wrapper, dom) }
+
+  isBlock() { return true }
 
   static of(wrapper: BlockWrapper, dom?: HTMLElement) {
     if (!dom) {
@@ -183,6 +298,65 @@ export class LineTile extends CompositeTile {
     return line
   }
 
+  markDirty(attrs: boolean) {
+    if (attrs) this.flags |= TileFlag.AttrsDirty
+    super.markDirty(attrs)
+  }
+
+  resolveInline(pos: number, side: number, forCoords?: boolean): {
+    tile: TextTile | WidgetTile | WidgetBufferTile,
+    offset: number
+  } | null {
+    let before: Tile | null = null, beforePos = -1, after: Tile | null = null, afterPos = -1
+    function scan(tile: Tile, pos: number) {
+      for (let i = 0, off = 0; i < tile.children.length && off <= pos; i++) {
+        let child = tile.children[i], end = off + child.length
+        if (end >= pos) {
+          if (child.isComposite()) {
+            scan(child, pos - off)
+          } else if ((!after || after.isHidden && (side > 0 || forCoords && onSameLine(after, child))) &&
+                     (end > pos || child.isPointAfter)) {
+            after = child
+            afterPos = pos - off
+          } else if (off < pos || child.isPointBefore && !child.isHidden) {
+            before = child
+            beforePos = pos - off
+          }
+        }
+        off = end
+      }
+    }
+    scan(this, pos)
+    let target = ((side < 0 ? before : after) || before || after) as TextTile | WidgetTile | WidgetBufferTile | null
+    return target ? {tile: target, offset: target == before ? beforePos : afterPos} : null
+  }
+
+  coordsIn(pos: number, side: number) {
+    let found = this.resolveInline(pos, side, true)
+    if (!found) return fallbackRect(this)
+    return found.tile.coordsIn(Math.max(0, found.offset), side)
+  }
+
+  domIn(pos: number, side: number) {
+    let found = this.resolveInline(pos, side)
+    if (found) {
+      let {tile, offset} = found
+      if (this.dom.contains(tile.dom)) {
+        if (tile.isText()) return new DOMPos(tile.dom, Math.min(tile.dom.nodeValue!.length, offset))
+        return tile.domPosNextTo(tile.length ? offset > 0 : side > 0)
+      }
+      let parent = found.tile.parent!, saw = false, last: Tile | undefined
+      for (let ch of parent.children) {
+        if (saw) return new DOMPos(ch.dom, 0)
+        if (ch == found.tile) {
+          if (last) return new DOMPos(last.dom, maxOffset(last.dom))
+          else saw = true
+        }
+      }
+    }
+    return new DOMPos(this.dom, 0)
+  }
+
   static baseAttrs = {class: "cm-line"}
 }
 
@@ -215,25 +389,86 @@ export class TextTile extends Tile {
     if (this.dom.nodeValue != this.text) this.dom.nodeValue = this.text
   }
 
+  isText(): this is TextTile { return true }
+
   toString() { return JSON.stringify(this.text) }
+
+  coordsIn(pos: number, side: number) {
+    let length = this.dom.nodeValue!.length
+    if (pos > length) pos = length
+    let from = pos, to = pos, flatten = 0
+    if (pos == 0 && side < 0 || pos == length && side >= 0) {
+      if (!(browser.chrome || browser.gecko)) { // These browsers reliably return valid rectangles for empty ranges
+        if (pos) { from--; flatten = 1 } // FIXME this is wrong in RTL text
+        else if (to < length) { to++; flatten = -1 }
+      }
+    } else {
+      if (side < 0) from--; else if (to < length) to++
+    }
+    let rects = textRange(this.dom, from, to).getClientRects()
+    if (!rects.length) return null
+    let rect = rects[(flatten ? flatten < 0 : side >= 0) ? 0 : rects.length - 1]
+    if (browser.safari && !flatten && rect.width == 0) rect = Array.prototype.find.call(rects, r => r.width) || rect
+    return flatten ? flattenRect(rect!, flatten < 0) : rect || null
+  }
 
   static of(text: string) {
     return new TextTile(document.createTextNode(text), text).synced()
   }
 }
 
+export const enum Side { Before = 1, After = 2, IncStart = 4, IncEnd = 8 }
+
 export class WidgetTile extends Tile {
   declare dom: HTMLElement
 
-  constructor(dom: HTMLElement, length: number, readonly widget: WidgetType, readonly side: number) {
+  constructor(dom: HTMLElement, length: number, readonly widget: WidgetType, readonly side: Side) {
     super(dom, length)
   }
 
-  get isEditable() { return false }
+  isWidget(): this is WidgetTile { return true }
+
+  get isHidden() { return this.widget.isHidden }
+  
+  get isPointBefore() { return (this.side & Side.Before) > 0 }
+
+  get isPointAfter() { return (this.side & Side.After) > 0 }
 
   destroy() { this.widget.destroy(this.dom) }
 
-  static of(widget: WidgetType, view: EditorView, length: number, side: number, dom?: HTMLElement | null) {
+  covers(side: -1 | 1) {
+    if (this.side & (Side.Before | Side.After)) return false
+    return (this.side & (side < 0 ? Side.IncStart : Side.IncEnd)) > 0
+  }
+
+  coordsIn(pos: number, side: number) { return this.coordsInWidget(pos, side, false) }
+
+  coordsInWidget(pos: number, side: number, block: boolean) {
+    let custom = this.widget.coordsAt(this.dom, pos, side)
+    if (custom) return custom
+    if (block) {
+      return flattenRect(this.dom.getBoundingClientRect(), this.length ? pos == 0 : side <= 0)
+    } else {
+      let rects = this.dom!.getClientRects(), rect: Rect | null = null
+      if (!rects.length) return null
+      let fromBack = (this.side & Side.Before) ? true : (this.side & Side.After) ? false : pos > 0
+      for (let i = fromBack ? rects.length - 1 : 0;; i += (fromBack ? -1 : 1)) {
+        rect = rects[i]
+        if (pos > 0 ? i == 0 : i == rects.length - 1 || rect.top < rect.bottom) break
+      }
+      return flattenRect(rect, !fromBack)
+    }
+  }
+
+  get overrideDOMText() {
+    if (!this.length) return DocText.empty
+    let {root} = this
+    if (!root) return DocText.empty
+    let start = this.posAtStart
+    return root.view.state.doc.slice(start, start + this.length)
+  }
+
+  static of(widget: WidgetType, view: EditorView, length: number, side: Side, dom?: HTMLElement | null) {
     if (!dom) {
       dom = widget.toDOM(view)
       if (!widget.editable) dom.contentEditable = "false"
@@ -254,8 +489,17 @@ export class WidgetBufferTile extends Tile {
     img.setAttribute("aria-hidden", "true")
     super(img, 0)
   }
-}
 
+  get isHidden() { return false }
+
+  get isPointBefore() { return this.side < 0 }
+
+  get isPointAfter() { return this.side > 0 }
+
+  get overrideDOMText() { return DocText.empty }
+
+  coordsIn(pos: number): Rect | null { return this.dom.getBoundingClientRect() }
+}
 
 interface TileWalker {
   enter(tile: CompositeTile): void
@@ -328,7 +572,7 @@ export class TilePointer {
   findReusableAfter<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
     if (this.beforeBreak) return null
     outer: for (let i = this.parents.length, {tile, index} = this;;) {
-      if (tile instanceof CompositeTile) {
+      if (tile.isComposite()) {
         while (index < tile.children.length) {
           let next = tile.children[index++]
           if (next instanceof cls && test(next)) return next
@@ -342,7 +586,7 @@ export class TilePointer {
 
   findReusableBefore<Cls extends Tile>(cls: new (...args: any) => Cls, test: (a: Cls) => boolean): Cls | null {
     outer: for (let i = this.parents.length, {tile, index, beforeBreak} = this;;) {
-      if (tile instanceof CompositeTile) {
+      if (tile.isComposite()) {
         while (index > 0) {
           let prev = tile.children[--index]
           if (!beforeBreak && prev.breakAfter) return null
@@ -357,40 +601,16 @@ export class TilePointer {
   }
 
   get root() { return (this.parents.length ? this.parents[0].tile : this.tile) as DocTile }
+}
 
-  static fromDOM(doc: DocTile, node: Node, offset: number) {
-    let ptr = new TilePointer(doc), tile: Tile | undefined
-    for (let cur: Node = node;;) {
-      tile = Tile.get(cur)
-      if (tile && doc.owns(tile)) break
-      let parent = cur.parentNode
-      if (!parent) break
-      offset = domIndex(cur)
-      cur = parent
-    }
-    if (!tile) return ptr
-    if (tile instanceof TextTile) {
-      ptr.tile = tile
-      ptr.index = offset
-    } else if (tile instanceof CompositeTile) {
-      ptr.tile = tile
-      if (offset > 0) {
-        let before = node.childNodes[offset - 1]
-        for (let i = 0; i < tile.children.length; i++) {
-          if (tile.children[i].dom.compareDocumentPosition(before) & 2 /* PRECEDING */) ptr.index++
-          else break
-        }
-      }
-    } else {
-      ptr.tile = tile.parent!
-      ptr.index = ptr.tile.children.indexOf(tile) + (offset ? 1 : 0)
-    }
-    for (let t = ptr.tile;;) {
-      let parent = t.parent
-      if (!parent) break
-      ptr.parents.unshift({tile: parent, index: parent.children.indexOf(t)})
-      t = parent
-    }
-    return ptr
-  }
+function fallbackRect(tile: Tile) {
+  let last = tile.dom.lastChild
+  if (!last) return (tile.dom as HTMLElement).getBoundingClientRect()
+  let rects = clientRectsFor(last)
+  return rects[rects.length - 1] || null
+}
+
+function onSameLine(a: Tile, b: Tile) {
+  let posA = a.coordsIn(0, 1), posB = b.coordsIn(0, 1)
+  return posA && posB && posB.top < posA.bottom
 }

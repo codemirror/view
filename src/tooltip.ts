@@ -3,7 +3,6 @@ import {EditorState, Transaction, StateEffect, StateEffectType,
 import {EditorView} from "./editorview"
 import {ViewPlugin, ViewUpdate, logException, getScrollMargins} from "./extension"
 import {Direction} from "./bidi"
-import {WidgetView} from "./inlineview"
 import {Rect} from "./dom"
 import browser from "./browser"
 
@@ -651,11 +650,11 @@ class HoverPlugin {
   startHover() {
     clearTimeout(this.restartTimeout)
     let {view, lastMove} = this
-    let desc = view.docView.nearest(lastMove.target)
-    if (!desc) return
+    let tile = view.docView.tile.nearest(lastMove.target)
+    if (!tile) return
     let pos: number, side: -1 | 1 = 1
-    if (desc instanceof WidgetView) {
-      pos = desc.posAtStart
+    if (tile.isWidget()) {
+      pos = tile.posAtStart
     } else {
       pos = view.posAtCoords(lastMove)!
       if (pos == null) return

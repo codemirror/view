@@ -2,7 +2,6 @@ import {EditorState, EditorSelection, SelectionRange, RangeSet,
         CharCategory, findColumn, findClusterBreak} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
-import {LineView} from "./blockview"
 import {atomicRanges} from "./extension"
 import {clientRectsFor, textRange, Rect, maxOffset} from "./dom"
 import {moveVisually, movedOver, Direction} from "./bidi"
@@ -169,7 +168,7 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
   // There's visible editor content under the point, so we can try
   // using caret(Position|Range)FromPoint as a shortcut
   let node: Node | undefined, offset: number = -1
-  if (element && view.docView.nearest(element)?.isEditable != false) {
+  if (element && !view.docView.tile.nearest(element)?.isWidget()) {
     if (doc.caretPositionFromPoint) {
       let pos = doc.caretPositionFromPoint(x, y)
       if (pos) ({offsetNode: node, offset} = pos)
@@ -188,20 +187,19 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
   }
 
   // No luck, do our own (potentially expensive) search
-  if (!node || !view.docView.dom.contains(node)) {
-    let line = LineView.find(view.docView, lineStart)
+  if (!node || !view.contentDOM.contains(node)) {
+    let line = view.docView.lineAt(lineStart)
     if (!line) return yOffset > block.top + block.height / 2 ? block.to : block.from
-    ;({node, offset} = domPosAtCoords(line.dom!, x, y))
+    ;({node, offset} = domPosAtCoords(line.dom, x, y))
   }
-  let nearest = view.docView.nearest(node)
+  let nearest = view.docView.tile.nearest(node)
   if (!nearest) return null
-  if (nearest.isWidget && nearest.dom?.nodeType == 1) {
-    let rect = (nearest.dom as HTMLElement).getBoundingClientRect()
+  if (nearest.isWidget()) {
+    let rect = nearest.dom.getBoundingClientRect()
     return coords.y < rect.top || coords.y <= rect.bottom && coords.x <= (rect.left + rect.right) / 2
       ? nearest.posAtStart : nearest.posAtEnd
-  } else {
-    return nearest.localPosFromDOM(node, offset) + nearest.posAtStart
   }
+  return view.docView.posFromDOM(node, offset)
 }
 
 function posAtCoordsImprecise(view: EditorView, contentRect: Rect, block: BlockInfo, x: number, y: number) {

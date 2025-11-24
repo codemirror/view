@@ -36,7 +36,6 @@ export function setAttrs(dom: HTMLElement, attrs: Attrs) {
   }
 }
 
-// FIXME delete when no longer used
 export function updateAttrs(dom: HTMLElement, prev: Attrs | null, attrs: Attrs | null) {
   let changed = false
   if (prev) for (let name in prev) if (!(attrs && name in attrs)) {
@@ -50,13 +49,4 @@ export function updateAttrs(dom: HTMLElement, prev: Attrs | null, attrs: Attrs |
     else dom.setAttribute(name, attrs[name])
   }
   return changed
-}
-
-export function getAttrs(dom: HTMLElement) {
-  let attrs = Object.create(null)
-  for (let i = 0; i < dom.attributes.length; i++) {
-    let attr = dom.attributes[i]
-    attrs[attr.name] = attr.value
-  }
-  return attrs
 }

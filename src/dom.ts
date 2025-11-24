@@ -377,3 +377,10 @@ export function textNodeAfter(startNode: Node, startOffset: number): {node: Text
     }
   }
 }
+
+export class DOMPos {
+  constructor(readonly node: Node, readonly offset: number, readonly precise = true) {}
+
+  static before(dom: Node, precise?: boolean) { return new DOMPos(dom.parentNode!, domIndex(dom), precise) }
+  static after(dom: Node, precise?: boolean) { return new DOMPos(dom.parentNode!, domIndex(dom) + 1, precise) }
+}

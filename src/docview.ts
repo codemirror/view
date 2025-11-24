@@ -1,32 +1,25 @@
 import {ChangeSet, RangeSet, findClusterBreak, SelectionRange} from "@codemirror/state"
-import {ContentView, ChildCursor, ViewFlag, DOMPos, replaceRange} from "./contentview"
-import {BlockView, LineView, BlockWidgetView, BlockGapWidget, coordsInBlock, blockDOMAtPos, BlockWrapperView} from "./blockview"
-import {TextView, MarkView, WidgetView} from "./inlineview"
-import {ContentBuilder} from "./buildview"
 import browser from "./browser"
-import {Decoration, DecorationSet, addRange, MarkDecoration, BlockWrapper} from "./decoration"
-import {getAttrs} from "./attributes"
+import {Decoration, DecorationSet, addRange, BlockWrapper, WidgetType} from "./decoration"
 import {clientRectsFor, isEquivalentPosition, Rect, scrollRectIntoView,
         getSelection, hasSelection, textRange, DOMSelectionState,
-        textNodeBefore, textNodeAfter} from "./dom"
+        textNodeBefore, textNodeAfter, DOMPos} from "./dom"
 import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRange, editable, blockWrappers,
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
-import {DocTile} from "./tile"
+import {Tile, LineTile, DocTile, TileFlag, BlockWrapperTile} from "./tile"
 import {TileBuilder} from "./buildtile"
+
+// FIXME check for unused code
 
 export type Composition = {
   range: ChangedRange,
   text: Text,
-  // FIXME no longer needed
-  marks: {node: HTMLElement, deco: MarkDecoration}[],
-  line: HTMLElement
 }
 
-export class DocView extends ContentView {
+export class DocView {
   tile: DocTile
-  declare children: BlockView[]
 
   decorations: readonly DecorationSet[] = []
   blockWrappers: readonly RangeSet<BlockWrapper>[] = []
@@ -53,26 +46,14 @@ export class DocView extends ContentView {
   impreciseHead: DOMPos | null = null
   forceSelection = false
 
-  declare dom: HTMLElement
-
   // Used by the resize observer to ignore resizes that we caused
   // ourselves
   lastUpdate = Date.now()
 
-  get length() { return this.view.state.doc.length }
-
   constructor(readonly view: EditorView) {
-    super()
-    this.setDOM(view.contentDOM)
-    this.children = [new LineView]
-    this.children[0].setParent(this)
     this.updateDeco()
-    this.updateInner([new ChangedRange(0, 0, 0, view.state.doc.length)], 0, null)
-
-    let build = new TileBuilder(view, new DocTile(document.createElement("div")), this.decorations, [])
-    build.run([new ChangedRange(0, 0, 0, view.state.doc.length)], null)
-    build.new.sync()
-    this.tile = build.new
+    this.tile = new DocTile(view, view.contentDOM)
+    this.updateInner([new ChangedRange(0, 0, 0, view.state.doc.length)], null)
   }
 
   // Update the document view to a given state.
@@ -123,19 +104,10 @@ export class DocView extends ContentView {
     let blockDiff = findChangedWrappers(prevWrappers, this.blockWrappers, update.changes)
     if (blockDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, blockDiff, composition?.range)
 
-    if (!(this.flags & ViewFlag.Dirty) && changedRanges.length == 0) {
+    if ((this.tile.flags & TileFlag.Synced) && changedRanges.length == 0) {
       return false
     } else {
-      this.updateInner(changedRanges, update.startState.doc.length, composition)
-
-      let builder = new TileBuilder(this.view, this.tile, this.decorations, this.dynamicDecorationMap)
-      for (let ch of this.tile.children) ch.destroyDropped(builder.reused)
-      this.tile = builder.run(changedRanges, composition)
-      this.tile.sync()
-      if (this.dom!.innerHTML != this.tile.dom.innerHTML) {
-        throw new Error(`DOM mismatch:\n  ${this.dom!.innerHTML}\n  ${this.tile.dom.innerHTML}`)
-      }
-
+      this.updateInner(changedRanges, composition)
       if (update.transactions.length) this.lastUpdate = Date.now()
       return true
     }
@@ -143,9 +115,12 @@ export class DocView extends ContentView {
 
   // Used by update and the constructor do perform the actual DOM
   // update
-  private updateInner(changes: readonly ChangedRange[], oldLength: number, composition: Composition | null) {
+  private updateInner(changes: readonly ChangedRange[], composition: Composition | null) {
     this.view.viewState.mustMeasureContent = true
-    this.updateChildren(changes, oldLength, composition)
+
+    let builder = new TileBuilder(this.view, this.tile, this.decorations, this.dynamicDecorationMap)
+    this.tile.destroyDropped(builder.reused)
+    this.tile = builder.run(changes, composition)
 
     let {observer} = this.view
     observer.ignore(() => {
@@ -153,61 +128,21 @@ export class DocView extends ContentView {
       // messes with the scroll position during DOM mutation (though
       // no relayout is triggered and I cannot imagine how it can
       // recompute the scroll position without a layout)
-      this.dom.style.height = this.view.viewState.contentHeight / this.view.scaleY + "px"
-      this.dom.style.flexBasis = this.minWidth ? this.minWidth + "px" : ""
+      this.tile.dom.style.height = this.view.viewState.contentHeight / this.view.scaleY + "px"
+      this.tile.dom.style.flexBasis = this.minWidth ? this.minWidth + "px" : ""
       // Chrome will sometimes, when DOM mutations occur directly
       // around the selection, get confused and report a different
       // selection from the one it displays (issue #218). This tries
       // to detect that situation.
       let track = browser.chrome || browser.ios ? {node: observer.selectionRange.focusNode!, written: false} : undefined
-      this.sync(this.view, track)
-      this.flags &= ~ViewFlag.Dirty
+      this.tile.sync()
       if (track && (track.written || observer.selectionRange.focusNode != track.node)) this.forceSelection = true
-      this.dom.style.height = ""
+      this.tile.dom.style.height = ""
     })
     let gaps = []
-    if (this.view.viewport.from || this.view.viewport.to < this.view.state.doc.length) for (let child of this.children)
-      if (child instanceof BlockWidgetView && child.widget instanceof BlockGapWidget) gaps.push(child.dom!)
+    if (this.view.viewport.from || this.view.viewport.to < this.view.state.doc.length) for (let child of this.tile.children)
+      if (child.isWidget() && child.widget instanceof BlockGapWidget) gaps.push(child.dom!)
     observer.updateGaps(gaps)
-  }
-
-  private updateChildren(changes: readonly ChangedRange[], oldLength: number, composition: Composition | null) {
-    let ranges = composition ? composition.range.addToSet(changes.slice()) : changes
-    let cursor = this.childCursor(oldLength)
-    for (let i = ranges.length - 1;; i--) {
-      let next = i >= 0 ? ranges[i] : null
-      if (!next) break
-      let {fromA, toA, fromB, toB} = next, content, breakAtStart, openStart, openEnd
-      if (composition && composition.range.fromB < toB && composition.range.toB > fromB) {
-        let before = ContentBuilder.build(this.view.state.doc, fromB, composition.range.fromB, this.decorations,
-                                          this.dynamicDecorationMap, this.blockWrappers)
-        let after = ContentBuilder.build(this.view.state.doc, composition.range.toB, toB, this.decorations,
-                                         this.dynamicDecorationMap, this.blockWrappers)
-        breakAtStart = before.breakAtStart
-        openStart = before.openStart; openEnd = after.openEnd
-        let compLine = this.compositionView(composition)
-        // FIXME make this work with nested wrappers
-        if (after.breakAtStart) {
-          compLine.breakAfter = 1
-        } else if (after.content.length &&
-                   compLine.merge(compLine.length, compLine.length, after.content[0], false, 0, after.openStart, 0)) {
-          compLine.breakAfter = after.content[0].breakAfter
-          after.content.shift()
-        }
-        if (before.content.length &&
-            compLine.merge(0, 0, before.content[before.content.length - 1], true, 0, 0, before.openEnd)) {
-          before.content.pop()
-        }
-        content = before.content.concat(compLine).concat(after.content)
-      } else {
-        ;({content, breakAtStart, openStart, openEnd} =
-          ContentBuilder.build(this.view.state.doc, fromB, toB, this.decorations, this.dynamicDecorationMap, this.blockWrappers))
-      }
-      let {i: toI, off: toOff} = cursor.findPos(toA, 1)
-      let {i: fromI, off: fromOff} = cursor.findPos(fromA, -1)
-      replaceRange(this, fromI, fromOff, toI, toOff, content, breakAtStart, openStart, openEnd)
-    }
-    if (composition) this.fixCompositionDOM(composition)
   }
 
   private updateEditContextFormatting(update: ViewUpdate) {
@@ -217,46 +152,24 @@ export class DocView extends ContentView {
     }
   }
 
-  private compositionView(composition: Composition) {
-    let cur: ContentView = new TextView(composition.text.nodeValue!)
-    cur.flags |= ViewFlag.Composition
-    for (let {deco} of composition.marks)
-      cur = new MarkView(deco, [cur], cur.length)
-    let line = new LineView
-    line.append(cur, 0)
-    return line
-  }
-
-  private fixCompositionDOM(composition: Composition) {
-    let fix = (dom: Node, cView: ContentView) => {
-      cView.flags |= ViewFlag.Composition | (cView.children.some(c => c.flags & ViewFlag.Dirty) ? ViewFlag.ChildDirty : 0)
-      let prev = ContentView.get(dom)
-      if (prev && prev != cView) prev.dom = null
-      cView.setDOM(dom)
-    }
-    let pos = this.childPos(composition.range.fromB, 1)
-    let cView: ContentView = this.children[pos.i]
-    fix(composition.line, cView)
-    for (let i = composition.marks.length - 1; i >= -1; i--) {
-      pos = cView.childPos(pos.off, 1)
-      cView = cView.children[pos.i]
-      fix(i >= 0 ? composition.marks[i].node : composition.text, cView)
-    }
-  }
-
   // Sync the DOM selection to this.state.selection
   updateSelection(mustRead = false, fromPointer = false) {
     if (mustRead || !this.view.observer.selectionRange.focusNode) this.view.observer.readSelectionRange()
-    let activeElt = this.view.root.activeElement, focused = activeElt == this.dom
-    let selectionNotFocus = !focused && !(this.view.state.facet(editable) || this.dom.tabIndex > -1) &&
-      hasSelection(this.dom, this.view.observer.selectionRange) && !(activeElt && this.dom.contains(activeElt))
+    let {dom} = this.tile
+    let activeElt = this.view.root.activeElement, focused = activeElt == dom
+    let selectionNotFocus = !focused && !(this.view.state.facet(editable) || dom.tabIndex > -1) &&
+      hasSelection(dom, this.view.observer.selectionRange) && !(activeElt && dom.contains(activeElt))
     if (!(focused || fromPointer || selectionNotFocus)) return
     let force = this.forceSelection
     this.forceSelection = false
 
-    let main = this.view.state.selection.main
-    let anchor = this.moveToLine(this.domAtPos(main.anchor))
-    let head = main.empty ? anchor : this.moveToLine(this.domAtPos(main.head))
+    let main = this.view.state.selection.main, anchor: DOMPos, head: DOMPos
+    if (main.empty) {
+      head = anchor = this.moveToLine(this.domAtPos(main.anchor, main.assoc || 1))
+    } else {
+      head = this.moveToLine(this.domAtPos(main.head, main.head == main.from ? 1 : -1))
+      anchor = this.moveToLine(this.domAtPos(main.anchor, main.anchor == main.from ? 1 : -1))
+    }
 
     // Always reset on Firefox when next to an uneditable node to
     // avoid invisible cursor bugs (#111)
@@ -278,10 +191,10 @@ export class DocView extends ContentView {
         // inside an uneditable node, and not bring it back when we
         // move the cursor to its proper position. This tries to
         // restore the keyboard by cycling focus.
-        if (browser.android && browser.chrome && this.dom.contains(domSel.focusNode) &&
-            inUneditable(domSel.focusNode, this.dom)) {
-          this.dom.blur()
-          this.dom.focus({preventScroll: true})
+        if (browser.android && browser.chrome && dom.contains(domSel.focusNode) &&
+            inUneditable(domSel.focusNode, dom)) {
+          dom.blur()
+          dom.focus({preventScroll: true})
         }
         let rawSel = getSelection(this.view.root)
         if (!rawSel) {
@@ -317,8 +230,8 @@ export class DocView extends ContentView {
           rawSel.removeAllRanges()
           rawSel.addRange(range)
         }
-        if (selectionNotFocus && this.view.root.activeElement == this.dom) {
-          this.dom.blur()
+        if (selectionNotFocus && this.view.root.activeElement == dom) {
+          dom.blur()
           if (activeElt) (activeElt as HTMLElement).focus()
         }
       })
@@ -344,13 +257,13 @@ export class DocView extends ContentView {
     let sel = getSelection(view.root)
     let {anchorNode, anchorOffset} = view.observer.selectionRange
     if (!sel || !cursor.empty || !cursor.assoc || !sel.modify) return
-    let line = LineView.find(this, cursor.head)
+    let line = null as any // FIXME LineView.find(this, cursor.head)
     if (!line) return
     let lineStart = line.posAtStart
     if (cursor.head == lineStart || cursor.head == lineStart + line.length) return
     let before = this.coordsAt(cursor.head, -1), after = this.coordsAt(cursor.head, 1)
     if (!before || !after || before.bottom > after.top) return
-    let dom = this.domAtPos(cursor.head + cursor.assoc)
+    let dom = this.domAtPos(cursor.head + cursor.assoc, cursor.assoc)
     sel.collapse(dom.node, dom.offset)
     sel.modify("move", cursor.assoc < 0 ? "forward" : "backward", "lineboundary")
     // This can go wrong in corner cases like single-character lines,
@@ -364,64 +277,74 @@ export class DocView extends ContentView {
   // If a position is in/near a block widget, move it to a nearby text
   // line, since we don't want the cursor inside a block widget.
   moveToLine(pos: DOMPos) {
+    // FIXME do this at an earlier stage, directly from a position?
     // Block widgets will return positions before/after them, which
     // are thus directly in the document DOM element.
-    let dom = this.dom!, newPos
-    if (pos.node != dom) return pos
+    let dom = this.tile.dom, newPos
+    if (pos.node != dom) return pos // FIXME handle block wrappers
     for (let i = pos.offset; !newPos && i < dom.childNodes.length; i++) {
-      let view = ContentView.get(dom.childNodes[i])
-      if (view instanceof LineView) newPos = view.domAtPos(0)
+      let tile = Tile.get(dom.childNodes[i])
+      if (tile instanceof LineTile) newPos = new DOMPos(tile.dom, 0)
     }
     for (let i = pos.offset - 1; !newPos && i >= 0; i--) {
-      let view = ContentView.get(dom.childNodes[i])
-      if (view instanceof LineView) newPos = view.domAtPos(view.length)
+      let tile = Tile.get(dom.childNodes[i])
+      if (tile instanceof LineTile) newPos = new DOMPos(tile.dom, tile.dom.childNodes.length)
     }
-    return newPos ? new DOMPos(newPos.node, newPos.offset, true) : pos
-  }
-
-  nearest(dom: Node): ContentView | null {
-    for (let cur: Node | null = dom; cur;) {
-      let domView = ContentView.get(cur)
-      if (domView && domView.rootView == this) return domView
-      cur = cur.parentNode
-    }
-    return null
+    return newPos ? new DOMPos(newPos.node, newPos.offset) : pos
   }
 
   posFromDOM(node: Node, offset: number): number {
-    let view = this.nearest(node)
-    if (!view) throw new RangeError("Trying to find position for a DOM position outside of the document")
-    return view.localPosFromDOM(node, offset) + view.posAtStart
+    let tile = this.tile.nearest(node)
+    if (!tile) throw new RangeError("Trying to find position for a DOM position outside of the document")
+    return 0 // FIXME tile.localPosFromDOM(node, offset) + view.posAtStart
   }
 
-  domAtPos(pos: number): DOMPos {
-    return blockDOMAtPos(this, pos)
+  domAtPos(pos: number, side: number): DOMPos {
+    let {tile, offset} = this.tile.resolveBlock(pos, side)
+    if (tile.isWidget()) return tile.domPosNextTo(tile.length ? pos > 0 : side > 0)
+    return tile.domIn(offset, side)
   }
 
+  // FIXME copy old side==-2/2 behavior
   coordsAt(pos: number, side: number): Rect | null {
-    return coordsInBlock(this, pos, side)
+    let {tile, offset} = this.tile.resolveBlock(pos, side)
+    if (tile.isWidget()) {
+      if (tile.widget instanceof BlockGapWidget) return null
+      return tile.coordsInWidget(offset, side, true)
+    }
+    return tile.coordsIn(offset, side)
+  }
+
+  lineAt(pos: number) {
+    let {tile} = this.tile.resolveBlock(pos, 1)
+    return tile instanceof LineTile ? tile : null
   }
 
   coordsForChar(pos: number) {
-    let {i, off} = this.childPos(pos, 1), child: ContentView = this.children[i]
-    if (!(child instanceof LineView)) return null
-    while (child.children.length) {
-      let {i, off: childOff} = child.childPos(off, 1)
-      for (;; i++) {
-        if (i == child.children.length) return null
-        if ((child = child.children[i]).length) break
+    let {tile, offset} = this.tile.resolveBlock(pos, 1)
+    if (!(tile instanceof LineTile)) return null
+    function scan(tile: Tile, offset: number): DOMRect | null {
+      if (tile.isComposite()) {
+        for (let ch of tile.children) {
+          if (ch.length >= offset) {
+            let found = scan(ch, offset)
+            if (found) return found
+          }
+          offset -= ch.length
+          if (offset < 0) break
+        }
+      } else if (tile.isText() && offset < tile.length) {
+        let end = findClusterBreak(tile.text, offset)
+        if (end == offset) return null
+        let rects = textRange(tile.dom, offset, end).getClientRects()
+        for (let i = 0; i < rects.length; i++) {
+          let rect = rects[i]
+          if (i == rects.length - 1 || rect.top < rect.bottom && rect.left < rect.right) return rect
+        }
       }
-      off = childOff
+      return null
     }
-    if (!(child instanceof TextView)) return null
-    let end = findClusterBreak(child.text, off)
-    if (end == off) return null
-    let rects = textRange(child.dom as Text, off, end).getClientRects()
-    for (let i = 0; i < rects.length; i++) {
-      let rect = rects[i]
-      if (i == rects.length - 1 || rect.top < rect.bottom && rect.left < rect.right) return rect
-    }
-    return null
+    return scan(tile, offset)
   }
 
   measureVisibleLineHeights(viewport: {from: number, to: number}) {
@@ -429,21 +352,21 @@ export class DocView extends ContentView {
     let contentWidth = this.view.contentDOM.clientWidth
     let isWider = contentWidth > Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
     let widest = -1, ltr = this.view.textDirection == Direction.LTR
-    let scan = (node: DocView | BlockWrapperView = this, pos: number, measureBounds: DOMRect | null) => {
-      for (let i = 0; i < node.children.length; i++) {
+    let scan = (tile: DocTile | BlockWrapperTile, pos: number, measureBounds: DOMRect | null) => {
+      for (let i = 0; i < tile.children.length; i++) {
         if (pos > to) break
-        let child = node.children[i], end = pos + child.length
-        if (child instanceof BlockWrapperView) {
-          if (end > from) scan(child, pos, child.dom!.getBoundingClientRect())
+        let child = tile.children[i], end = pos + child.length
+        if (child instanceof BlockWrapperTile) {
+          if (end > from) scan(child, pos, child.dom.getBoundingClientRect())
         } else if (pos >= from) {
-          let childRect = child.dom!.getBoundingClientRect(), {height} = childRect
+          let childRect = (child.dom as HTMLElement).getBoundingClientRect(), {height} = childRect
           if (measureBounds) {
             if (i == 0) height += childRect.top - measureBounds.top
-            if (i == node.children.length - 1) height += measureBounds.bottom - childRect.bottom
+            if (i == tile.children.length - 1) height += measureBounds.bottom - childRect.bottom
           }
           result.push(height)
           if (isWider) {
-            let last = child.dom!.lastChild
+            let last = child.dom.lastChild
             let rects = last ? clientRectsFor(last) : []
             if (rects.length) {
               let rect = rects[rects.length - 1]
@@ -460,22 +383,34 @@ export class DocView extends ContentView {
         pos = end + child.breakAfter
       }
     }
-    scan(this, 0, null)
+    scan(this.tile, 0, null)
     return result
   }
 
   textDirectionAt(pos: number) {
-    let {i} = this.childPos(pos, 1)
-    return getComputedStyle(this.children[i].dom!).direction == "rtl" ? Direction.RTL : Direction.LTR
+    let {tile} = this.tile.resolveBlock(pos, 1)
+    return getComputedStyle(tile.dom).direction == "rtl" ? Direction.RTL : Direction.LTR
   }
 
   measureTextSize(): {lineHeight: number, charWidth: number, textHeight: number} {
-    for (let child of this.children) {
-      if (child instanceof LineView) {
-        let measure = child.measureTextSize()
-        if (measure) return measure
+    let lineMeasure = this.tile.blockTiles(tile => {
+      if (tile instanceof LineTile && tile.children.length && tile.length <= 20) {
+        let totalWidth = 0, textHeight!: number
+        for (let child of tile.children) {
+          if (!child.isText() || /[^ -~]/.test(child.text)) return undefined
+          let rects = clientRectsFor(child.dom)
+          if (rects.length != 1) return undefined
+          totalWidth += rects[0].width
+          textHeight = rects[0].height
+        }
+        if (totalWidth) return {
+          lineHeight: tile.dom.getBoundingClientRect().height,
+          charWidth: totalWidth / tile.length,
+          textHeight
+        }
       }
-    }
+    })
+    if (lineMeasure) return lineMeasure
     // If no workable line exists, force a layout of a measurable element
     let dummy = document.createElement("div"), lineHeight!: number, charWidth!: number, textHeight!: number
     dummy.className = "cm-line"
@@ -483,7 +418,7 @@ export class DocView extends ContentView {
     dummy.style.position = "absolute"
     dummy.textContent = "abc def ghi jkl mno pqr stu"
     this.view.observer.ignore(() => {
-      this.dom.appendChild(dummy)
+      this.tile.dom.appendChild(dummy)
       let rect = clientRectsFor(dummy.firstChild!)[0]
       lineHeight = dummy.getBoundingClientRect().height
       charWidth = rect ? rect.width / 27 : 7
@@ -493,20 +428,11 @@ export class DocView extends ContentView {
     return {lineHeight, charWidth, textHeight}
   }
 
-  childCursor(pos: number = this.length): ChildCursor {
-    // Move back to start of last element when possible, so that
-    // `ChildCursor.findPos` doesn't have to deal with the edge case
-    // of being after the last element.
-    let i = this.children.length
-    if (i) pos -= this.children[--i].length
-    return new ChildCursor(this.children, pos, i)
-  }
-
   computeBlockGapDeco(): DecorationSet {
     let deco = [], vs = this.view.viewState
     for (let pos = 0, i = 0;; i++) {
       let next = i == vs.viewports.length ? null : vs.viewports[i]
-      let end = next ? next.from - 1 : this.length
+      let end = next ? next.from - 1 : this.view.state.doc.length
       if (end > pos) {
         let height = (vs.lineBlockAt(end).bottom - vs.lineBlockAt(pos).top) / this.view.scaleY
         deco.push(Decoration.replace({
@@ -581,14 +507,9 @@ export class DocView extends ContentView {
   }
 
   lineHasWidget(pos: number) {
-    let {i} = this.childCursor().findPos(pos)
-    if (i == this.children.length) return false
-    let scan = (child: ContentView) => child instanceof WidgetView || child.children.some(scan)
-    return scan(this.children[i])
+    let scan = (child: Tile) => child.isWidget() || child.children.some(scan)
+    return scan(this.tile.resolveBlock(pos, 1).tile)
   }
-
-  // Will never be called but needs to be present
-  declare split: () => ContentView
 }
 
 function betweenUneditable(pos: DOMPos) {
@@ -604,12 +525,12 @@ export function findCompositionNode(view: EditorView, headPos: number): {from: n
   let textAfter = textNodeAfter(sel.focusNode, sel.focusOffset)
   let textNode = textBefore || textAfter
   if (textAfter && textBefore && textAfter.node != textBefore.node) {
-    let descAfter = ContentView.get(textAfter.node)
-    if (!descAfter || descAfter instanceof TextView && descAfter.text != textAfter.node.nodeValue) {
+    let tileAfter = Tile.get(textAfter.node)
+    if (!tileAfter || tileAfter.isText() && tileAfter.text != textAfter.node.nodeValue) {
       textNode = textAfter
     } else if (view.docView.lastCompositionAfterCursor) {
-      let descBefore = ContentView.get(textBefore.node)
-      if (!(!descBefore || descBefore instanceof TextView && descBefore.text != textBefore.node.nodeValue))
+      let tileBefore = Tile.get(textBefore.node)
+      if (!(!tileBefore || tileBefore.isText() && tileBefore.text != textBefore.node.nodeValue))
         textNode = textAfter
     }
   }
@@ -629,23 +550,7 @@ function findCompositionRange(view: EditorView, changes: ChangeSet, headPos: num
   if (view.state.doc.sliceString(found.from, found.to) != text) return null
 
   let inv = changes.invertedDesc
-  let range = new ChangedRange(inv.mapPos(from), inv.mapPos(to), from, to)
-  let marks: {node: HTMLElement, deco: MarkDecoration}[] = []
-  for (let parent = textNode.parentNode as HTMLElement;; parent = parent.parentNode as HTMLElement) {
-    let parentView = ContentView.get(parent)
-    if (parentView instanceof MarkView)
-      marks.push({node: parent, deco: parentView.mark})
-    else if (parentView instanceof LineView || parent.nodeName == "DIV" && parent.parentNode == view.contentDOM)
-      return {range, text: textNode, marks, line: parent as HTMLElement}
-    else if (parent != view.contentDOM)
-      marks.push({node: parent, deco: new MarkDecoration({
-        inclusive: true,
-        attributes: getAttrs(parent),
-        tagName: parent.tagName.toLowerCase()
-      })})
-    else
-      return null
-  }
+  return {range: new ChangedRange(inv.mapPos(from), inv.mapPos(to), from, to), text: textNode}
 }
 
 function addCompositionRange(changes: readonly ChangedRange[], composition: ChangedRange) {
@@ -715,4 +620,28 @@ function touchesComposition(changes: ChangeSet, composition: null | {from: numbe
     if (from < composition!.to && to > composition!.from) touched = true
   })
   return touched
+}
+
+export class BlockGapWidget extends WidgetType {
+  constructor(readonly height: number) { super() }
+
+  toDOM() {
+    let elt = document.createElement("div")
+    elt.className = "cm-gap"
+    this.updateDOM(elt)
+    return elt
+  }
+
+  eq(other: BlockGapWidget) { return other.height == this.height }
+
+  updateDOM(elt: HTMLElement) {
+    elt.style.height = this.height + "px"
+    return true
+  }
+
+  get editable() { return true }
+
+  get estimatedHeight() { return this.height }
+
+  ignoreEvent() { return false }
 }

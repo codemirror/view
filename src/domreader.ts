@@ -1,4 +1,4 @@
-import {ContentView} from "./contentview"
+import {Tile} from "./tile"
 import {domIndex, maxOffset, isBlockElement} from "./dom"
 import {EditorState} from "@codemirror/state"
 
@@ -29,9 +29,9 @@ export class DOMReader {
       this.readNode(cur)
       let next: Node | null = cur.nextSibling
       if (next == end) break
-      let view = ContentView.get(cur), nextView = ContentView.get(next!)
-      if ((view && nextView ? view.breakAfter :
-           (view ? view.breakAfter : isBlockElement(cur)) ||
+      let tile = Tile.get(cur), nextTile = Tile.get(next!)
+      if ((tile && nextTile ? tile.breakAfter :
+           (tile ? tile.breakAfter : isBlockElement(cur)) ||
            (isBlockElement(next!) && (cur.nodeName != "BR" || (cur as any).cmIgnore) && this.text.length > oldLen)) &&
           !isEmptyToEnd(next, end))
         this.lineBreak()
@@ -67,8 +67,8 @@ export class DOMReader {
 
   readNode(node: Node) {
     if ((node as any).cmIgnore) return
-    let view = ContentView.get(node)
-    let fromView = view && view.overrideDOMText
+    let tile = Tile.get(node)
+    let fromView = tile && tile.overrideDOMText
     if (fromView != null) {
       this.findPointInside(node, fromView.length)
       for (let i = fromView.iter(); !i.next().done;) {
@@ -107,10 +107,10 @@ function isAtEnd(parent: Node, node: Node | null, offset: number) {
 }
 
 function isEmptyToEnd(node: Node | null, end: Node | null) {
-  let widgets: ContentView[] | undefined
+  let widgets: Tile[] | undefined
   for (;; node = node.nextSibling) {
     if (node == end || !node) break
-    let view = ContentView.get(node)
+    let view = Tile.get(node)
     if (!(view?.isWidget || (node as any).cmIgnore)) return false
     if (view) (widgets || (widgets = [])).push(view)
   }
