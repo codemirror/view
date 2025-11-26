@@ -2,11 +2,14 @@ import {Tile, DocTile, CompositeTile, LineTile, MarkTile, BlockWrapperTile, Side
         WidgetTile, TextTile, WidgetBufferTile, TileFlag, TilePointer} from "./tile"
 import {ChangedRange} from "./extension"
 import {getAttrs} from "./attributes"
-import {Decoration, DecorationSet, MarkDecoration, PointDecoration, WidgetType} from "./decoration"
-import {RangeSet, TextIterator, SpanIterator} from "@codemirror/state"
+import {Decoration, DecorationSet, MarkDecoration, PointDecoration, WidgetType, BlockWrapper} from "./decoration"
+import {RangeSet, RangeCursor, TextIterator, SpanIterator} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {Composition} from "./docview"
 import browser from "./browser"
+
+// FIXME comments
+// FIXME see which assertions I want to keep in the code
 
 const LOG_builder = false
 
@@ -25,19 +28,25 @@ export class TileBuilder {
   // After a replace, if a widget at the end of the replace stuck out
   // after the replaced range, this holds the tile for it
   openWidget: WidgetTile | null = null
+  // Set after a replace, so that preserve can properly sync when it
+  // starts the next bloc (the inline content at the start of a preserve
+  // may be wrapped differently in the old tree and the new)
+  pendingWrappers: OpenWrapper[] | null = null
 
   // Used by the builder to run through document text
   cursor: TextIterator
+  blockWrappers: RangeCursor<BlockWrapper>
   text: string = ""
   textOff: number = 0
   skip: number = 0
 
   constructor(readonly view: EditorView,
               old: DocTile,
-              // FIXME readonly blockRanges: RangeCursor<BlockWrapper>,
+              blockRanges: readonly RangeSet<BlockWrapper>[],
               readonly decorations: readonly DecorationSet[],
               readonly disallowBlockEffectsFor: boolean[]) {
     this.cursor = view.state.doc.iter()
+    this.blockWrappers = RangeSet.iter(blockRanges)
     this.old = new TilePointer(old)
     this.oldLen = old.length
     this.new = this.newRoot = old.clone(old.dom)
@@ -95,6 +104,7 @@ export class TileBuilder {
           }
         } else if (!this.reused.has(tile)) {
           this.reused.set(tile, Reused.Full)
+          tile.flags &= ~(TileFlag.BreakAfter | TileFlag.Composition)
           this.addTile(tile)
         } else {
           if (!(tile instanceof CompositeTile)) throw new Error("Double use of leaf tile " + tile)
@@ -111,8 +121,13 @@ export class TileBuilder {
       },
       leave: (tile) => {
         this.leaveTile()
+        if (this.pendingWrappers && tile.isLine()) {
+          this.syncTo(0 /* FIXME */, this.newRoot, 0, this.pendingWrappers, 0)
+          this.pendingWrappers = null
+        }
       },
       break: () => {
+        console.log("break at " + this.new)
         this.new.lastChild!.breakAfter = 1
       },
     })
@@ -120,16 +135,16 @@ export class TileBuilder {
   }
 
   emit(from: number, to: number, lenA: number, sync = true) {
+    this.blockWrappers.goto(from)
     let iter = new TileDecoIterator(this, lenA)
     let openEnd = RangeSet.spans(this.decorations, from, to, iter)
-    iter.finish(openEnd)
-
-    if (sync && to < this.view.state.doc.length) this.syncContext(openEnd)
+    iter.finish(to, openEnd)
+    if (sync && to < this.view.state.doc.length) this.syncContext(to, iter.wrappers, openEnd)
   }
 
   composition(composition: Composition, context: {marks: MarkTile[], line: LineTile}) {
     let line: CompositeTile | null = this.new
-    while (line && !(line instanceof LineTile)) line = line.parent
+    while (line && !line.isLine()) line = line.parent
     if (!line) throw new Error("Not in a line")
 
     if (line.dom != context.line.dom) {
@@ -169,7 +184,7 @@ export class TileBuilder {
       if (parent == this.view.contentDOM) break
       if (tile instanceof MarkTile)
         marks.push(tile)
-      else if (tile instanceof LineTile)
+      else if (tile?.isLine())
         line = tile
       else if (parent.nodeName == "DIV" && !line && parent != this.view.contentDOM)
         line = new LineTile(parent, LineTile.baseAttrs)
@@ -209,7 +224,7 @@ export class TileBuilder {
   }
 
   leaveTile() {
-    if (this.new instanceof LineTile) this.ensureBreak(this.new)
+    if (this.new.isLine()) this.ensureBreak(this.new)
     this.new = this.new.parent!
     if (!this.new) throw new Error("Left doc tile")
   }
@@ -224,36 +239,55 @@ export class TileBuilder {
     return this.openWidget
   }
 
-  syncContext(open: number) {
-    // FIXME handle block wrappers
-    let nw = this.newRoot, line: LineTile | null = null
-    if (this.old.parents.length) for (let i = 1;;) {
+  // FIXME call at the start of preserve instead?
+  syncContext(pos: number, openWrappers: OpenWrapper[], openMarks: number) {
+    let lineDepth = this.old.tile.isLine() ? this.old.parents.length : this.old.parents.findIndex(p => p.tile.isLine())
+    let curLine: CompositeTile | null = this.new
+    while (curLine && !curLine.isLine) curLine = curLine.parent
+
+    if (lineDepth > -1 && curLine) {
+      // Sync only the inline part
+      this.pendingWrappers = openWrappers
+      this.syncTo(pos, curLine, lineDepth, null, openMarks)
+    } else {
+      // Sync fully
+      this.pendingWrappers = null
+      this.syncTo(pos, this.newRoot, 0, openWrappers, openMarks)
+    }
+  }
+
+  syncTo(pos: number, parent: CompositeTile, fromDepth: number, openWrappers: OpenWrapper[] | null, openMarks: number) {
+    let line: LineTile | null = null
+    for (let i = fromDepth + 1, wrapDepth = 0;;) {
+      if (i > this.old.parents.length) break
       let level = i == this.old.parents.length ? this.old : this.old.parents[i++]
-      let {tile} = level, nwNext = nw.lastChild
-      if (tile instanceof LineTile) {
-        if (!nwNext || !(nwNext instanceof LineTile)) {
-          nwNext = LineTile.start(LineTile.baseAttrs, this.maybeReuse(tile))
-          nw.append(nwNext)
+      let {tile} = level, next = parent.lastChild
+      if (tile.isLine()) {
+        if (!next || !next.isLine()) {
+          parent.append(next = LineTile.start(LineTile.baseAttrs, this.maybeReuse(tile)))
         } else {
-          line = nwNext
+          line = next
+        }
+      } else if (tile instanceof BlockWrapperTile) {
+        let open = openWrappers && wrapDepth < openWrappers.length && openWrappers[wrapDepth++].to >= pos
+        if (!open || !(next instanceof BlockWrapperTile) || !next.wrapper.eq(tile.wrapper)) {
+          parent.append(next = tile.clone(this.maybeReuse(tile)))
         }
       } else if (tile instanceof MarkTile) {
-        if (open <= 0 || !nwNext || !(nwNext instanceof MarkTile)) {
-          nwNext = MarkTile.of(tile.mark, this.maybeReuse(tile))
-          nw.append(nwNext)
+        if (openMarks <= 0 || !next || !(next instanceof MarkTile)) {
+          parent.append(next = MarkTile.of(tile.mark, this.maybeReuse(tile)))
         }
-        open--
+        openMarks--
       } else {
-        if (open > 0 && nwNext instanceof WidgetTile) this.openWidget = nwNext
+        if (openMarks > 0 && next instanceof WidgetTile) this.openWidget = next
         break
       }
-      nw = nwNext as CompositeTile
-      if (level == this.old) break
+      parent = next as CompositeTile
     }
     for (let scan: CompositeTile | null = this.new; scan; scan = scan.parent) {
-      if (scan instanceof LineTile && scan != line) { this.ensureBreak(scan); break }
+      if (scan.isLine() && scan != line) { this.ensureBreak(scan); break }
     }
-    this.new = nw
+    this.new = parent
   }
 
   skipText(len: number) {
@@ -295,6 +329,15 @@ function freeNode<N extends HTMLElement | Text>(node: N): N {
   return node
 }
 
+class OpenWrapper {
+  constructor(
+    readonly from: number,
+    readonly to: number,
+    readonly wrapper: BlockWrapper,
+    readonly rank: number
+  ) {}
+}
+
 class TileDecoIterator implements SpanIterator<Decoration> {
   atStart = true
   // Set to false directly after a widget that covers the position after it
@@ -302,10 +345,11 @@ class TileDecoIterator implements SpanIterator<Decoration> {
   curLine: LineTile | null = null
   pendingBuffer = Buf.No
   bufferMarks: readonly MarkDecoration[] = []
+  wrappers: OpenWrapper[] = []
 
   constructor(readonly build: TileBuilder, public advanceDist: number) {
     for (let line = build.new;;) {
-      if (line instanceof LineTile) {
+      if (line.isLine()) {
         if (!line.breakAfter) this.curLine = line
         break
       }
@@ -315,7 +359,7 @@ class TileDecoIterator implements SpanIterator<Decoration> {
   }
 
   span(from: number, to: number, active: readonly MarkDecoration[], openStart: number) {
-    this.buildText(to - from, active, openStart)
+    this.buildText(from, to, active, openStart)
   }
 
   point(from: number, to: number, deco: Decoration, active: readonly MarkDecoration[], openStart: number, index: number) {
@@ -327,7 +371,7 @@ class TileDecoIterator implements SpanIterator<Decoration> {
           throw new RangeError("Decorations that replace line breaks may not be specified via plugins")
       }
       this.buildPoint(from, to, deco, active, openStart)
-    } else if ((this.curLine || (!this.blockPosCovered() && this.getLine())) &&
+    } else if ((this.curLine || (!this.blockPosCovered() && this.getLine(from))) &&
       !hasContent(this.curLine!, false)) { // Line decoration
       this.curLine!.addLineDeco(deco)
     }
@@ -338,8 +382,9 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     }
   }
 
-  getLine() {
+  getLine(pos: number) {
     if (!this.curLine) {
+      this.syncBlockWrappers(pos)
       let reuse = this.findReusable(LineTile)
       this.curLine = LineTile.start(LineTile.baseAttrs, reuse?.dom)
       this.build.enterTile(this.curLine)
@@ -351,13 +396,41 @@ class TileDecoIterator implements SpanIterator<Decoration> {
   endLine() {
     let b = this.build
     while (b.new instanceof MarkTile) b.leaveTile()
-    if (b.new instanceof LineTile) {
+    if (b.new.isLine()) {
       let line = b.new
       while (b.new != line.parent) b.leaveTile()
       this.curLine = null
       return line
     }
     return b.new.lastChild
+  }
+
+  syncBlockWrappers(pos: number) {
+    // FIXME there is an issue if this adjusts the number of block
+    // wrappers—iterating over their closing point will close too few
+    // or too many tiles
+    for (let i = this.wrappers.length - 1 ; i >= 0; i--)
+      if (this.wrappers[i].to < pos) this.wrappers.splice(i, 1)
+    let open = this.wrappers.length
+    for (let cur = this.build.blockWrappers; cur.value && cur.from <= pos; cur.next()) if (cur.to >= pos) {
+      let wrap = new OpenWrapper(cur.from, cur.to, cur.value, cur.rank), i = this.wrappers.length
+      while (i > 0 && this.wrappers[i - 1].rank > wrap.rank) i--
+      this.wrappers.splice(i, 0, wrap)
+      open = Math.min(i, open)
+    }
+    let nw = this.build.newRoot
+    for (let wrap of this.wrappers) {
+      let last = nw.lastChild
+      if (open > 0 && last instanceof BlockWrapperTile && last.wrapper.eq(wrap.wrapper)) {
+        nw = last
+      } else {
+        let tile = BlockWrapperTile.of(wrap.wrapper, this.findReusable(BlockWrapperTile, t => t.wrapper.eq(wrap.wrapper))?.dom)
+        nw.append(tile)
+        nw = tile
+      }
+      open--
+    }
+    this.build.new = nw
   }
 
   blockPosCovered() {
@@ -370,9 +443,9 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     }
   }
 
-  flushBuffer(active = this.bufferMarks) {
+  flushBuffer(pos: number, active = this.bufferMarks) {
     if (this.pendingBuffer) {
-      let line = this.getLine()
+      let line = this.getLine(pos)
       this.syncInlineMarks(line, active, active.length)
       this.build.new.append(new WidgetBufferTile(-1))
       this.pendingBuffer = Buf.No
@@ -396,17 +469,18 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     this.build.new = parent
   }
 
-  addBlockWidget(view: WidgetTile, start: number) {
-    this.flushBuffer()
+  addBlockWidget(view: WidgetTile, pos: number) {
+    this.flushBuffer(pos)
     this.curLine = null
     this.endLine()
+    this.syncBlockWrappers(pos)
     this.build.new.append(view)
   }
 
-  finish(openEnd: number) {
-    if (openEnd <= this.bufferMarks.length) this.flushBuffer()
+  finish(pos: number, openEnd: number) {
+    if (openEnd <= this.bufferMarks.length) this.flushBuffer(pos)
     // Start a line if current position isn't covered properly
-    if (!this.blockPosCovered()) this.getLine()
+    if (!this.blockPosCovered()) this.getLine(pos)
     this.advanceOld()
   }
 
@@ -417,28 +491,28 @@ class TileDecoIterator implements SpanIterator<Decoration> {
     }
   }
 
-  buildText(length: number, active: readonly MarkDecoration[], openStart: number) {
-    let b = this.build
-    while (length > 0) {
-      let chars = b.nextChars(Math.min(T.Chunk, length))
+  buildText(from: number, to: number, active: readonly MarkDecoration[], openStart: number) {
+    let b = this.build, pos = from
+    while (pos < to) {
+      let chars = b.nextChars(Math.min(T.Chunk, to - pos))
       if (chars == null) { // Line break
-        if (!this.blockPosCovered()) this.getLine()
-        // FIXME this.updateBlockWrappers(++this.pos)
-        this.flushBuffer()
+        if (!this.blockPosCovered()) this.getLine(pos)
+        this.flushBuffer(pos)
         this.endLine()!.breakAfter = 1
         this.atCursorPos = true
-        length--
+        pos++
+        // FIXME attach breakAfter here?
         openStart = 0
         this.atStart = false
         continue
       }
-      let take = Math.min(chars.length, length)
-      this.flushBuffer(active.slice(active.length - openStart))
-      let line = this.getLine()
+      let take = Math.min(chars.length, to - pos)
+      this.flushBuffer(pos, active.slice(active.length - openStart))
+      let line = this.getLine(pos)
       this.syncInlineMarks(line, active, openStart)
       this.build.addText(chars, this.atStart ? this.findReusableAtStart(TextTile) : null)
       this.atCursorPos = true
-      length -= take
+      pos += take
       openStart = take == T.Chunk ? 0 : active.length
       this.atStart = false
     }
@@ -454,7 +528,7 @@ class TileDecoIterator implements SpanIterator<Decoration> {
         if (this.pendingBuffer) this.bufferMarks = active.slice()
       }
     } else if (deco.block) {
-      if (deco.startSide > 0 && !this.blockPosCovered()) this.getLine()
+      if (deco.startSide > 0 && !this.blockPosCovered()) this.getLine(from)
       let widget = deco.widget || NullWidget.block
       let reuse = this.findReusableWidget(widget)
       this.addBlockWidget(WidgetTile.of(widget, this.build.view, to - from, widgetSide(deco), reuse?.dom), from)
@@ -464,9 +538,9 @@ class TileDecoIterator implements SpanIterator<Decoration> {
       let tile = WidgetTile.of(widget, this.build.view, to - from, widgetSide(deco), reuse?.dom)
       let cursorBefore = this.atCursorPos && tile.isWidget() && (deco.isReplace || deco.startSide > 0)
       let cursorAfter = tile.isWidget() && (deco.isReplace || deco.startSide <= 0)
-      let line = this.getLine()
+      let line = this.getLine(from)
       if (this.pendingBuffer == Buf.IfCursor && !cursorBefore && tile.isWidget()) this.pendingBuffer = Buf.No
-      else this.flushBuffer(active)
+      else this.flushBuffer(from, active)
       this.syncInlineMarks(line, active, openStart)
       if (cursorBefore) this.build.new.append(new WidgetBufferTile(1))
       this.build.new.append(tile)

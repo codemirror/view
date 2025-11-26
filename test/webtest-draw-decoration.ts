@@ -1,6 +1,6 @@
-import {EditorView, Decoration, DecorationSet, WidgetType, ViewPlugin} from "@codemirror/view"
+import {EditorView, Decoration, BlockWrapper, DecorationSet, WidgetType, ViewPlugin} from "@codemirror/view"
 import {tempView, requireFocus} from "./tempview.js"
-import {EditorSelection, StateEffect, StateField, Range} from "@codemirror/state"
+import {EditorSelection, StateEffect, StateField, Range, RangeSet} from "@codemirror/state"
 import ist from "ist"
 
 const filterDeco = StateEffect.define<(from: number, to: number, spec: any) => boolean>()
@@ -767,6 +767,59 @@ describe("EditorView decoration", () => {
           decorations: o => o.deco
         })])
       }, "Block decorations may not be specified via plugins")
+    })
+  })
+
+  describe("block wrappers", () => {
+    const addBlock = StateEffect.define<Range<BlockWrapper>>()
+    const clearBlocks = StateEffect.define<null>()
+    const blockField = StateField.define<RangeSet<BlockWrapper>>({
+      create() { return RangeSet.empty },
+      update(value, tr) {
+        value = value.map(tr.changes)
+        for (let effect of tr.effects) {
+          if (effect.is(addBlock)) value = value.update({add: [effect.value]})
+          else if (effect.is(clearBlocks)) value = RangeSet.empty
+        }
+        return value
+      },
+      provide: f => EditorView.blockWrappers.from(f)
+    })
+
+    let section = BlockWrapper.create({tagName: "section"})
+    let navi = BlockWrapper.create({tagName: "navigation"})
+
+    let html = (cm: EditorView) => cm.contentDOM.innerHTML.replace(/ class=[^>]*/g, "")
+
+    function wrapEditor(doc: string, blocks: readonly Range<BlockWrapper>[]) {
+      return tempView(doc, blockField.init(() => RangeSet.of(blocks)))
+    }
+
+    it("can wrap a line", () => {
+      let cm = wrapEditor("a\nb\nc", [section.range(2)])
+      ist(html(cm), `<div>a</div><section><div>b</div></section><div>c</div>`)
+    })
+
+    it("can wrap multiple lines", () => {
+      let cm = wrapEditor("a\nb\nc", [section.range(0, 2)])
+      ist(html(cm), `<section><div>a</div><div>b</div></section><div>c</div>`)
+    })
+
+    it("only takes effect at the start of a line", () => {
+      let cm = wrapEditor("ab\ncd", [section.range(1)])
+      ist(!cm.contentDOM.querySelector("section"))
+    })
+
+    it("can nest wrappers", () => {
+      let cm = wrapEditor("a\nb\nc", [navi.range(0, 5), section.range(2)])
+      ist(html(cm), `<navigation><div>a</div><section><div>b</div></section><div>c</div></navigation>`)
+      cm.dispatch({changes: {from: 2, insert: "?"}})
+      ist(html(cm), `<navigation><div>a</div><section><div>?b</div></section><div>c</div></navigation>`)
+    })
+
+    it("doesn't join individual wrappers", () => {
+      let cm = wrapEditor("a\nb\nc", [navi.range(0, 5), section.range(2)])
+      ist(html(cm), `<navigation><div>a</div><section><div>b</div></section><div>c</div></navigation>`)
     })
   })
 })

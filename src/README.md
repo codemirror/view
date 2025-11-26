@@ -77,6 +77,8 @@ representation.
 
 @MatchDecorator
 
+@BlockWrapper
+
 ### Gutters
 
 Functionality for showing "gutters" (for line numbers or other

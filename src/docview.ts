@@ -8,10 +8,8 @@ import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRa
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
-import {Tile, LineTile, DocTile, TileFlag, BlockWrapperTile} from "./tile"
+import {Tile, LineTile, DocTile, TileFlag, BlockWrapperTile, Side} from "./tile"
 import {TileBuilder, Reused} from "./buildtile"
-
-// FIXME check for unused code
 
 export type Composition = {
   range: ChangedRange,
@@ -119,7 +117,7 @@ export class DocView {
   private updateInner(changes: readonly ChangedRange[], composition: Composition | null) {
     this.view.viewState.mustMeasureContent = true
 
-    let builder = new TileBuilder(this.view, this.tile, this.decorations, this.dynamicDecorationMap)
+    let builder = new TileBuilder(this.view, this.tile, this.blockWrappers, this.decorations, this.dynamicDecorationMap)
     let oldTile = this.tile
     this.tile = builder.run(changes, composition)
     destroyDropped(oldTile, builder.reused)
@@ -167,10 +165,10 @@ export class DocView {
 
     let main = this.view.state.selection.main, anchor: DOMPos, head: DOMPos
     if (main.empty) {
-      head = anchor = this.moveToLine(this.domAtPos(main.anchor, main.assoc || 1))
+      head = anchor = this.inlineDOMNearPos(main.anchor, main.assoc || 1)
     } else {
-      head = this.moveToLine(this.domAtPos(main.head, main.head == main.from ? 1 : -1))
-      anchor = this.moveToLine(this.domAtPos(main.anchor, main.anchor == main.from ? 1 : -1))
+      head = this.inlineDOMNearPos(main.head, main.head == main.from ? 1 : -1)
+      anchor = this.inlineDOMNearPos(main.anchor, main.anchor == main.from ? 1 : -1)
     }
 
     // Always reset on Firefox when next to an uneditable node to
@@ -259,7 +257,7 @@ export class DocView {
     let sel = getSelection(view.root)
     let {anchorNode, anchorOffset} = view.observer.selectionRange
     if (!sel || !cursor.empty || !cursor.assoc || !sel.modify) return
-    let line = null as any // FIXME LineView.find(this, cursor.head)
+    let line = this.lineAt(cursor.head)
     if (!line) return
     let lineStart = line.posAtStart
     if (cursor.head == lineStart || cursor.head == lineStart + line.length) return
@@ -274,25 +272,6 @@ export class DocView {
     let newRange = view.observer.selectionRange
     if (view.docView.posFromDOM(newRange.anchorNode!, newRange.anchorOffset) != cursor.from)
       sel.collapse(anchorNode, anchorOffset)
-  }
-
-  // If a position is in/near a block widget, move it to a nearby text
-  // line, since we don't want the cursor inside a block widget.
-  moveToLine(pos: DOMPos) {
-    // FIXME do this at an earlier stage, directly from a position?
-    // Block widgets will return positions before/after them, which
-    // are thus directly in the document DOM element.
-    let dom = this.tile.dom, newPos
-    if (pos.node != dom) return pos // FIXME handle block wrappers
-    for (let i = pos.offset; !newPos && i < dom.childNodes.length; i++) {
-      let tile = Tile.get(dom.childNodes[i])
-      if (tile instanceof LineTile) newPos = new DOMPos(tile.dom, 0)
-    }
-    for (let i = pos.offset - 1; !newPos && i >= 0; i--) {
-      let tile = Tile.get(dom.childNodes[i])
-      if (tile instanceof LineTile) newPos = new DOMPos(tile.dom, tile.dom.childNodes.length)
-    }
-    return newPos ? new DOMPos(newPos.node, newPos.offset) : pos
   }
 
   posFromDOM(node: Node, offset: number): number {
@@ -339,6 +318,26 @@ export class DocView {
     return tile.domIn(offset, side)
   }
 
+  inlineDOMNearPos(pos: number, side: number): DOMPos {
+    let before: LineTile | undefined | null, beforeOff = -1, beforeBad = false
+    let after: LineTile | undefined | null, afterOff = -1, afterBad = false
+    this.tile.blockTiles((tile, off) => {
+      if (tile.isWidget()) {
+        if ((tile.side & Side.After) && before) return true
+        if (tile.side & Side.Before) beforeBad = true
+      } else {
+        let end = off + tile.length
+        if (off <= pos) { before = tile; beforeOff = pos - off; beforeBad = end < pos }
+        if (end >= pos && !after) { after = tile; afterOff = pos - off; afterBad = off > pos }
+        if (off > pos && after) return true
+      }
+    })
+    if (!before && !after) return this.domAtPos(pos, side)
+    if (beforeBad && after) before = null
+    else if (afterBad && before) after = null
+    return before && side < 0 || !after ? before!.domIn(beforeOff, side) : after.domIn(afterOff, side)
+  }
+
   coordsAt(pos: number, side: number): Rect | null {
     let {tile, offset} = this.tile.resolveBlock(pos, side)
     if (tile.isWidget()) {
@@ -350,12 +349,12 @@ export class DocView {
 
   lineAt(pos: number) {
     let {tile} = this.tile.resolveBlock(pos, 1)
-    return tile instanceof LineTile ? tile : null
+    return tile.isLine() ? tile : null
   }
 
   coordsForChar(pos: number) {
     let {tile, offset} = this.tile.resolveBlock(pos, 1)
-    if (!(tile instanceof LineTile)) return null
+    if (!tile.isLine()) return null
     function scan(tile: Tile, offset: number): DOMRect | null {
       if (tile.isComposite()) {
         for (let ch of tile.children) {
@@ -427,7 +426,7 @@ export class DocView {
 
   measureTextSize(): {lineHeight: number, charWidth: number, textHeight: number} {
     let lineMeasure = this.tile.blockTiles(tile => {
-      if (tile instanceof LineTile && tile.children.length && tile.length <= 20) {
+      if (tile.isLine() && tile.children.length && tile.length <= 20) {
         let totalWidth = 0, textHeight!: number
         for (let child of tile.children) {
           if (!child.isText() || /[^ -~]/.test(child.text)) return undefined
@@ -649,7 +648,7 @@ function touchesComposition(changes: ChangeSet, composition: null | {from: numbe
   return touched
 }
 
-export class BlockGapWidget extends WidgetType {
+class BlockGapWidget extends WidgetType {
   constructor(readonly height: number) { super() }
 
   toDOM() {

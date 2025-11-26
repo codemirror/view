@@ -403,9 +403,9 @@ export class BlockWrapper extends RangeValue {
     super()
   }
 
-  eq(other: BlockWrapper): boolean {
-    return this.tagName == other.tagName &&
-      attrsEq(this.attributes, other.attributes)
+  eq(other: RangeValue): boolean {
+    return other == this ||
+      other instanceof BlockWrapper && this.tagName == other.tagName && attrsEq(this.attributes, other.attributes)
   }
 
   /// Create a block wrapper object with the given tag name and

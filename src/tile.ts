@@ -40,7 +40,7 @@ export abstract class Tile {
 
   isComposite(): this is CompositeTile { return false }
 
-  // FIXME isLine?
+  isLine(): this is LineTile { return false }
 
   isText(): this is TextTile { return false }
 
@@ -48,11 +48,6 @@ export abstract class Tile {
 
   sync() {
     this.flags |= TileFlag.Synced
-  }
-
-  synced() { // FIXME is this a good idea?
-    this.flags |= TileFlag.Synced
-    return this
   }
 
   toString() {
@@ -290,10 +285,11 @@ export class LineTile extends CompositeTile {
     super.sync()
     if (this.flags & TileFlag.AttrsDirty) {
       this.flags &= ~TileFlag.AttrsDirty
-      // FIXME proper update, possibly compare to DOM
       setAttrs(this.dom, this.attrs)
     }
   }
+
+  isLine(): this is LineTile { return true }
 
   clone(dom?: HTMLElement) { return LineTile.start(this.attrs, dom) }
 
@@ -419,7 +415,8 @@ export class TextTile extends Tile {
 
   static of(text: string, dom?: Text) {
     let tile = new TextTile(dom || document.createTextNode(text), text)
-    return dom ? tile : tile.synced()
+    if (!dom) tile.flags |= TileFlag.Synced
+    return tile
   }
 }
 
@@ -482,7 +479,7 @@ export class WidgetTile extends Tile {
       dom = widget.toDOM(view)
       if (!widget.editable) dom.contentEditable = "false"
     }
-    return new WidgetTile(dom, length, widget, side).synced()
+    return new WidgetTile(dom, length, widget, side)
   }
 }
 
