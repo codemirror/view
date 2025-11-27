@@ -16,7 +16,7 @@ const LOG_builder = true
 
 export const enum Reused { Full = 1, DOM = 2 }
 
-const enum T { Chunk = 512 }
+const enum T { Chunk = 512, Bucket = 6 }
 
 class TileBuilder {
   curLine: LineTile | null = null
@@ -24,18 +24,18 @@ class TileBuilder {
   afterWidget: WidgetTile | null = null
   pos = 0
 
-  constructor(readonly root: DocTile) {}
+  constructor(readonly cache: TileCache, readonly root: DocTile) {}
 
-  addText(text: string, marks: MarkDecoration[], openStart: number, old?: TextTile | null) {
+  addText(text: string, marks: MarkDecoration[], openStart: number, tile?: TextTile) {
     this.flushBuffer()
     let parent = this.ensureMarks(marks, openStart)
     let prev = parent.lastChild
     if (prev && prev.isText() && !(prev.flags & TileFlag.Composition)) {
-      // FIXME this.reused.set(last, Reused.DOM)
+      this.cache.reused.set(prev, Reused.DOM)
       let tile = parent.children[parent.children.length - 1] = new TextTile(prev.dom, prev.text + text)
       tile.parent = parent
     } else {
-      parent.append(TextTile.of(text))
+      parent.append(tile || TextTile.of(text, this.cache.find(TextTile)?.dom))
     }
     this.pos += text.length
     this.afterWidget = null
@@ -48,7 +48,7 @@ class TileBuilder {
     let noSpace = this.afterWidget && (widget.side & (Side.Before | Side.After)) && this.afterWidget.side == widget.side
     if (!noSpace) this.flushBuffer()
     let parent = this.ensureMarks(marks, openStart)
-    if (!noSpace && !(widget.side & Side.Before)) parent.append(new WidgetBufferTile(1))
+    if (!noSpace && !(widget.side & Side.Before)) parent.append(this.getBuffer(1))
     parent.append(widget)
     this.pos += widget.length
     this.afterWidget = widget
@@ -69,7 +69,9 @@ class TileBuilder {
   }
 
   addLineStart(attrs: Attrs | null, dom?: HTMLElement) {
-    this.getBlockPos().append(this.lastBlock = this.curLine = LineTile.start(attrs || lineBaseAttrs, dom))
+    if (!attrs) attrs = lineBaseAttrs
+    let tile = LineTile.start(attrs, dom || this.cache.find(LineTile)?.dom, !!dom)
+    this.getBlockPos().append(this.lastBlock = this.curLine = tile)
   }
 
   addLine(tile: LineTile) {
@@ -105,7 +107,9 @@ class TileBuilder {
         parent = last
         openStart--
       } else {
-        let tile = MarkTile.of(mark) // FIXME reuse
+        let ca = this.cache.find(MarkTile, m => m.mark.eq(mark))?.dom
+        if (!ca) console.log("not finding a mark for", mark, "in", this.cache.buckets[3])
+        let tile = MarkTile.of(mark, ca)//this.cache.find(MarkTile, m => m.mark.eq(mark))?.dom)
         parent.append(tile)
         parent = tile
         openStart = 0
@@ -120,7 +124,7 @@ class TileBuilder {
       let last = this.curLine.lastChild
       if (!last || !hasContent(this.curLine, false) ||
           last.dom.nodeName != "BR" && last.isWidget() && !(browser.ios && hasContent(this.curLine, true)))
-        this.curLine.append(new WidgetTile(BreakWidget.toDOM(), 0, BreakWidget, Side.After))
+        this.curLine.append(this.cache.findWidget(BreakWidget) || new WidgetTile(BreakWidget.toDOM(), 0, BreakWidget, Side.After))
       this.curLine = this.afterWidget = null
     }
   }
@@ -135,9 +139,13 @@ class TileBuilder {
     return last != null && !last.breakAfter && (!last.isWidget() || (last.side & (Side.After | Side.IncEnd)) > 0)
   }
 
+  getBuffer(side: -1 | 1) {
+    return this.cache.find(WidgetBufferTile, t => t.side == side, Reused.Full) || new WidgetBufferTile(side)
+  }
+
   flushBuffer() {
     if (this.afterWidget && !(this.afterWidget.side & Side.After)) {
-      this.afterWidget.parent!.append(new WidgetBufferTile(-1)) // FIXME reuse
+      this.afterWidget.parent!.append(this.getBuffer(-1))
       this.afterWidget = null
     }
   }
@@ -180,13 +188,76 @@ class TextStream {
   }
 }
 
-export class TileUpdate {
+const buckets = [WidgetTile, LineTile, TextTile, MarkTile, WidgetBufferTile, BlockWrapperTile, DocTile]
+for (let i = 0; i < buckets.length; i++) (buckets[i] as any).bucket = i
+
+class TileCache {
+  buckets: Tile[][] = buckets.map(() => [])
+  index: number[] = buckets.map(() => 0)
   reused: Map<Tile, Reused> = new Map
+
+  constructor(readonly view: EditorView) {}
+
+  add(tile: Tile) {
+    if (!this.reused.has(tile)) {
+      let i: number = (tile.constructor as any).bucket, bucket = this.buckets[i]
+      if (bucket.length < T.Bucket) bucket.push(tile)
+      else bucket[this.index[i] = (this.index[i] + 1) % T.Bucket] = tile
+    }
+  }
+
+  find<Cls extends Tile>(cls: new (...args: any) => Cls, test?: (a: Cls) => boolean, type: Reused = Reused.DOM): Cls | null {
+    let i: number = (cls as any).bucket
+    let bucket = this.buckets[i], off = this.index[i]
+    for (let j = 0; j < bucket.length; j++) {
+      let index = (j + off) % bucket.length, tile = bucket[index] as Cls
+      if (!test || test(tile)) {
+        bucket.splice(index, 1)
+        if (index < off) this.index[i]--
+        this.reused.set(tile, type)
+        return tile
+      }
+    }
+    return null
+  }
+
+  findWidget(widget: WidgetType) {
+    let widgets = this.buckets[0] as WidgetTile[]
+    if (widgets.length) for (let i = 0, pass = 0;; i++) {
+      if (i == widgets.length) {
+        if (pass) return null
+        pass = 1; i = 0
+      }
+      let tile = widgets[i]
+      if (pass == 0 ? tile.widget.compare(widget)
+          : tile.widget.constructor == widget.constructor && widget.updateDOM(tile.dom, this.view)) {
+        widgets.splice(i, 1)
+        if (i < this.index[0]) this.index[0]--
+        this.reused.set(tile, Reused.Full)
+        return tile
+      }
+    }
+  }
+
+  reuse<T extends Tile>(tile: T) {
+    this.reused.set(tile, Reused.Full)
+    return tile
+  }
+
+  maybeReuse<T extends Tile>(tile: T, type: Reused = Reused.DOM): T["dom"] | undefined {
+    if (this.reused.has(tile)) return undefined
+    this.reused.set(tile, type)
+    return tile.dom
+  }
+}
+
+export class TileUpdate {
   text: TextStream
   builder: TileBuilder
   old: TilePointer
   openWidget = false
   openMarks = 0
+  cache: TileCache
 
   constructor(
     readonly view: EditorView,
@@ -194,9 +265,10 @@ export class TileUpdate {
     readonly decorations: readonly DecorationSet[],
     readonly disallowBlockEffectsFor: boolean[]
   ) {
+    this.cache = new TileCache(view)
     this.text = new TextStream(view.state.doc)
-    this.builder = new TileBuilder(new DocTile(view, view.contentDOM))
-    this.reused.set(old, Reused.DOM)
+    this.builder = new TileBuilder(this.cache, new DocTile(view, view.contentDOM))
+    this.cache.reused.set(old, Reused.DOM)
     this.old = new TilePointer(old)
   }
 
@@ -244,8 +316,8 @@ export class TileUpdate {
             this.builder.continueWidget(to - from)
           } else {
             let widget = to > 0 || from < tile.length
-              ? WidgetTile.of(tile.widget, this.view, to - from, tile.side, this.maybeReuse(tile))
-              : tile
+              ? WidgetTile.of(tile.widget, this.view, to - from, tile.side, this.cache.maybeReuse(tile))
+              : this.cache.reuse(tile)
             if (widget.side & Side.Block) {
               widget.flags &= ~TileFlag.BreakAfter
               this.builder.addBlockWidget(widget)
@@ -255,19 +327,28 @@ export class TileUpdate {
             }
           }
         } else if (tile.isText()) {
-          this.builder.addText(tile.text.slice(from, to), activeMarks, openMarks, this.reused.has(tile) ? null : tile)
+          if (!from && to == tile.length) {
+            this.builder.addText(tile.text, activeMarks, openMarks, this.cache.reuse(tile))
+          } else {
+            this.cache.add(tile)
+            this.builder.addText(tile.text.slice(from, to), activeMarks, openMarks)
+          }
           openMarks = activeMarks.length
         } else if (tile.isLine()) {
           tile.flags &= ~TileFlag.BreakAfter
+          this.cache.reused.set(tile, Reused.Full)
           this.builder.addLine(tile)
+        } else {
+          this.cache.add(tile)
         }
         this.openWidget = false
       },
       enter: (tile) => {
         if (tile.isLine()) {
-          this.builder.addLineStart(tile.attrs, this.maybeReuse(tile))
-        } else if (tile instanceof MarkTile) {
-          activeMarks.push(tile.mark) // FIXME reuse DOM
+          this.builder.addLineStart(tile.attrs, this.cache.maybeReuse(tile))
+        } else {
+          this.cache.add(tile)
+          if (tile instanceof MarkTile) activeMarks.push(tile.mark)
         }
         this.openWidget = false
       },
@@ -288,6 +369,13 @@ export class TileUpdate {
   }
 
   emit(from: number, to: number, lenA: number) {
+    this.old.advance(lenA, 1, {
+      skip: tile => this.cache.add(tile),
+      enter: tile => this.cache.add(tile),
+      leave: () => {},
+      break: () => {}
+    })
+
     let pendingLineAttrs: Attrs | null = null
     let b = this.builder, markCount = 0
 
@@ -304,11 +392,13 @@ export class TileUpdate {
           if (openStart > active.length) {
             b.continueWidget(to - from)
           } else {
-            let tile = WidgetTile.of(deco.widget || (deco.block ? NullWidget.block : NullWidget.inline),
-                                     this.view, to - from, widgetSide(deco))
+            let widget = deco.widget || (deco.block ? NullWidget.block : NullWidget.inline)
+            let tile = this.cache.findWidget(widget)
+            if (tile) tile.side = widgetSide(deco)
+            else tile = WidgetTile.of(widget, this.view, to - from, widgetSide(deco))
             if (deco.block) {
               if (deco.startSide > 0) b.addLineStartIfNotCovered(pendingLineAttrs)
-              b.addBlockWidget(tile)  // FIXME reuse
+              b.addBlockWidget(tile)
             } else {
               b.ensureLine(pendingLineAttrs)
               b.addInlineWidget(tile, active, openStart)
@@ -338,7 +428,6 @@ export class TileUpdate {
       }
     })
     b.addLineStartIfNotCovered(pendingLineAttrs)
-    this.old.advance(lenA, 1)
     this.openWidget = openEnd > markCount
     this.openMarks = openEnd
   }
@@ -396,12 +485,6 @@ export class TileUpdate {
     }
     if (!line) throw new Error("not in a line")
     return {line, marks}
-  }
-
-  maybeReuse<T extends Tile>(tile: T): T["dom"] | undefined {
-    if (this.reused.has(tile)) return undefined
-    this.reused.set(tile, Reused.DOM)
-    return tile.dom
   }
 }
 

@@ -124,7 +124,7 @@ export abstract class CompositeTile extends Tile {
   get lastChild() { return this.children.length ? this.children[this.children.length - 1] : null }
 
   append(child: Tile) {
-    if (this.flags & TileFlag.Synced) throw new Error("Adding to synced tile")
+    if (this.flags & TileFlag.Synced) throw new Error("Adding to synced tile " + this)
     this.children.push(child)
     child.parent = this
   }
@@ -412,7 +412,7 @@ export const enum Side { Before = 1, After = 2, IncStart = 4, IncEnd = 8, Block 
 export class WidgetTile extends Tile {
   declare dom: HTMLElement
 
-  constructor(dom: HTMLElement, length: number, readonly widget: WidgetType, readonly side: Side) {
+  constructor(dom: HTMLElement, length: number, readonly widget: WidgetType, public side: Side) {
     super(dom, length)
   }
 

@@ -120,7 +120,7 @@ export class DocView {
     let oldTile = this.tile
     let builder = new TileUpdate(this.view, oldTile, this.decorations, this.dynamicDecorationMap)
     this.tile = builder.run(changes, composition)
-    destroyDropped(oldTile, builder.reused)
+    destroyDropped(oldTile, builder.cache.reused)
 
     let {observer} = this.view
     observer.ignore(() => {
