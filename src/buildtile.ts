@@ -8,11 +8,10 @@ import {EditorView} from "./editorview"
 import {Composition} from "./docview"
 import browser from "./browser"
 
-// FIXME investigate vertical motion bug (type on long line, arrow down skips multiple short lines)
 // FIXME comments
 // FIXME see which assertions I want to keep in the code
 
-const LOG_builder = true
+const LOG_builder = false
 
 export const enum Reused { Full = 1, DOM = 2 }
 
@@ -41,7 +40,37 @@ class TileBuilder {
     this.afterWidget = null
   }
 
-  // FIXME implement addCompositionText
+  addComposition(composition: Composition, context: {marks: MarkTile[], line: LineTile}) {
+    let line = this.curLine
+    if (!line) throw new Error("Not in a line")
+
+    if (line.dom != context.line.dom) {
+      line.setDOM(this.cache.reused.has(context.line) ? freeNode(context.line.dom) : context.line.dom)
+      this.cache.reused.set(context.line, Reused.DOM)
+    }
+
+    let head: CompositeTile = line
+    for (let i = context.marks.length - 1; i >= 0; i--) {
+      let mark = context.marks[i]
+      let last: Tile | null = head.lastChild
+      if (last instanceof MarkTile && last.mark.eq(mark.mark)) {
+        if (last.dom != mark.dom) last.setDOM(freeNode(mark.dom))
+        head = last
+      } else {
+        if (this.cache.reused.get(mark)) {
+          let tile = Tile.get(mark.dom)
+          if (tile) tile.setDOM(freeNode(mark.dom))
+        }
+        let nw = MarkTile.of(mark.mark, mark.dom)
+        head.append(nw)
+        head = nw
+      }
+      this.cache.reused.set(mark, Reused.DOM)
+    }
+    let text = new TextTile(composition.text, composition.text.nodeValue!)
+    text.flags |= TileFlag.Composition
+    head.append(text)
+  }
 
   addInlineWidget(widget: WidgetTile, marks: MarkDecoration[], openStart: number) {
     // Adjacent same-side-facing non-replacing widgets don't need buffers between them
@@ -107,9 +136,7 @@ class TileBuilder {
         parent = last
         openStart--
       } else {
-        let ca = this.cache.find(MarkTile, m => m.mark.eq(mark))?.dom
-        if (!ca) console.log("not finding a mark for", mark, "in", this.cache.buckets[3])
-        let tile = MarkTile.of(mark, ca)//this.cache.find(MarkTile, m => m.mark.eq(mark))?.dom)
+        let tile = MarkTile.of(mark, this.cache.find(MarkTile, m => m.mark.eq(mark))?.dom)
         parent.append(tile)
         parent = tile
         openStart = 0
@@ -124,7 +151,7 @@ class TileBuilder {
       let last = this.curLine.lastChild
       if (!last || !hasContent(this.curLine, false) ||
           last.dom.nodeName != "BR" && last.isWidget() && !(browser.ios && hasContent(this.curLine, true)))
-        this.curLine.append(this.cache.findWidget(BreakWidget) || new WidgetTile(BreakWidget.toDOM(), 0, BreakWidget, Side.After))
+        this.curLine.append(this.cache.findWidget(BreakWidget, 0) || new WidgetTile(BreakWidget.toDOM(), 0, BreakWidget, Side.After))
       this.curLine = this.afterWidget = null
     }
   }
@@ -199,11 +226,9 @@ class TileCache {
   constructor(readonly view: EditorView) {}
 
   add(tile: Tile) {
-    if (!this.reused.has(tile)) {
-      let i: number = (tile.constructor as any).bucket, bucket = this.buckets[i]
-      if (bucket.length < T.Bucket) bucket.push(tile)
-      else bucket[this.index[i] = (this.index[i] + 1) % T.Bucket] = tile
-    }
+    let i: number = (tile.constructor as any).bucket, bucket = this.buckets[i]
+    if (bucket.length < T.Bucket) bucket.push(tile)
+    else bucket[this.index[i] = (this.index[i] + 1) % T.Bucket] = tile
   }
 
   find<Cls extends Tile>(cls: new (...args: any) => Cls, test?: (a: Cls) => boolean, type: Reused = Reused.DOM): Cls | null {
@@ -211,7 +236,7 @@ class TileCache {
     let bucket = this.buckets[i], off = this.index[i]
     for (let j = 0; j < bucket.length; j++) {
       let index = (j + off) % bucket.length, tile = bucket[index] as Cls
-      if (!test || test(tile)) {
+      if ((!test || test(tile)) && !this.reused.has(tile)) {
         bucket.splice(index, 1)
         if (index < off) this.index[i]--
         this.reused.set(tile, type)
@@ -221,7 +246,8 @@ class TileCache {
     return null
   }
 
-  findWidget(widget: WidgetType) {
+  // FIXME more disciplined resetting of flags/side
+  findWidget(widget: WidgetType, length: number) {
     let widgets = this.buckets[0] as WidgetTile[]
     if (widgets.length) for (let i = 0, pass = 0;; i++) {
       if (i == widgets.length) {
@@ -229,11 +255,14 @@ class TileCache {
         pass = 1; i = 0
       }
       let tile = widgets[i]
-      if (pass == 0 ? tile.widget.compare(widget)
-          : tile.widget.constructor == widget.constructor && widget.updateDOM(tile.dom, this.view)) {
+      if (!this.reused.has(tile) &&
+          (pass == 0 ? tile.widget.compare(widget)
+            : tile.widget.constructor == widget.constructor && widget.updateDOM(tile.dom, this.view))) {
         widgets.splice(i, 1)
         if (i < this.index[0]) this.index[0]--
         this.reused.set(tile, Reused.Full)
+        tile.length = length
+        tile.flags = TileFlag.Synced
         return tile
       }
     }
@@ -274,7 +303,7 @@ export class TileUpdate {
 
   run(changes: readonly ChangedRange[], composition: Composition | null) {
     LOG_builder && console.log("Build with changes", JSON.stringify(changes))
-    LOG_builder && composition && console.log("Composition", JSON.stringify(composition.range), composition.text.nodeValue)
+    LOG_builder && composition && console.log("Composition=", JSON.stringify(composition.range), composition.text.nodeValue)
     LOG_builder && console.log("<<< " + this.old.tile)
     let compositionContext = composition && this.getCompositionContext(composition.text)
 
@@ -289,14 +318,15 @@ export class TileUpdate {
         posB += len
       }
       if (!next) break
+      this.forward(next.fromA, next.toA)
       if (composition && next.fromA <= composition.range.fromA && next.toA >= composition.range.toA) {
-        LOG_builder && console.log("Composition", posB, "to", next.toB, "over", posA, "to", next.toA)
-        this.emit(posB, composition.range.fromB, composition.range.fromA - posA)
-        this.composition(composition, compositionContext!)
-        this.emit(composition.range.toB, next.toB, next.toA - composition.range.toA)
+        LOG_builder && console.log("Emit composition", posB, "to", next.toB, "over", posA, "to", next.toA)
+        this.emit(posB, composition.range.fromB)
+        this.builder.addComposition(composition, compositionContext!)
+        this.emit(composition.range.toB, next.toB)
       } else {
         LOG_builder && console.log("Emit", posB, "to", next.toB, "over", posA, "to", next.toA)
-        this.emit(posB, next.toB, next.toA - posA)
+        this.emit(posB, next.toB)
       }
       posB = next.toB
       posA = next.toA
@@ -339,7 +369,7 @@ export class TileUpdate {
           this.cache.reused.set(tile, Reused.Full)
           this.builder.addLine(tile)
         } else {
-          this.cache.add(tile)
+          return false
         }
         this.openWidget = false
       },
@@ -348,7 +378,7 @@ export class TileUpdate {
           this.builder.addLineStart(tile.attrs, this.cache.maybeReuse(tile))
         } else {
           this.cache.add(tile)
-          if (tile instanceof MarkTile) activeMarks.push(tile.mark)
+          if (tile instanceof MarkTile) activeMarks.unshift(tile.mark)
         }
         this.openWidget = false
       },
@@ -356,7 +386,7 @@ export class TileUpdate {
         if (tile.isLine()) {
           if (activeMarks.length) activeMarks.length = openMarks = 0
         } else if (tile instanceof MarkTile) {
-          activeMarks.pop()
+          activeMarks.shift()
           openMarks = Math.min(openMarks, activeMarks.length)
         }
       },
@@ -368,14 +398,7 @@ export class TileUpdate {
     this.text.skip(length)
   }
 
-  emit(from: number, to: number, lenA: number) {
-    this.old.advance(lenA, 1, {
-      skip: tile => this.cache.add(tile),
-      enter: tile => this.cache.add(tile),
-      leave: () => {},
-      break: () => {}
-    })
-
+  emit(from: number, to: number) {
     let pendingLineAttrs: Attrs | null = null
     let b = this.builder, markCount = 0
 
@@ -393,7 +416,7 @@ export class TileUpdate {
             b.continueWidget(to - from)
           } else {
             let widget = deco.widget || (deco.block ? NullWidget.block : NullWidget.inline)
-            let tile = this.cache.findWidget(widget)
+            let tile = this.cache.findWidget(widget, to - from)
             if (tile) tile.side = widgetSide(deco)
             else tile = WidgetTile.of(widget, this.view, to - from, widgetSide(deco))
             if (deco.block) {
@@ -432,41 +455,15 @@ export class TileUpdate {
     this.openMarks = openEnd
   }
 
-  composition(composition: Composition, context: {marks: MarkTile[], line: LineTile}) {
-    /* FIXME
-    let line: CompositeTile | null = this.new
-    while (line && !line.isLine()) line = line.parent
-    if (!line) throw new Error("Not in a line")
-
-    if (line.dom != context.line.dom) {
-      line.setDOM(this.reused.has(context.line) ? freeNode(context.line.dom) : context.line.dom)
-      this.reused.set(context.line, Reused.DOM)
-    }
-
-    let head: CompositeTile = line
-    for (let i = context.marks.length - 1; i >= 0; i--) {
-      let mark = context.marks[i]
-      let last: Tile | null = head.lastChild
-      if (last instanceof MarkTile && last.mark.eq(mark.mark)) {
-        if (last.dom != mark.dom) last.setDOM(freeNode(mark.dom))
-        head = last
-      } else {
-        if (this.reused.get(mark)) {
-          let tile = Tile.get(mark.dom)
-          if (tile) tile.setDOM(freeNode(mark.dom))
-        }
-        let nw = MarkTile.of(mark.mark, mark.dom)
-        head.append(nw)
-        head = nw
-      }
-      this.reused.set(mark, Reused.DOM)
-    }
-    let text = new TextTile(composition.text, composition.text.nodeValue!)
-    text.flags |= TileFlag.Composition
-    head.append(text)
-    this.new = head
-    this.old.advance(composition.range.toA - composition.range.fromA, -1)
-    */
+  forward(from: number, to: number) {
+    this.old.advance(to - from, 1, {
+      skip: (tile, from, to) => {
+        if (tile.isText() || to == tile.length) this.cache.add(tile)
+      },
+      enter: tile => this.cache.add(tile),
+      leave: () => {},
+      break: () => {}
+    })
   }
 
   getCompositionContext(text: Text) {
@@ -517,11 +514,17 @@ function addLineDeco(value: Attrs | null, deco: LineDecoration) {
 
 function getMarks(ptr: TilePointer) {
   let found: MarkDecoration[] = []
-  for (let i = ptr.parents.length;; i--) {
+  for (let i = ptr.parents.length; i > 1; i--) {
     let tile = i == ptr.parents.length ? ptr.tile : ptr.parents[i].tile
-    if (tile instanceof MarkTile) found.unshift(tile.mark)
-    else if (!tile.isText()) return found
+    if (tile instanceof MarkTile) found.push(tile.mark)
   }
+  return found
+}
+
+function freeNode<N extends HTMLElement | Text>(node: N): N {
+  let tile = Tile.get(node)
+  if (tile) tile.setDOM(node.cloneNode() as any)
+  return node
 }
 
 class NullWidget extends WidgetType {

@@ -149,8 +149,6 @@ export abstract class CompositeTile extends Tile {
     while (next) next = rm(next)
     this.length = length
   }
-
-  abstract clone(dom?: HTMLElement): CompositeTile
 }
 
 // Remove a DOM node and return its next sibling.
@@ -163,12 +161,6 @@ function rm(dom: Node): Node | null {
 export class DocTile extends CompositeTile {
   constructor(readonly view: EditorView, dom: HTMLElement) {
     super(dom)
-  }
-
-  clone(dom?: HTMLElement) { return new DocTile(this.view, dom!) }
-
-  resolve(pos: number, side: -1 | 1) {
-    return new TilePointer(this).advance(pos, side)
   }
 
   owns(tile: Tile | null) {
@@ -246,8 +238,6 @@ export class BlockWrapperTile extends CompositeTile {
     super(dom)
   }
 
-  clone(dom?: HTMLElement) { return BlockWrapperTile.of(this.wrapper, dom) }
-
   isBlock() { return true }
 
   covers(side: -1 | 1) {
@@ -278,8 +268,6 @@ export class LineTile extends CompositeTile {
   }
 
   isLine(): this is LineTile { return true }
-
-  clone(dom?: HTMLElement) { return LineTile.start(this.attrs, dom) }
 
   static start(attrs: Attrs, dom?: HTMLElement, keepAttrs?: boolean) {
     let line = new LineTile(dom || document.createElement("div"), attrs)
@@ -352,8 +340,6 @@ export class MarkTile extends CompositeTile {
     super(dom)
   }
 
-  clone(dom?: HTMLElement) { return MarkTile.of(this.mark, dom) }
-
   static of(mark: MarkDecoration, dom?: HTMLElement) {
     if (!dom) {
       dom = document.createElement(mark.tagName)
@@ -406,7 +392,7 @@ export class TextTile extends Tile {
   }
 }
 
-// FIXME rename
+// FIXME rename? roll into flags?
 export const enum Side { Before = 1, After = 2, IncStart = 4, IncEnd = 8, Block = 16 }
 
 export class WidgetTile extends Tile {
@@ -497,7 +483,7 @@ export class WidgetBufferTile extends Tile {
 interface TileWalker {
   enter(tile: CompositeTile): void
   leave(tile: CompositeTile): void
-  skip(tile: Tile, from: number, to: number): void
+  skip(tile: Tile, from: number, to: number): boolean | void
   break(): void
 }
 
@@ -543,10 +529,10 @@ export class TilePointer {
         ;({tile, index} = parents.pop()!)
         index++
       } else {
-        let next = tile.children[index]
-        if (side > 0 ? next.length <= dist : next.length < dist) {
-          beforeBreak = !!next.breakAfter
-          if (walker) walker.skip(next, 0, next.length)
+        let next = tile.children[index], brk = next.breakAfter
+        if ((side > 0 ? next.length <= dist : next.length < dist) &&
+            (!walker || walker.skip(next, 0, next.length) !== false || !next.isComposite)) {
+          beforeBreak = !!brk
           index++
           dist -= next.length
         } else {
