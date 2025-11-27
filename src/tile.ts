@@ -140,7 +140,6 @@ export abstract class CompositeTile extends Tile {
   get lastChild() { return this.children.length ? this.children[this.children.length - 1] : null }
 
   append(child: Tile) {
-    if (this.flags & TileFlag.Synced) throw new Error("Adding to synced tile " + this)
     this.children.push(child)
     child.parent = this
   }

@@ -2,28 +2,36 @@ import {Tile, CompositeTile, DocTile, LineTile, MarkTile, BlockWrapperTile,
         WidgetTile, WidgetBufferTile, TextTile, TileFlag, TilePointer} from "./tile"
 import {ChangedRange} from "./extension"
 import {Attrs, getAttrs, combineAttrs} from "./attributes"
-import {DecorationSet, MarkDecoration, PointDecoration, LineDecoration, WidgetType} from "./decoration"
-import {RangeSet, TextIterator, Text as DocText} from "@codemirror/state"
+import {DecorationSet, MarkDecoration, PointDecoration, LineDecoration, WidgetType,
+        BlockWrapper} from "./decoration"
+import {RangeSet, TextIterator, Text as DocText, RangeCursor} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {Composition} from "./docview"
 import browser from "./browser"
-
-// FIXME comments
-// FIXME see which assertions I want to keep in the code
 
 const LOG_builder = false
 
 export const enum Reused { Full = 1, DOM = 2 }
 
-const enum C { Chunk = 512, Bucket = 6 }
+const enum C { Chunk = 512, Bucket = 6, WrapperReset = 4000 }
+
+class OpenWrapper {
+  constructor(readonly from: number, readonly to: number, readonly wrapper: BlockWrapper, readonly rank: number) {}
+}
 
 class TileBuilder {
   curLine: LineTile | null = null
   lastBlock: LineTile | WidgetTile | null = null
   afterWidget: WidgetTile | null = null
   pos = 0
+  wrappers: OpenWrapper[] = []
+  wrapperPos = 0
 
-  constructor(readonly cache: TileCache, readonly root: DocTile) {}
+  constructor(
+    readonly cache: TileCache,
+    readonly root: DocTile,
+    readonly blockWrappers: RangeCursor<BlockWrapper>
+  ) {}
 
   addText(text: string, marks: MarkDecoration[], openStart: number, tile?: TextTile) {
     this.flushBuffer()
@@ -41,9 +49,7 @@ class TileBuilder {
   }
 
   addComposition(composition: Composition, context: {marks: MarkTile[], line: LineTile}) {
-    let line = this.curLine
-    if (!line) throw new Error("Not in a line")
-
+    let line = this.curLine!
     if (line.dom != context.line.dom) {
       line.setDOM(this.cache.reused.has(context.line) ? freeNode(context.line.dom) : context.line.dom)
       this.cache.reused.set(context.line, Reused.DOM)
@@ -93,8 +99,7 @@ class TileBuilder {
 
   continueWidget(length: number) {
     let widget = this.afterWidget || this.lastBlock
-    if (!widget?.isWidget()) throw new Error("No widget to continue")
-    widget.length += length
+    widget!.length += length
     this.pos += length
   }
 
@@ -112,10 +117,7 @@ class TileBuilder {
   }
 
   addBreak() {
-    let target = this.root.lastChild
-    while (target && target instanceof BlockWrapperTile) target = target.lastChild
-    if (!target) throw new Error("No block to add break to")
-    target.flags |= TileFlag.BreakAfter
+    this.lastBlock!.flags |= TileFlag.BreakAfter
     this.endLine()
     this.pos++
   }
@@ -129,8 +131,7 @@ class TileBuilder {
   }
 
   ensureMarks(marks: MarkDecoration[], openStart: number) {
-    let parent: CompositeTile | null = this.curLine
-    if (!parent) throw new Error("Not in a line")
+    let parent: CompositeTile | null = this.curLine!
     for (let i = marks.length - 1; i >= 0; i--) {
       let mark = marks[i], last
       if (openStart > 0 && (last = parent.lastChild) && last instanceof MarkTile && last.mark.eq(mark)) {
@@ -158,9 +159,35 @@ class TileBuilder {
     }
   }
 
+  updateBlockWrappers() {
+    if (this.wrapperPos > this.pos + C.WrapperReset) {
+      this.blockWrappers.goto(this.pos)
+      this.wrappers.length = 0
+    }
+    for (let i = this.wrappers.length - 1 ; i >= 0; i--)
+      if (this.wrappers[i].to < this.pos) this.wrappers.splice(i, 1)
+    for (let cur = this.blockWrappers; cur.value && cur.from <= this.pos; cur.next()) if (cur.to >= this.pos) {
+      let wrap = new OpenWrapper(cur.from, cur.to, cur.value, cur.rank), i = this.wrappers.length
+      while (i > 0 && this.wrappers[i - 1].rank < wrap.rank) i--
+      this.wrappers.splice(i, 0, wrap)
+    }
+    this.wrapperPos = this.pos
+  }
+
   getBlockPos() {
-    // FIXME sync block wrappers
-    return this.root
+    this.updateBlockWrappers()
+    let parent: CompositeTile = this.root
+    for (let wrap of this.wrappers) {
+      let last = parent.lastChild
+      if (wrap.from < this.pos && last instanceof BlockWrapperTile && last.wrapper.eq(wrap.wrapper)) {
+        parent = last
+      } else {
+        let tile = BlockWrapperTile.of(wrap.wrapper, this.cache.find(BlockWrapperTile, t => t.wrapper.eq(wrap.wrapper))?.dom)
+        parent.append(tile)
+        parent = tile
+      }
+    }
+    return parent
   }
 
   blockPosCovered() {
@@ -295,12 +322,13 @@ export class TileUpdate {
   constructor(
     readonly view: EditorView,
     old: DocTile,
+    blockWrappers: readonly RangeSet<BlockWrapper>[],
     readonly decorations: readonly DecorationSet[],
     readonly disallowBlockEffectsFor: boolean[]
   ) {
     this.cache = new TileCache(view)
     this.text = new TextStream(view.state.doc)
-    this.builder = new TileBuilder(this.cache, new DocTile(view, view.contentDOM))
+    this.builder = new TileBuilder(this.cache, new DocTile(view, view.contentDOM), RangeSet.iter(blockWrappers))
     this.cache.reused.set(old, Reused.DOM)
     this.old = new TilePointer(old)
   }
@@ -483,8 +511,7 @@ export class TileUpdate {
       else
         marks.push(MarkTile.of(new MarkDecoration({tagName: parent.nodeName.toLowerCase(), attributes: getAttrs(parent)}), parent))
     }
-    if (!line) throw new Error("not in a line")
-    return {line, marks}
+    return {line: line!, marks}
   }
 }
 

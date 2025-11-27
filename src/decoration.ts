@@ -414,3 +414,5 @@ export class BlockWrapper extends RangeValue {
     return RangeSet.of<BlockWrapper>(of, sort)
   }
 }
+
+BlockWrapper.prototype.startSide = BlockWrapper.prototype.endSide = -1

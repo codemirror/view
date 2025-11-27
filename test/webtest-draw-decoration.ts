@@ -789,7 +789,8 @@ describe("EditorView decoration", () => {
     let section = BlockWrapper.create({tagName: "section"})
     let navi = BlockWrapper.create({tagName: "navigation"})
 
-    let html = (cm: EditorView) => cm.contentDOM.innerHTML.replace(/ class=[^>]*/g, "")
+    let html = (cm: EditorView) =>
+      cm.contentDOM.innerHTML.replace(/ (class|contenteditable)=[^>]*/g, "").replace(/<img[^>]*>/g, "")
 
     function wrapEditor(doc: string, blocks: readonly Range<BlockWrapper>[]) {
       return tempView(doc, blockField.init(() => RangeSet.of(blocks)))
@@ -817,9 +818,31 @@ describe("EditorView decoration", () => {
       ist(html(cm), `<navigation><div>a</div><section><div>?b</div></section><div>c</div></navigation>`)
     })
 
+    it("uses precedence to determine nesting order", () => {
+      let cm = tempView("ab\ncd\nef", [
+        EditorView.blockWrappers.of(RangeSet.of(navi.range(0, 8))),
+        EditorView.blockWrappers.of(RangeSet.of(section.range(3, 5))),
+      ])
+      ist(html(cm), `<navigation><div>ab</div></navigation><section><navigation><div>cd</div></navigation></section><navigation><div>ef</div></navigation>`)
+    })
+
     it("doesn't join individual wrappers", () => {
       let cm = wrapEditor("a\nb\nc", [navi.range(0, 5), section.range(2)])
       ist(html(cm), `<navigation><div>a</div><section><div>b</div></section><div>c</div></navigation>`)
+    })
+
+    it("can handle changes in wrappers", () => {
+      let cm = wrapEditor("ab\ncd\nef", [navi.range(0, 8), section.range(3, 5)])
+      cm.dispatch({changes: [{from: 0, to: 1}, {from: 3, insert: "."}, {from: 4, to: 7}]})
+      ist(html(cm), `<navigation><div>b</div><section><div>.cf</div></section></navigation>`)
+    })
+
+    it("can skip large distances correctly", () => {
+      let cm = tempView("-\n".repeat(5000), [
+        EditorView.blockWrappers.of(RangeSet.of(section.range(0, 10000))),
+        EditorView.decorations.of(RangeSet.of(Decoration.replace({}).range(1, 10000 - 1))),
+      ])
+      ist(html(cm), "<section><div>-<span></span></div><div><br></div></section>")
     })
   })
 })
