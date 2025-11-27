@@ -8,7 +8,7 @@ import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRa
         ScrollTarget, scrollHandler, getScrollMargins, logException, setEditContextFormatting} from "./extension"
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
-import {Tile, LineTile, DocTile, TileFlag, BlockWrapperTile, Side} from "./tile"
+import {Tile, LineTile, DocTile, TileFlag, BlockWrapperTile} from "./tile"
 import {TileUpdate, Reused} from "./buildtile"
 
 export type Composition = {
@@ -323,8 +323,8 @@ export class DocView {
     let after: LineTile | undefined | null, afterOff = -1, afterBad = false
     this.tile.blockTiles((tile, off) => {
       if (tile.isWidget()) {
-        if ((tile.side & Side.After) && before) return true
-        if (tile.side & Side.Before) beforeBad = true
+        if ((tile.flags & TileFlag.After) && before) return true
+        if (tile.flags & TileFlag.Before) beforeBad = true
       } else {
         let end = off + tile.length
         if (off <= pos) { before = tile; beforeOff = pos - off; beforeBad = end < pos }

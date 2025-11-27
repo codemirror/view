@@ -6,21 +6,34 @@ import {Rect, textRange, maxOffset, domIndex, flattenRect, clientRectsFor, DOMPo
 import browser from "./browser"
 
 export const enum TileFlag {
+  // Encodes that there's a line break (taking up one position) after this tile
   BreakAfter = 1,
+  // Set when a tile's DOM has been synced
   Synced = 2,
+  // FIXME
   AttrsDirty = 4,
-  Composition = 8
+  // Set on composition text tiles to prevent text merging
+  Composition = 8,
+
+  // Widget flags
+  Before = 16, // Single-point widget before cursor position
+  After = 32,  // Single-point widget after cursor position
+  PointWidget = Before | After,
+  IncStart = 64, // For replace widgets, IncStart/IncEnd encode inclusivity
+  IncEnd = 128,
+  Block = 256, // Distinguishes block widgets from non-block widgets
+  Widget = Before | After | IncStart | IncEnd | Block
 }
 
 const noChildren: readonly Tile[] = []
 
 export abstract class Tile {
   parent: CompositeTile | null = null
-  flags = 0 as TileFlag
 
   constructor(
     public dom: HTMLElement | Text,
-    public length: number
+    public length: number,
+    public flags: TileFlag = 0 as TileFlag
   ) {
     ;(dom as any).cmTile = this
   }
@@ -32,10 +45,6 @@ export abstract class Tile {
   isWidget(): this is WidgetTile { return false }
 
   get isHidden() { return false }
-
-  get isPointBefore() { return false }
-
-  get isPointAfter() { return false }
 
   isComposite(): this is CompositeTile { return false }
 
@@ -212,8 +221,8 @@ export class DocTile extends CompositeTile {
       let end = off + tile.length
       if (pos >= off && pos <= end) {
         if (tile.isWidget() && side >= -1 && side <= 1) {
-          if (tile.side & Side.After) return true
-          if (tile.side & Side.Before) before = undefined
+          if (tile.flags & TileFlag.After) return true
+          if (tile.flags & TileFlag.Before) before = undefined
         }
         if ((off < pos || pos == end && (side < -1 ? tile.length : tile.covers(1))) &&
             (!before || !tile.isWidget() && before.isWidget())) {
@@ -292,10 +301,10 @@ export class LineTile extends CompositeTile {
           if (child.isComposite()) {
             scan(child, pos - off)
           } else if ((!after || after.isHidden && (side > 0 || forCoords && onSameLine(after, child))) &&
-                     (end > pos || child.isPointAfter)) {
+                     (end > pos || (child.flags & TileFlag.After))) {
             after = child
             afterOff = pos - off
-          } else if (off < pos || child.isPointBefore && !child.isHidden) {
+          } else if (off < pos || (child.flags & TileFlag.Before) && !child.isHidden) {
             before = child
             beforeOff = pos - off
           }
@@ -308,7 +317,7 @@ export class LineTile extends CompositeTile {
     return target ? {tile: target, offset: target == before ? beforeOff : afterOff} : null
   }
 
-  coordsIn(pos: number, side: number) {
+  coordsIn(pos: number, side: number): Rect | null {
     let found = this.resolveInline(pos, side, true)
     if (!found) return fallbackRect(this)
     return found.tile.coordsIn(Math.max(0, found.offset), side)
@@ -392,27 +401,20 @@ export class TextTile extends Tile {
   }
 }
 
-// FIXME rename? roll into flags?
-export const enum Side { Before = 1, After = 2, IncStart = 4, IncEnd = 8, Block = 16 }
-
 export class WidgetTile extends Tile {
   declare dom: HTMLElement
 
-  constructor(dom: HTMLElement, length: number, readonly widget: WidgetType, public side: Side) {
-    super(dom, length)
+  constructor(dom: HTMLElement, length: number, readonly widget: WidgetType, flags: TileFlag) {
+    super(dom, length, flags)
   }
 
   isWidget(): this is WidgetTile { return true }
 
   get isHidden() { return this.widget.isHidden }
   
-  get isPointBefore() { return (this.side & Side.Before) > 0 }
-
-  get isPointAfter() { return (this.side & Side.After) > 0 }
-
   covers(side: -1 | 1) {
-    if (this.side & (Side.Before | Side.After)) return false
-    return (this.side & (side < 0 ? Side.IncStart : Side.IncEnd)) > 0
+    if (this.flags & TileFlag.PointWidget) return false
+    return (this.flags & (side < 0 ? TileFlag.IncStart : TileFlag.IncEnd)) > 0
   }
 
   coordsIn(pos: number, side: number) { return this.coordsInWidget(pos, side, false) }
@@ -425,7 +427,7 @@ export class WidgetTile extends Tile {
     } else {
       let rects = this.dom!.getClientRects(), rect: Rect | null = null
       if (!rects.length) return null
-      let fromBack = (this.side & Side.Before) ? true : (this.side & Side.After) ? false : pos > 0
+      let fromBack = (this.flags & TileFlag.Before) ? true : (this.flags & TileFlag.After) ? false : pos > 0
       for (let i = fromBack ? rects.length - 1 : 0;; i += (fromBack ? -1 : 1)) {
         rect = rects[i]
         if (pos > 0 ? i == 0 : i == rects.length - 1 || rect.top < rect.bottom) break
@@ -447,12 +449,12 @@ export class WidgetTile extends Tile {
     this.widget.destroy(this.dom)
   }
 
-  static of(widget: WidgetType, view: EditorView, length: number, side: Side, dom?: HTMLElement | null) {
+  static of(widget: WidgetType, view: EditorView, length: number, flags: TileFlag, dom?: HTMLElement | null) {
     if (!dom) {
       dom = widget.toDOM(view)
       if (!widget.editable) dom.contentEditable = "false"
     }
-    return new WidgetTile(dom, length, widget, side)
+    return new WidgetTile(dom, length, widget, flags)
   }
 }
 
@@ -462,18 +464,14 @@ export class WidgetTile extends Tile {
 export class WidgetBufferTile extends Tile {
   declare dom: HTMLElement
 
-  constructor(readonly side: number) {
+  constructor(flags: TileFlag) {
     let img = document.createElement("img")
     img.className = "cm-widgetBuffer"
     img.setAttribute("aria-hidden", "true")
-    super(img, 0)
+    super(img, 0, flags)
   }
 
   get isHidden() { return false }
-
-  get isPointBefore() { return this.side < 0 }
-
-  get isPointAfter() { return this.side > 0 }
 
   get overrideDOMText() { return DocText.empty }
 

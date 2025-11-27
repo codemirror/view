@@ -1,4 +1,4 @@
-import {Tile, CompositeTile, DocTile, LineTile, MarkTile, BlockWrapperTile, Side,
+import {Tile, CompositeTile, DocTile, LineTile, MarkTile, BlockWrapperTile,
         WidgetTile, WidgetBufferTile, TextTile, TileFlag, TilePointer} from "./tile"
 import {ChangedRange} from "./extension"
 import {Attrs, getAttrs, combineAttrs} from "./attributes"
@@ -15,7 +15,7 @@ const LOG_builder = false
 
 export const enum Reused { Full = 1, DOM = 2 }
 
-const enum T { Chunk = 512, Bucket = 6 }
+const enum C { Chunk = 512, Bucket = 6 }
 
 class TileBuilder {
   curLine: LineTile | null = null
@@ -74,10 +74,11 @@ class TileBuilder {
 
   addInlineWidget(widget: WidgetTile, marks: MarkDecoration[], openStart: number) {
     // Adjacent same-side-facing non-replacing widgets don't need buffers between them
-    let noSpace = this.afterWidget && (widget.side & (Side.Before | Side.After)) && this.afterWidget.side == widget.side
+    let noSpace = this.afterWidget && (widget.flags & TileFlag.PointWidget) &&
+      (this.afterWidget.flags & TileFlag.PointWidget) == (widget.flags & TileFlag.PointWidget)
     if (!noSpace) this.flushBuffer()
     let parent = this.ensureMarks(marks, openStart)
-    if (!noSpace && !(widget.side & Side.Before)) parent.append(this.getBuffer(1))
+    if (!noSpace && !(widget.flags & TileFlag.Before)) parent.append(this.getBuffer(1))
     parent.append(widget)
     this.pos += widget.length
     this.afterWidget = widget
@@ -151,7 +152,8 @@ class TileBuilder {
       let last = this.curLine.lastChild
       if (!last || !hasContent(this.curLine, false) ||
           last.dom.nodeName != "BR" && last.isWidget() && !(browser.ios && hasContent(this.curLine, true)))
-        this.curLine.append(this.cache.findWidget(BreakWidget, 0) || new WidgetTile(BreakWidget.toDOM(), 0, BreakWidget, Side.After))
+        this.curLine.append(this.cache.findWidget(BreakWidget, 0, TileFlag.After) ||
+                            new WidgetTile(BreakWidget.toDOM(), 0, BreakWidget, TileFlag.After))
       this.curLine = this.afterWidget = null
     }
   }
@@ -163,15 +165,18 @@ class TileBuilder {
 
   blockPosCovered() {
     let last = this.lastBlock
-    return last != null && !last.breakAfter && (!last.isWidget() || (last.side & (Side.After | Side.IncEnd)) > 0)
+    return last != null && !last.breakAfter && (!last.isWidget() || (last.flags & (TileFlag.After | TileFlag.IncEnd)) > 0)
   }
 
   getBuffer(side: -1 | 1) {
-    return this.cache.find(WidgetBufferTile, t => t.side == side, Reused.Full) || new WidgetBufferTile(side)
+    let flags = TileFlag.Synced | (side < 0 ? TileFlag.Before : TileFlag.After)
+    let found = this.cache.find(WidgetBufferTile, undefined, Reused.Full)
+    if (found) found.flags = flags
+    return found || new WidgetBufferTile(flags)
   }
 
   flushBuffer() {
-    if (this.afterWidget && !(this.afterWidget.side & Side.After)) {
+    if (this.afterWidget && !(this.afterWidget.flags & TileFlag.After)) {
       this.afterWidget.parent!.append(this.getBuffer(-1))
       this.afterWidget = null
     }
@@ -227,8 +232,8 @@ class TileCache {
 
   add(tile: Tile) {
     let i: number = (tile.constructor as any).bucket, bucket = this.buckets[i]
-    if (bucket.length < T.Bucket) bucket.push(tile)
-    else bucket[this.index[i] = (this.index[i] + 1) % T.Bucket] = tile
+    if (bucket.length < C.Bucket) bucket.push(tile)
+    else bucket[this.index[i] = (this.index[i] + 1) % C.Bucket] = tile
   }
 
   find<Cls extends Tile>(cls: new (...args: any) => Cls, test?: (a: Cls) => boolean, type: Reused = Reused.DOM): Cls | null {
@@ -246,8 +251,7 @@ class TileCache {
     return null
   }
 
-  // FIXME more disciplined resetting of flags/side
-  findWidget(widget: WidgetType, length: number) {
+  findWidget(widget: WidgetType, length: number, flags: TileFlag) {
     let widgets = this.buckets[0] as WidgetTile[]
     if (widgets.length) for (let i = 0, pass = 0;; i++) {
       if (i == widgets.length) {
@@ -262,7 +266,7 @@ class TileCache {
         if (i < this.index[0]) this.index[0]--
         this.reused.set(tile, Reused.Full)
         tile.length = length
-        tile.flags = TileFlag.Synced
+        tile.flags = (tile.flags & ~(TileFlag.Widget | TileFlag.BreakAfter)) | flags
         return tile
       }
     }
@@ -346,9 +350,9 @@ export class TileUpdate {
             this.builder.continueWidget(to - from)
           } else {
             let widget = to > 0 || from < tile.length
-              ? WidgetTile.of(tile.widget, this.view, to - from, tile.side, this.cache.maybeReuse(tile))
+              ? WidgetTile.of(tile.widget, this.view, to - from, tile.flags & TileFlag.Widget, this.cache.maybeReuse(tile))
               : this.cache.reuse(tile)
-            if (widget.side & Side.Block) {
+            if (widget.flags & TileFlag.Block) {
               widget.flags &= ~TileFlag.BreakAfter
               this.builder.addBlockWidget(widget)
             } else {
@@ -416,9 +420,8 @@ export class TileUpdate {
             b.continueWidget(to - from)
           } else {
             let widget = deco.widget || (deco.block ? NullWidget.block : NullWidget.inline)
-            let tile = this.cache.findWidget(widget, to - from)
-            if (tile) tile.side = widgetSide(deco)
-            else tile = WidgetTile.of(widget, this.view, to - from, widgetSide(deco))
+            let flags = widgetFlags(deco)
+            let tile = this.cache.findWidget(widget, to - from, flags) || WidgetTile.of(widget, this.view, to - from, flags)
             if (deco.block) {
               if (deco.startSide > 0) b.addLineStartIfNotCovered(pendingLineAttrs)
               b.addBlockWidget(tile)
@@ -436,7 +439,7 @@ export class TileUpdate {
       },
       span: (from, to, active: MarkDecoration[], openStart) => {
         for (let pos = from; pos < to;) {
-          let chars = this.text.next(Math.min(T.Chunk, to - pos))
+          let chars = this.text.next(Math.min(C.Chunk, to - pos))
           if (chars == null) { // Line break
             b.addLineStartIfNotCovered(pendingLineAttrs)
             b.addBreak()
@@ -494,10 +497,10 @@ function hasContent(tile: Tile, requireText: boolean) {
   return scan(tile)
 }
 
-function widgetSide(deco: PointDecoration) {
-  let flags = deco.isReplace ? (deco.startSide < 0 ? Side.IncStart : 0) | (deco.endSide > 0 ? Side.IncEnd : 0)
-    : (deco.startSide > 0 ? Side.After : Side.Before)
-  if (deco.block) flags |= Side.Block
+function widgetFlags(deco: PointDecoration) {
+  let flags = deco.isReplace ? (deco.startSide < 0 ? TileFlag.IncStart : 0) | (deco.endSide > 0 ? TileFlag.IncEnd : 0)
+    : (deco.startSide > 0 ? TileFlag.After : TileFlag.Before)
+  if (deco.block) flags |= TileFlag.Block
   return flags
 }
 
