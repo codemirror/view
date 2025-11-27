@@ -1044,7 +1044,11 @@ export class EditorView {
   /// [`EditorView.atomicRanges`](#view.EditorView^atomicRanges).
   static decorations = decorations
 
-  /// FIXME document
+  /// [Block wrappers](#view.BlockWrapper) provide a way to add DOM
+  /// structure around editor lines and block widgets. Sets of
+  /// wrappers are provided in a similar way to decorations, and are
+  /// nested in a similar way when they overlap. A wrapper affects all
+  /// lines and block widgets that start inside its range.
   static blockWrappers = blockWrappers
 
   /// Facet that works much like

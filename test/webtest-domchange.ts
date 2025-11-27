@@ -233,4 +233,22 @@ describe("DOM changes", () => {
     flush(cm)
     ist(cm.state.sliceDoc(), "\n\n\n")
   })
+
+  it("can repair attributes on lines", () => {
+    let cm = tempView("ab\ncd", [EditorView.decorations.of(Decoration.set(Decoration.line({class: "x"}).range(0)))])
+    cm.contentDOM.children[0].classList.remove("x")
+    cm.contentDOM.children[1].setAttribute("foo", "foo")
+    flush(cm)
+    cm.measure()
+    ist(cm.contentDOM.children[0].className, "cm-line x")
+    ist(cm.contentDOM.children[1].getAttribute("foo"), null)
+  })
+
+  it("can repair attributes on marks", () => {
+    let cm = tempView("abcd", [EditorView.decorations.of(Decoration.set(Decoration.mark({class: "x"}).range(1, 3)))])
+    cm.contentDOM.children[0].children[0].className = "huh"
+    flush(cm)
+    cm.measure()
+    ist(cm.contentDOM.children[0].children[0].className, "x")
+  })
 })

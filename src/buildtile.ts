@@ -11,14 +11,31 @@ import browser from "./browser"
 
 const LOG_builder = false
 
+// During updates, we track when we reuse tiles or their DOM in order
+// to avoid reusing the same node twice. This is also used to call
+// destroy on the proper widgets after an update.
 export const enum Reused { Full = 1, DOM = 2 }
 
-const enum C { Chunk = 512, Bucket = 6, WrapperReset = 4000 }
+const enum C { Chunk = 512, Bucket = 6, WrapperReset = 10000 }
 
+// Used to track open block wrappers
 class OpenWrapper {
   constructor(readonly from: number, readonly to: number, readonly wrapper: BlockWrapper, readonly rank: number) {}
 }
 
+// This class builds up a new document tile using input from either
+// iteration over the old tree or iteration over the document +
+// decorations. The add* methods emit elements into the tile
+// structure. To avoid awkward synchronization issues, marks and block
+// wrappers are treated as belonging to to their content, rather than
+// opened/closed independently.
+//
+// All composite tiles that are touched by changes are rebuilt,
+// reusing as much of the old tree (either whole nodes or just DOM
+// elements) as possible. The new tree is built without the Synced
+// flag, and then synced (during which DOM parent/child relations are
+// fixed up, text nodes filled in, and attributes added) in a second
+// phase.
 class TileBuilder {
   curLine: LineTile | null = null
   lastBlock: LineTile | WidgetTile | null = null
@@ -210,6 +227,7 @@ class TileBuilder {
   }
 }
 
+// Helps getting efficient access to the document text.
 class TextStream {
   cursor: TextIterator
   skipCount = 0
@@ -247,16 +265,23 @@ class TextStream {
   }
 }
 
+// Assign the tile classes bucket numbers for caching.
 const buckets = [WidgetTile, LineTile, TextTile, MarkTile, WidgetBufferTile, BlockWrapperTile, DocTile]
 for (let i = 0; i < buckets.length; i++) (buckets[i] as any).bucket = i
 
+// Leaf tiles and line tiles may be reused in their entirety. All
+// others will get new tiles allocated, using the old DOM when
+// possible.
 class TileCache {
+  // Buckets are circular buffers, using `index` as the current
+  // position.
   buckets: Tile[][] = buckets.map(() => [])
   index: number[] = buckets.map(() => 0)
   reused: Map<Tile, Reused> = new Map
 
   constructor(readonly view: EditorView) {}
 
+  // Put a tile in the cache.
   add(tile: Tile) {
     let i: number = (tile.constructor as any).bucket, bucket = this.buckets[i]
     if (bucket.length < C.Bucket) bucket.push(tile)
@@ -266,7 +291,8 @@ class TileCache {
   find<Cls extends Tile>(cls: new (...args: any) => Cls, test?: (a: Cls) => boolean, type: Reused = Reused.DOM): Cls | null {
     let i: number = (cls as any).bucket
     let bucket = this.buckets[i], off = this.index[i]
-    for (let j = 0; j < bucket.length; j++) {
+    for (let j = bucket.length - 1; j >= 0; j--) {
+      // Look at the most recently added items first (last-in, first-out)
       let index = (j + off) % bucket.length, tile = bucket[index] as Cls
       if ((!test || test(tile)) && !this.reused.has(tile)) {
         bucket.splice(index, 1)
@@ -311,6 +337,11 @@ class TileCache {
   }
 }
 
+// This class organizes a pass over the document, guided by the array
+// of replaced ranges. For ranges that haven't changed, it iterates
+// the old tree and copies its content into the new document. For
+// changed ranges, it runs a decoration iterator to guide generation
+// of content.
 export class TileUpdate {
   text: TextStream
   builder: TileBuilder
@@ -351,6 +382,9 @@ export class TileUpdate {
       }
       if (!next) break
       this.forward(next.fromA, next.toA)
+      // Compositions need to be handled specially, forcing the
+      // focused text node and its parent nodes to remain stable at
+      // that point in the document.
       if (composition && next.fromA <= composition.range.fromA && next.toA >= composition.range.toA) {
         LOG_builder && console.log("Emit composition", posB, "to", next.toB, "over", posA, "to", next.toA)
         this.emit(posB, composition.range.fromB)
@@ -400,6 +434,8 @@ export class TileUpdate {
           tile.flags &= ~TileFlag.BreakAfter
           this.cache.reused.set(tile, Reused.Full)
           this.builder.addLine(tile)
+        } else if (tile instanceof WidgetBufferTile) {
+          this.cache.add(tile)
         } else {
           return false
         }

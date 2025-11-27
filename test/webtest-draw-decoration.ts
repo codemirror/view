@@ -374,6 +374,14 @@ describe("EditorView decoration", () => {
       ist(cm.contentDOM.querySelectorAll("img").length, 1)
     })
 
+    it("reuses buffers on redraw", () => {
+      let cm = decoEditor("abcd", [r(1, 2)])
+      let buffers = cm.contentDOM.querySelectorAll("img")
+      ist(buffers.length, 2)
+      cm.dispatch({changes: {from: 1, insert: ".."}})
+      ist(Array.from(buffers).every(n => cm.contentDOM.contains(n)))
+    })
+
     it("calls the destroy method on destroyed widgets", () => {
       let destroyed: string[] = []
       class W extends WordWidget {
@@ -838,9 +846,9 @@ describe("EditorView decoration", () => {
     })
 
     it("can skip large distances correctly", () => {
-      let cm = tempView("-\n".repeat(5000), [
-        EditorView.blockWrappers.of(RangeSet.of(section.range(0, 10000))),
-        EditorView.decorations.of(RangeSet.of(Decoration.replace({}).range(1, 10000 - 1))),
+      let cm = tempView("-\n".repeat(12000), [
+        EditorView.blockWrappers.of(RangeSet.of(section.range(0, 24000))),
+        EditorView.decorations.of(RangeSet.of(Decoration.replace({}).range(1, 24000 - 1))),
       ])
       ist(html(cm), "<section><div>-<span></span></div><div><br></div></section>")
     })

@@ -5,6 +5,16 @@ import {type EditorView} from "./editorview"
 import {Rect, textRange, maxOffset, domIndex, flattenRect, clientRectsFor, DOMPos} from "./dom"
 import browser from "./browser"
 
+// The editor view keeps a tree of 'tiles', objects that represent a
+// DOM node with some meaning in the content model, to represent its
+// visible content. These are double-linked to their DOM nodes via a
+// `cmTile` expando property, so that lookup can happen both from tile
+// tree to DOM, and from DOM node to tile position.
+//
+// This structure is used to map between document positions and DOM
+// positions, to find screen coordinates for a position, and to
+// support incrementally updating the DOM.
+
 export const enum TileFlag {
   // Encodes that there's a line break (taking up one position) after this tile
   BreakAfter = 1,
@@ -173,6 +183,7 @@ function rm(dom: Node): Node | null {
   return next
 }
 
+// The top-level tile. Its dom property equals view.contentDOM.
 export class DocTile extends CompositeTile {
   constructor(readonly view: EditorView, dom: HTMLElement) {
     super(dom)
@@ -284,6 +295,7 @@ export class LineTile extends CompositeTile {
 
   get domAttrs() { return this.attrs }
 
+  // Find the tile associated with a given position in this line.
   resolveInline(pos: number, side: number, forCoords?: boolean): {
     tile: TextTile | WidgetTile | WidgetBufferTile,
     offset: number
@@ -337,6 +349,18 @@ export class LineTile extends CompositeTile {
     }
     return new DOMPos(this.dom, 0)
   }
+}
+
+function fallbackRect(tile: Tile) {
+  let last = tile.dom.lastChild
+  if (!last) return (tile.dom as HTMLElement).getBoundingClientRect()
+  let rects = clientRectsFor(last)
+  return rects[rects.length - 1] || null
+}
+
+function onSameLine(a: Tile, b: Tile) {
+  let posA = a.coordsIn(0, 1), posB = b.coordsIn(0, 1)
+  return posA && posB && posB.top < posA.bottom
 }
 
 export class MarkTile extends CompositeTile {
@@ -472,13 +496,7 @@ export class WidgetBufferTile extends Tile {
   coordsIn(pos: number): Rect | null { return this.dom.getBoundingClientRect() }
 }
 
-interface TileWalker {
-  enter(tile: CompositeTile): void
-  leave(tile: CompositeTile): void
-  skip(tile: Tile, from: number, to: number): boolean | void
-  break(): void
-}
-
+// Represents a position in the tile tree.
 export class TilePointer {
   public tile: Tile
   public index: number = 0
@@ -544,14 +562,9 @@ export class TilePointer {
   get root() { return (this.parents.length ? this.parents[0].tile : this.tile) as DocTile }
 }
 
-function fallbackRect(tile: Tile) {
-  let last = tile.dom.lastChild
-  if (!last) return (tile.dom as HTMLElement).getBoundingClientRect()
-  let rects = clientRectsFor(last)
-  return rects[rects.length - 1] || null
-}
-
-function onSameLine(a: Tile, b: Tile) {
-  let posA = a.coordsIn(0, 1), posB = b.coordsIn(0, 1)
-  return posA && posB && posB.top < posA.bottom
+interface TileWalker {
+  enter(tile: CompositeTile): void
+  leave(tile: CompositeTile): void
+  skip(tile: Tile, from: number, to: number): boolean | void
+  break(): void
 }
