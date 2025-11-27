@@ -9,7 +9,7 @@ import {ViewUpdate, decorations as decorationsFacet, outerDecorations, ChangedRa
 import {EditorView} from "./editorview"
 import {Direction} from "./bidi"
 import {Tile, LineTile, DocTile, TileFlag, BlockWrapperTile, Side} from "./tile"
-import {TileBuilder, Reused} from "./buildtile"
+import {TileUpdate, Reused} from "./buildtile"
 
 export type Composition = {
   range: ChangedRange,
@@ -117,8 +117,8 @@ export class DocView {
   private updateInner(changes: readonly ChangedRange[], composition: Composition | null) {
     this.view.viewState.mustMeasureContent = true
 
-    let builder = new TileBuilder(this.view, this.tile, this.blockWrappers, this.decorations, this.dynamicDecorationMap)
     let oldTile = this.tile
+    let builder = new TileUpdate(this.view, oldTile, this.decorations, this.dynamicDecorationMap)
     this.tile = builder.run(changes, composition)
     destroyDropped(oldTile, builder.reused)
 

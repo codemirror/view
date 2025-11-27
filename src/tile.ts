@@ -1,6 +1,6 @@
 import {Text as DocText} from "@codemirror/state"
-import {WidgetType, BlockWrapper, MarkDecoration, LineDecoration} from "./decoration"
-import {Attrs, setAttrs, combineAttrs} from "./attributes"
+import {WidgetType, BlockWrapper, MarkDecoration} from "./decoration"
+import {Attrs, setAttrs} from "./attributes"
 import {type EditorView} from "./editorview"
 import {Rect, textRange, maxOffset, domIndex, flattenRect, clientRectsFor, DOMPos} from "./dom"
 import browser from "./browser"
@@ -26,7 +26,6 @@ export abstract class Tile {
   }
 
   get breakAfter(): 0 | 1 { return (this.flags & TileFlag.BreakAfter) as 0 | 1 }
-  set breakAfter(value: 0 | 1) { this.flags |= value }
 
   get children() { return noChildren }
 
@@ -270,17 +269,6 @@ export class LineTile extends CompositeTile {
     super(dom)
   }
 
-  // Only called when building a line view in ContentBuilder
-  addLineDeco(deco: LineDecoration) {
-    let attrs = deco.spec.attributes, cls = deco.spec.class
-    if (attrs || cls) {
-      if (this.attrs == LineTile.baseAttrs) this.attrs = {class: "cm-line"}
-      if (attrs) combineAttrs(attrs, this.attrs)
-      if (cls) this.attrs.class += " " + cls
-      this.flags |= TileFlag.AttrsDirty
-    }
-  }
-
   sync() {
     super.sync()
     if (this.flags & TileFlag.AttrsDirty) {
@@ -357,8 +345,6 @@ export class LineTile extends CompositeTile {
     }
     return new DOMPos(this.dom, 0)
   }
-
-  static baseAttrs = {class: "cm-line"}
 }
 
 export class MarkTile extends CompositeTile {
@@ -420,7 +406,8 @@ export class TextTile extends Tile {
   }
 }
 
-export const enum Side { Before = 1, After = 2, IncStart = 4, IncEnd = 8 }
+// FIXME rename
+export const enum Side { Before = 1, After = 2, IncStart = 4, IncEnd = 8, Block = 16 }
 
 export class WidgetTile extends Tile {
   declare dom: HTMLElement
@@ -558,9 +545,9 @@ export class TilePointer {
       } else {
         let next = tile.children[index]
         if (side > 0 ? next.length <= dist : next.length < dist) {
+          beforeBreak = !!next.breakAfter
           if (walker) walker.skip(next, 0, next.length)
           index++
-          beforeBreak = !!next.breakAfter
           dist -= next.length
         } else {
           parents.push({tile, index})
