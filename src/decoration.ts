@@ -1,6 +1,6 @@
 import {MapMode, RangeValue, Range, RangeSet} from "@codemirror/state"
 import {Direction} from "./bidi"
-import {attrsEq, Attrs, noAttrs} from "./attributes"
+import {attrsEq, Attrs, noAttrs, combineAttrs} from "./attributes"
 import {EditorView} from "./editorview"
 import {Rect} from "./dom"
 
@@ -279,8 +279,7 @@ export abstract class Decoration extends RangeValue {
 
 export class MarkDecoration extends Decoration {
   tagName: string
-  class: string
-  attrs: Attrs | null
+  attrs: Attrs
 
   constructor(spec: MarkDecorationSpec) {
     let {start, end} = getInclusive(spec)
@@ -288,16 +287,12 @@ export class MarkDecoration extends Decoration {
           end ? Side.InlineIncEnd : Side.NonIncEnd,
           null, spec)
     this.tagName = spec.tagName || "span"
-    this.class = spec.class || ""
-    this.attrs = spec.attributes || null
+    this.attrs = spec.class && spec.attributes ? combineAttrs(spec.attributes, {class: spec.class})
+      : spec.class ? {class: spec.class} : spec.attributes || noAttrs
   }
 
   eq(other: Decoration): boolean {
-    return this == other ||
-      other instanceof MarkDecoration &&
-      this.tagName == other.tagName &&
-      (this.class || this.attrs?.class) == (other.class || other.attrs?.class) &&
-      attrsEq(this.attrs, other.attrs, "class")
+    return this == other || other instanceof MarkDecoration && this.tagName == other.tagName && attrsEq(this.attrs, other.attrs)
   }
 
   range(from: number, to = from) {

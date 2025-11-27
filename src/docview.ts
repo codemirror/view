@@ -117,13 +117,15 @@ export class DocView {
   private updateInner(changes: readonly ChangedRange[], composition: Composition | null) {
     this.view.viewState.mustMeasureContent = true
 
-    let oldTile = this.tile
-    let builder = new TileUpdate(this.view, oldTile, this.decorations, this.dynamicDecorationMap)
-    this.tile = builder.run(changes, composition)
-    destroyDropped(oldTile, builder.cache.reused)
-
     let {observer} = this.view
     observer.ignore(() => {
+      if (composition || changes.length) {
+        let oldTile = this.tile
+        let builder = new TileUpdate(this.view, oldTile, this.decorations, this.dynamicDecorationMap)
+        this.tile = builder.run(changes, composition)
+        destroyDropped(oldTile, builder.cache.reused)
+      }
+
       // Lock the height during redrawing, since Chrome sometimes
       // messes with the scroll position during DOM mutation (though
       // no relayout is triggered and I cannot imagine how it can

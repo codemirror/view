@@ -10,7 +10,7 @@ export const enum TileFlag {
   BreakAfter = 1,
   // Set when a tile's DOM has been synced
   Synced = 2,
-  // FIXME
+  // Set when DOM mutations to the node's attributes were seen
   AttrsDirty = 4,
   // Set on composition text tiles to prevent text merging
   Composition = 8,
@@ -54,8 +54,15 @@ export abstract class Tile {
 
   isBlock() { return false }
 
+  get domAttrs(): Attrs | null { return null }
+
   sync() {
     this.flags |= TileFlag.Synced
+    if (this.flags & TileFlag.AttrsDirty) {
+      this.flags &= ~TileFlag.AttrsDirty
+      let attrs = this.domAttrs
+      if (attrs) setAttrs(this.dom as HTMLElement, attrs)
+    }
   }
 
   toString() {
@@ -101,9 +108,9 @@ export abstract class Tile {
   }
 
   markDirty(attrs: boolean) {
-    // FIXME handle dirty attrs on non-line tiles somehow
     this.flags &= ~TileFlag.Synced
-    if (this.parent) this.parent.markDirty(false)
+    if (attrs) this.flags |= TileFlag.AttrsDirty
+    if (this.parent && (this.parent.flags & TileFlag.Synced)) this.parent.markDirty(false)
   }
 
   get overrideDOMText(): DocText | null { return null }
@@ -254,26 +261,18 @@ export class BlockWrapperTile extends CompositeTile {
     return side < 0 ? this.children[0].covers(-1) : this.lastChild!.covers(1)
   }
 
+  get domAttrs() { return this.wrapper.attributes }
+
   static of(wrapper: BlockWrapper, dom?: HTMLElement) {
-    if (!dom) {
-      dom = document.createElement(wrapper.tagName)
-      setAttrs(dom, wrapper.attributes)
-    }
-    return new BlockWrapperTile(dom, wrapper)
+    let tile = new BlockWrapperTile(dom || document.createElement(wrapper.tagName), wrapper)
+    if (!dom) tile.flags |= TileFlag.AttrsDirty
+    return tile
   }
 }
 
 export class LineTile extends CompositeTile {
   constructor(dom: HTMLElement, public attrs: Attrs) {
     super(dom)
-  }
-
-  sync() {
-    super.sync()
-    if (this.flags & TileFlag.AttrsDirty) {
-      this.flags &= ~TileFlag.AttrsDirty
-      setAttrs(this.dom, this.attrs)
-    }
   }
 
   isLine(): this is LineTile { return true }
@@ -284,10 +283,7 @@ export class LineTile extends CompositeTile {
     return line
   }
 
-  markDirty(attrs: boolean) {
-    if (attrs) this.flags |= TileFlag.AttrsDirty
-    super.markDirty(attrs)
-  }
+  get domAttrs() { return this.attrs }
 
   resolveInline(pos: number, side: number, forCoords?: boolean): {
     tile: TextTile | WidgetTile | WidgetBufferTile,
@@ -349,13 +345,12 @@ export class MarkTile extends CompositeTile {
     super(dom)
   }
 
+  get domAttrs() { return this.mark.attrs }
+
   static of(mark: MarkDecoration, dom?: HTMLElement) {
-    if (!dom) {
-      dom = document.createElement(mark.tagName)
-      if (mark.class) dom.className = mark.class
-      if (mark.attrs) for (let name in mark.attrs) dom.setAttribute(name, mark.attrs[name])
-    }
-    return new MarkTile(dom, mark)
+    let tile = new MarkTile(dom || document.createElement(mark.tagName), mark)
+    if (!dom) tile.flags |= TileFlag.AttrsDirty
+    return tile
   }
 }
 

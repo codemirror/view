@@ -446,7 +446,7 @@ export class TileUpdate {
             pos++
           } else {
             b.ensureLine(pendingLineAttrs)
-            b.addText(chars, active, openStart) // FIXME reuse
+            b.addText(chars, active, openStart)
             pos += chars.length
           }
           pendingLineAttrs = null
