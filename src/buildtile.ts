@@ -107,6 +107,14 @@ class TileBuilder {
     this.afterWidget = widget
   }
 
+  addMark(tile: MarkTile, marks: MarkDecoration[], openStart: number) {
+    this.flushBuffer()
+    let parent = this.ensureMarks(marks, openStart)
+    parent.append(tile)
+    this.pos += tile.length
+    this.afterWidget = null
+  }
+
   addBlockWidget(widget: WidgetTile) {
     this.getBlockPos().append(widget)
     this.pos += widget.length
@@ -436,6 +444,9 @@ export class TileUpdate {
           this.builder.addLine(tile)
         } else if (tile instanceof WidgetBufferTile) {
           this.cache.add(tile)
+        } else if (tile instanceof MarkTile) {
+          this.builder.addMark(tile, activeMarks, openMarks)
+          this.cache.reused.set(tile, Reused.Full)
         } else {
           return false
         }
