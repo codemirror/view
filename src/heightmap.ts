@@ -74,7 +74,7 @@ export class HeightOracle {
 }
 
 // This object is used by `updateHeight` to make DOM measurements
-// arrive at the right nides. The `heights` array is a sequence of
+// arrive at the right nodes. The `heights` array is a sequence of
 // block heights, starting from position `from`.
 export class MeasuredHeights {
   public index = 0
@@ -98,7 +98,7 @@ export class BlockInfo {
     readonly height: number,
     /// @internal Weird packed field that holds an array of children
     /// for composite blocks, a decoration for block widgets, and a
-    /// number indicating the amount of widget-create line breaks for
+    /// number indicating the amount of widget-created line breaks for
     /// text blocks.
     readonly _content: readonly BlockInfo[] | PointDecoration | number
   ) {}
@@ -200,7 +200,7 @@ export abstract class HeightMap {
     return me.updateHeight(oracle, 0)
   }
 
-  static empty(): HeightMap { return new HeightMapText(0, 0) }
+  static empty(): HeightMap { return new HeightMapText(0, 0, 0) }
 
   // nodes uses null values to indicate the position of line breaks.
   // There are never line breaks at the start or end of the array, or
@@ -251,24 +251,45 @@ function replace(old: HeightMap, val: HeightMap) {
 
 HeightMap.prototype.size = 1
 
+const SpaceDeco = Decoration.replace({}) as PointDecoration
+
 class HeightMapBlock extends HeightMap {
+  spaceAbove = 0
+
   constructor(length: number, height: number, readonly deco: PointDecoration | null) { super(length, height) }
 
-  blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number) {
-    return new BlockInfo(offset, this.length, top, this.height, this.deco || 0)
+  mainBlock(top: number, offset: number) {
+    return new BlockInfo(offset, this.length, top + this.spaceAbove, this.height - this.spaceAbove, this.deco || 0)
+  }
+
+  blockAt(height: number, _oracle: HeightOracle, top: number, offset: number) {
+    return this.spaceAbove && height < top + this.spaceAbove ? new BlockInfo(offset, 0, top, this.spaceAbove, SpaceDeco)
+      : this.mainBlock(top, offset)
   }
 
   lineAt(_value: number, _type: QueryType, oracle: HeightOracle, top: number, offset: number) {
-    return this.blockAt(0, oracle, top, offset)
+    let main = this.mainBlock(top, offset)
+    return this.spaceAbove ? this.blockAt(0, oracle, top, offset).join(main) : main
   }
 
   forEachLine(from: number, to: number, oracle: HeightOracle, top: number, offset: number, f: (line: BlockInfo) => void) {
-    if (from <= offset + this.length && to >= offset) f(this.blockAt(0, oracle, top, offset))
+    if (from <= offset + this.length && to >= offset) f(this.lineAt(0, QueryType.ByPos, oracle, top, offset))
+  }
+
+  setMeasuredHeight(measured: MeasuredHeights) {
+    let next = measured.heights[measured.index++]
+    if (next < 0) {
+      this.spaceAbove = -next
+      next = measured.heights[measured.index++]
+    } else {
+      this.spaceAbove = 0
+    }
+    this.setHeight(next)
   }
 
   updateHeight(oracle: HeightOracle, offset: number = 0, _force: boolean = false, measured?: MeasuredHeights) {
     if (measured && measured.from <= offset && measured.more)
-      this.setHeight(measured.heights[measured.index++])
+      this.setMeasuredHeight(measured)
     this.outdated = false
     return this
   }
@@ -281,17 +302,20 @@ class HeightMapText extends HeightMapBlock {
   public widgetHeight = 0 // Maximum inline widget height
   public breaks = 0 // Number of widget-introduced line breaks on the line
 
-  constructor(length: number, height: number) { super(length, height, null) }
+  constructor(length: number, height: number, above: number) {
+    super(length, height, null)
+    this.spaceAbove = above
+  }
 
-  blockAt(_height: number, _oracle: HeightOracle, top: number, offset: number) {
-    return new BlockInfo(offset, this.length, top, this.height, this.breaks)
+  mainBlock(top: number, offset: number) {
+    return new BlockInfo(offset, this.length, top + this.spaceAbove, this.height - this.spaceAbove, this.breaks)
   }
 
   replace(_from: number, _to: number, nodes: (HeightMap | null)[]): HeightMap {
     let node = nodes[0]
     if (nodes.length == 1 && (node instanceof HeightMapText || node instanceof HeightMapGap && (node.flags & Flag.SingleLine)) &&
         Math.abs(this.length - node.length) < 10) {
-      if (node instanceof HeightMapGap) node = new HeightMapText(node.length, this.height)
+      if (node instanceof HeightMapGap) node = new HeightMapText(node.length, this.height, this.spaceAbove)
       else node.height = this.height
       if (!this.outdated) node.outdated = false
       return node
@@ -301,11 +325,13 @@ class HeightMapText extends HeightMapBlock {
   }
 
   updateHeight(oracle: HeightOracle, offset: number = 0, force: boolean = false, measured?: MeasuredHeights) {
-    if (measured && measured.from <= offset && measured.more)
-      this.setHeight(measured.heights[measured.index++])
-    else if (force || this.outdated)
+    if (measured && measured.from <= offset && measured.more) {
+      this.setMeasuredHeight(measured)
+    } else if (force || this.outdated) {
+      this.spaceAbove = 0
       this.setHeight(Math.max(this.widgetHeight, oracle.heightForLine(this.length - this.collapsed)) +
         this.breaks * oracle.lineHeight)
+    }
     this.outdated = false
     return this
   }
@@ -415,10 +441,14 @@ class HeightMapGap extends HeightMap {
       while (pos <= end && measured.more) {
         let len = oracle.doc.lineAt(pos).length
         if (nodes.length) nodes.push(null)
-        let height = measured.heights[measured.index++]
+        let height = measured.heights[measured.index++], above = 0
+        if (height < 0) {
+          above = -height
+          height = measured.heights[measured.index++]
+        }
         if (singleHeight == -1) singleHeight = height
         else if (Math.abs(height - singleHeight) >= Epsilon) singleHeight = -2
-        let line = new HeightMapText(len, height)
+        let line = new HeightMapText(len, height, above)
         line.outdated = false
         nodes.push(line)
         pos += len + 1
@@ -582,7 +612,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
       if (last instanceof HeightMapText)
         last.length += end - this.pos
       else if (end > this.pos || !this.isCovered)
-        this.nodes.push(new HeightMapText(end - this.pos, -1))
+        this.nodes.push(new HeightMapText(end - this.pos, -1, 0))
       this.writtenTo = end
       if (to > end) {
         this.nodes.push(null)
@@ -621,7 +651,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
       this.nodes.push(null)
     }
     if (this.pos > from)
-      this.nodes.push(new HeightMapText(this.pos - from, -1))
+      this.nodes.push(new HeightMapText(this.pos - from, -1, 0))
     this.writtenTo = this.pos
   }
 
@@ -635,7 +665,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
     this.enterLine()
     let last = this.nodes.length ? this.nodes[this.nodes.length - 1] : null
     if (last instanceof HeightMapText) return last
-    let line = new HeightMapText(0, -1)
+    let line = new HeightMapText(0, -1, 0)
     this.nodes.push(line)
     return line
   }
@@ -661,7 +691,7 @@ class NodeBuilder implements SpanIterator<Decoration> {
   finish(from: number) {
     let last = this.nodes.length == 0 ? null : this.nodes[this.nodes.length - 1]
     if (this.lineStart > -1 && !(last instanceof HeightMapText) && !this.isCovered)
-      this.nodes.push(new HeightMapText(0, -1))
+      this.nodes.push(new HeightMapText(0, -1, 0))
     else if (this.writtenTo < this.pos || last == null)
       this.nodes.push(this.blankContent(this.writtenTo, this.pos))
     let pos = from

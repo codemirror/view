@@ -97,9 +97,9 @@ export class DocView {
     let prevDeco = this.decorations, prevWrappers = this.blockWrappers
     this.updateDeco()
     let decoDiff = findChangedDeco(prevDeco, this.decorations, update.changes)
-    if (decoDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff, composition?.range)
+    if (decoDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, decoDiff)
     let blockDiff = findChangedWrappers(prevWrappers, this.blockWrappers, update.changes)
-    if (blockDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, blockDiff, composition?.range)
+    if (blockDiff.length) changedRanges = ChangedRange.extendWithRanges(changedRanges, blockDiff)
     if (composition && !changedRanges.some(r => r.fromA <= composition!.range.fromA && r.toA >= composition!.range.toA))
       changedRanges = composition.range.addToSet(changedRanges.slice())
 
@@ -386,6 +386,7 @@ export class DocView {
     let contentWidth = this.view.contentDOM.clientWidth
     let isWider = contentWidth > Math.max(this.view.scrollDOM.clientWidth, this.minWidth) + 1
     let widest = -1, ltr = this.view.textDirection == Direction.LTR
+    let spaceAbove = 0
     let scan = (tile: DocTile | BlockWrapperTile, pos: number, measureBounds: DOMRect | null) => {
       for (let i = 0; i < tile.children.length; i++) {
         if (pos > to) break
@@ -394,11 +395,11 @@ export class DocView {
           if (end > from) scan(child, pos, child.dom.getBoundingClientRect())
         } else if (pos >= from) {
           let childRect = (child.dom as HTMLElement).getBoundingClientRect(), {height} = childRect
-          if (measureBounds) {
-            if (i == 0) height += childRect.top - measureBounds.top
-            if (i == tile.children.length - 1) height += measureBounds.bottom - childRect.bottom
-          }
-          result.push(height)
+          if (measureBounds && !i) spaceAbove += childRect.top - measureBounds.top
+          if (spaceAbove > 0) result.push(-spaceAbove)
+          result.push(height + spaceAbove)
+          spaceAbove = 0
+          if (measureBounds && i == tile.children.length - 1) spaceAbove += measureBounds.bottom - childRect.bottom
           if (isWider) {
             let last = child.dom.lastChild
             let rects = last ? clientRectsFor(last) : []

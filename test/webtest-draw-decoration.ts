@@ -1,4 +1,4 @@
-import {EditorView, Decoration, BlockWrapper, DecorationSet, WidgetType, ViewPlugin} from "@codemirror/view"
+import {EditorView, Decoration, BlockWrapper, DecorationSet, WidgetType, ViewPlugin, BlockType} from "@codemirror/view"
 import {tempView, requireFocus} from "./tempview.js"
 import {EditorSelection, StateEffect, StateField, Range, RangeSet} from "@codemirror/state"
 import ist from "ist"
@@ -845,12 +845,38 @@ describe("EditorView decoration", () => {
       ist(html(cm), `<navigation><div>b</div><section><div>.cf</div></section></navigation>`)
     })
 
+    it("can handle replacements at end of wrappers", () => {
+      let cm = wrapEditor("ab\ncd\nef", [section.range(0, 5)])
+      cm.dispatch({changes: [{from: 4, to: 7}]})
+      ist(html(cm), `<section><div>ab</div><div>cf</div></section>`)
+    })
+
     it("can skip large distances correctly", () => {
       let cm = tempView("-\n".repeat(12000), [
         EditorView.blockWrappers.of(RangeSet.of(section.range(0, 24000))),
         EditorView.decorations.of(RangeSet.of(Decoration.replace({}).range(1, 24000 - 1))),
       ])
       ist(html(cm), "<section><div>-<span></span></div><div><br></div></section>")
+    })
+
+    it("represents wrapper padding and borders as ghost widgets", () => {
+      let cm = wrapEditor("a\nb\nc\nd", [
+        BlockWrapper.create({tagName: "div", attributes: {style: "border: 2px solid blue; padding: 1px"}}).range(2, 5)
+      ])
+      let eltTop = cm.elementAtHeight(cm.coordsAtPos(1)!.bottom + 2 - cm.documentTop)
+      ist(eltTop.type, BlockType.WidgetRange)
+      ist(eltTop.from, 2)
+      ist(Math.abs(eltTop.height - 3), 0.1, "<")
+      let elt2 = cm.elementAtHeight(cm.coordsAtPos(2)!.top + 1 - cm.documentTop)
+      ist(elt2.type, BlockType.Text)
+      ist(elt2.from, 2)
+      ist(Math.abs(elt2.top - eltTop.bottom), 0.1, "<")
+      let eltBot = cm.elementAtHeight(cm.coordsAtPos(5)!.bottom + 2 - cm.documentTop)
+      ist(eltBot.type, BlockType.WidgetRange)
+      let blocks = cm.viewportLineBlocks
+      ist(blocks.length, 4)
+      ist(Array.isArray(blocks[1].type))
+      ist(Array.isArray(blocks[3].type))
     })
   })
 })

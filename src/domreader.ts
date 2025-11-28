@@ -27,9 +27,12 @@ export class DOMReader {
       this.findPointBefore(parent, cur)
       let oldLen = this.text.length
       this.readNode(cur)
-      let next: Node | null = cur.nextSibling
-      if (next == end) break
-      let tile = Tile.get(cur), nextTile = Tile.get(next!)
+      let tile = Tile.get(cur), next: Node | null = cur.nextSibling
+      if (next == end) {
+        if (tile?.breakAfter) this.lineBreak()
+        break
+      }
+      let nextTile = Tile.get(next!)
       if ((tile && nextTile ? tile.breakAfter :
            (tile ? tile.breakAfter : isBlockElement(cur)) ||
            (isBlockElement(next!) && (cur.nodeName != "BR" || tile?.isWidget()) && this.text.length > oldLen)) &&

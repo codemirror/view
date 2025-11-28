@@ -371,10 +371,10 @@ export class ChangedRange {
   // positions. These pairs are generated in unchanged ranges, so the
   // offset between doc A and doc B is the same for their start and
   // end points.
-  static extendWithRanges(diff: readonly ChangedRange[], ranges: number[], separate?: ChangedRange): readonly ChangedRange[] {
+  static extendWithRanges(diff: readonly ChangedRange[], ranges: number[]): readonly ChangedRange[] {
     if (ranges.length == 0) return diff
     let result: ChangedRange[] = []
-    outer: for (let dI = 0, rI = 0, off = 0; rI < ranges.length;) {
+    outer: for (let dI = 0, rI = 0, off = 0;;) {
       let nextD = dI < diff.length ? diff[dI].fromB : 1e9
       let nextR = rI < ranges.length ? ranges[rI] : 1e9
       let fromB = Math.min(nextD, nextR)
@@ -388,12 +388,6 @@ export class ChangedRange {
           toA = Math.max(toA, end + off)
         } else if (dI < diff.length && diff[dI].fromB <= toB) {
           let next = diff[dI++]
-          if (next == separate) {
-            if (fromB < next.fromB) result.push(new ChangedRange(fromA, next.fromA, fromB, next.fromB))
-            result.push(next)
-            while (rI < ranges.length && ranges[rI + 1] <= next.toB) rI += 2
-            continue outer
-          }
           toB = Math.max(toB, next.toB)
           toA = Math.max(toA, next.toA)
           off = next.toA - next.toB
