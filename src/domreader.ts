@@ -29,7 +29,7 @@ export class DOMReader {
       this.readNode(cur)
       let tile = Tile.get(cur), next: Node | null = cur.nextSibling
       if (next == end) {
-        if (tile?.breakAfter) this.lineBreak()
+        if (tile?.breakAfter && !next) this.lineBreak()
         break
       }
       let nextTile = Tile.get(next!)
