@@ -739,6 +739,20 @@ export class EditorView {
   posAtCoords(coords: {x: number, y: number}): number | null
   posAtCoords(coords: {x: number, y: number}, precise = true): number | null {
     this.readMeasured()
+    let found = posAtCoords(this, coords, precise)
+    return found && found.pos
+  }
+
+  /// Like [`posAtCoords`](#view.EditorView.posAtCoords), but also
+  /// returns which side of the position the coordinates are closest
+  /// to. For example, for coordinates on the left side of a
+  /// left-to-right character, the position before that letter is
+  /// returned, with `assoc` 1, whereas on the right side, you'd get
+  /// the position after the character, with `assoc` -1.
+  posAndSideAtCoords(coords: {x: number, y: number}, precise: false): {pos: number, assoc: -1 | 1}
+  posAndSideAtCoords(coords: {x: number, y: number}): {pos: number, assoc: -1 | 1} | null
+  posAndSideAtCoords(coords: {x: number, y: number}, precise = true): {pos: number, assoc: -1 | 1} | null {
+    this.readMeasured()
     return posAtCoords(this, coords, precise)
   }
 

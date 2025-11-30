@@ -94,8 +94,8 @@ export abstract class Tile {
     return this.posAtStart + this.length
   }
 
-  posBefore(tile: Tile): number {
-    let pos = this.posAtStart
+  posBefore(tile: Tile, start = this.posAtStart): number {
+    let pos = start
     for (let child of this.children) {
       if (child == tile) return pos
       pos += child.length + child.breakAfter

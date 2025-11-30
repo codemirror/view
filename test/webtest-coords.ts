@@ -198,4 +198,29 @@ describe("coordsForChar", () => {
     ist(wrap.top, b.top, "<")
     ist(wrap.left, a.right, ">")
   })
+
+  function posSide(view: EditorView, x: number, y: number) {
+    let val = view.posAndSideAtCoords({x, y})
+    return val ? val.pos + (val.assoc < 0 ? "<" : ">") : "x"
+  }
+
+  it("works in right-to-left text", () => {
+    let cm = tempView("فرخة")
+    let ch0 = cm.coordsForChar(0)!
+    ist(posSide(cm, ch0.right - 1, ch0.top + 2), "0>")
+    ist(posSide(cm, ch0.right + 1, ch0.top + 2), "0>")
+    ist(posSide(cm, ch0.left + 1, ch0.top + 2), "1<")
+    ist(posSide(cm, ch0.left - 1, ch0.top + 2), "1>")
+    let ch3 = cm.coordsForChar(3)!
+    ist(posSide(cm, ch3.right + 1, ch3.top + 2), "3<")
+    ist(posSide(cm, ch3.right - 1, ch3.top + 2), "3>")
+    ist(posSide(cm, ch3.left + 1, ch3.top + 2), "4<")
+    ist(posSide(cm, ch3.left - 1, ch3.top + 2), "4<")
+  })
+
+  it("can handle nested elements with direction breaks", () => {
+    let cm = tempView("one فرخة", EditorView.decorations.of(Decoration.set(Decoration.mark({class: "foo"}).range(0, 8))))
+    let ch4 = cm.coordsForChar(4)!
+    ist(posSide(cm, ch4.left + 100, ch4.top + 1), "4>")
+  })
 })
