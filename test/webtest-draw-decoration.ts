@@ -185,6 +185,61 @@ describe("EditorView decoration", () => {
     ist(marks.every(m => cm.contentDOM.contains(m)))
   })
 
+  it("properly handles random decorations and changes", () => {
+    let r = (n: number) => Math.floor(Math.random() * n)
+    let marks = [Decoration.mark({tagName: "a"}), Decoration.mark({tagName: "b"}), Decoration.mark({tagName: "c"})]
+    let doc = "abcd efgh ijkl mnopq rstu vwxy z"
+    let cm = decoEditor(doc, [])
+    for (let i = 0; i < 50; i++) {
+      let changes = [], deco: Range<Decoration>[] = []
+      if (r(5) < 3) {
+        let from = r(Math.max(0, doc.length - 3))
+        let to = from + r(Math.min(3, doc.length - from))
+        let insert = "#".repeat(r(4))
+        changes.push({from, to, insert})
+        doc = doc.slice(0, from) + insert + doc.slice(to)
+      }
+      for (let j = 0, c = r(marks.length); j < c; j++) {
+        let from = r(doc.length - 3)
+        let to = from + 1 + r(doc.length - 1 - from)
+        if (!deco.some(r => r.from == from && r.to == to))
+          deco.push(marks[j].range(from, to))
+      }
+      deco.sort((a, b) => a.from - b.from || b.to - a.to || (a.value.spec.tagName < b.value.spec.tagName ? -1 : 1))
+      cm.dispatch({changes, effects: [filterDeco.of(() => false), addDeco.of(deco)]})
+      let expect = "", pos = 0
+      for (let j = 0, active: Range<Decoration>[] = [];;) {
+        let next = j == deco.length ? null : deco[j]
+        let nextStop = active.reduce((min, mark) => Math.min(min, mark.to), 1e9)
+        let nextPos = Math.min(nextStop, next ? next.from : doc.length)
+        if (nextPos > pos) {
+          expect += doc.slice(pos, nextPos)
+          pos = nextPos
+        }
+        let reopen: Range<Decoration>[] = []
+        if (nextStop <= pos || next && active.some(a => a.to < next.to)) {
+          let closeTo = active.findIndex(mark => mark.to == pos || next && mark.to < next.to)
+          while (active.length > closeTo) {
+            let close = active.pop()!
+            expect += `</${close.value.spec.tagName}>`
+            if (close.to > pos) reopen.unshift(close)
+          }
+        }
+        if (next && next.from == pos) {
+          j++
+          expect += `<${next.value.spec.tagName}>`
+          active.push(next)
+        }
+        for (let mark of reopen) {
+          expect += `<${mark.value.spec.tagName}>`
+          active.push(mark)
+        }
+        if (pos == doc.length) break
+      }
+      ist((cm.contentDOM.firstChild as HTMLElement).innerHTML, expect)
+    }
+  })
+
   class WordWidget extends WidgetType {
     constructor(readonly word: string) { super() }
     eq(other: WordWidget) { return this.word.toLowerCase() == other.word.toLowerCase() }

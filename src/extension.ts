@@ -385,6 +385,8 @@ export class ChangedRange {
           let end = ranges[rI + 1]
           rI += 2
           toB = Math.max(toB, end)
+          for (let i = dI; i < diff.length && diff[i].fromB <= toB; i++)
+            off = diff[i].toA - diff[i].toB
           toA = Math.max(toA, end + off)
         } else if (dI < diff.length && diff[dI].fromB <= toB) {
           let next = diff[dI++]
