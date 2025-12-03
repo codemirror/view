@@ -457,7 +457,10 @@ export class TileUpdate {
           this.builder.addLineStart(tile.attrs, this.cache.maybeReuse(tile))
         } else {
           this.cache.add(tile)
-          if (tile instanceof MarkTile) activeMarks.unshift(tile.mark)
+          if (tile instanceof MarkTile) {
+            activeMarks.unshift(tile.mark)
+            openMarks++
+          }
         }
         this.openWidget = false
       },

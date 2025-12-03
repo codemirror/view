@@ -1,6 +1,6 @@
 import {EditorView, Decoration, BlockWrapper, DecorationSet, WidgetType, ViewPlugin, BlockInfo, BlockType} from "@codemirror/view"
 import {tempView, requireFocus} from "./tempview.js"
-import {EditorSelection, StateEffect, StateField, Range, RangeSet} from "@codemirror/state"
+import {EditorSelection, StateEffect, StateField, Range, RangeSet, Text} from "@codemirror/state"
 import ist from "ist"
 
 const filterDeco = StateEffect.define<(from: number, to: number, spec: any) => boolean>()
@@ -114,6 +114,19 @@ describe("EditorView decoration", () => {
     cm.dispatch({changes: {from: 2, to: 3, insert: "x"},
                  effects: [filterDeco.of(() => false), addDeco.of([d(0, 5, {class: "a"})])]})
     ist(cm.contentDOM.querySelectorAll(".a").length, 1)
+  })
+
+  it("properly joins decorations when partially reusing them", () => {
+    let mkDeco = (doc: Text) => {
+      let deco: Range<Decoration>[] = []
+      deco.push(Decoration.mark({class: "w"}).range(0, doc.length))
+      for (let i = 0; i < doc.length - 1; i += 2)
+        deco.push(Decoration.mark({class: "l"}).range(i, i + 1))
+      return Decoration.set(deco)
+    }
+    let cm = tempView("Start", EditorView.decorations.of(v => mkDeco(v.state.doc)))
+    cm.dispatch({changes: {from: 3, insert: "x"}})
+    ist(cm.contentDOM.querySelectorAll(".w").length, 1)
   })
 
   it("merges stacked decorations", () => {
