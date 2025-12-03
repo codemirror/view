@@ -193,7 +193,7 @@ class TileBuilder {
       if (this.wrappers[i].to < this.pos) this.wrappers.splice(i, 1)
     for (let cur = this.blockWrappers; cur.value && cur.from <= this.pos; cur.next()) if (cur.to >= this.pos) {
       let wrap = new OpenWrapper(cur.from, cur.to, cur.value, cur.rank), i = this.wrappers.length
-      while (i > 0 && this.wrappers[i - 1].rank < wrap.rank) i--
+      while (i > 0 && (this.wrappers[i - 1].rank - wrap.rank || this.wrappers[i - 1].to - wrap.to) < 0) i--
       this.wrappers.splice(i, 0, wrap)
     }
     this.wrapperPos = this.pos

@@ -1,4 +1,4 @@
-import {EditorView, Decoration, BlockWrapper, DecorationSet, WidgetType, ViewPlugin, BlockType} from "@codemirror/view"
+import {EditorView, Decoration, BlockWrapper, DecorationSet, WidgetType, ViewPlugin, BlockInfo, BlockType} from "@codemirror/view"
 import {tempView, requireFocus} from "./tempview.js"
 import {EditorSelection, StateEffect, StateField, Range, RangeSet} from "@codemirror/state"
 import ist from "ist"
@@ -932,6 +932,19 @@ describe("EditorView decoration", () => {
       ist(blocks.length, 4)
       ist(Array.isArray(blocks[1].type))
       ist(Array.isArray(blocks[3].type))
+    })
+
+    it("properly measures nested wrapper padding", () => {
+      let cm = wrapEditor("a\nb\nc\nd", [
+        BlockWrapper.create({tagName: "div", attributes: {style: "border: 2px solid blue"}}).range(2, 5),
+        BlockWrapper.create({tagName: "div", attributes: {style: "border: 3px solid red"}}).range(2, 2),
+        BlockWrapper.create({tagName: "div", attributes: {style: "border: 1px solid orange"}}).range(4, 4)
+      ])
+      cm.measure()
+      let gapAbove = (line: BlockInfo) => Array.isArray(line.type) ? line.type[0].height : 0
+      ist(gapAbove(cm.viewportLineBlocks[1]), 5)
+      ist(gapAbove(cm.viewportLineBlocks[2]), 4)
+      ist(gapAbove(cm.viewportLineBlocks[3]), 3)
     })
   })
 })

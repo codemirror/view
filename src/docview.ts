@@ -391,15 +391,14 @@ export class DocView {
       for (let i = 0; i < tile.children.length; i++) {
         if (pos > to) break
         let child = tile.children[i], end = pos + child.length
+        let childRect = (child.dom as HTMLElement).getBoundingClientRect(), {height} = childRect
+        if (measureBounds && !i) spaceAbove += childRect.top - measureBounds.top
         if (child instanceof BlockWrapperTile) {
-          if (end > from) scan(child, pos, child.dom.getBoundingClientRect())
+          if (end > from) scan(child, pos, childRect)
         } else if (pos >= from) {
-          let childRect = (child.dom as HTMLElement).getBoundingClientRect(), {height} = childRect
-          if (measureBounds && !i) spaceAbove += childRect.top - measureBounds.top
           if (spaceAbove > 0) result.push(-spaceAbove)
           result.push(height + spaceAbove)
           spaceAbove = 0
-          if (measureBounds && i == tile.children.length - 1) spaceAbove += measureBounds.bottom - childRect.bottom
           if (isWider) {
             let last = child.dom.lastChild
             let rects = last ? clientRectsFor(last) : []
@@ -415,6 +414,7 @@ export class DocView {
             }
           }
         }
+        if (measureBounds && i == tile.children.length - 1) spaceAbove += measureBounds.bottom - childRect.bottom
         pos = end + child.breakAfter
       }
     }
