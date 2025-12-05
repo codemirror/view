@@ -477,7 +477,12 @@ export class DocView extends ContentView {
       this.dom.appendChild(dummy)
       let rect = clientRectsFor(dummy.firstChild!)[0]
       lineHeight = dummy.getBoundingClientRect().height
-      charWidth = rect ? rect.width / 27 : 7
+
+      // Firefox is known to measure a width of 0 if the code mirror view is invisible initially. Normalize that
+      // to 7.
+      const normalizedRectWidth = rect && rect.width !== 0 ? rect.width / 27 : 7;
+      charWidth = normalizedRectWidth;
+
       textHeight = rect ? rect.height : lineHeight
       dummy.remove()
     })
