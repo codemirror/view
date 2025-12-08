@@ -933,7 +933,9 @@ describe("EditorView decoration", () => {
       let cm = wrapEditor("a\nb\nc\nd", [
         BlockWrapper.create({tagName: "div", attributes: {style: "padding: 3px"}}).range(2, 5)
       ])
-      let eltTop = cm.elementAtHeight(cm.coordsAtPos(1)!.bottom + 2 - cm.documentTop)
+      cm.measure()
+      let wrapRect = cm.contentDOM.children[1].getBoundingClientRect()
+      let eltTop = cm.elementAtHeight(wrapRect.top + 1 - cm.documentTop)
       ist(eltTop.type, BlockType.WidgetRange)
       ist(eltTop.from, 2)
       ist(eltTop.height, 3, near)
@@ -941,7 +943,7 @@ describe("EditorView decoration", () => {
       ist(elt2.type, BlockType.Text)
       ist(elt2.from, 2)
       ist(elt2.top, eltTop.bottom, near)
-      let eltBot = cm.elementAtHeight(cm.coordsAtPos(5)!.bottom + 2 - cm.documentTop)
+      let eltBot = cm.elementAtHeight(wrapRect.bottom - 1 - cm.documentTop)
       ist(eltBot.type, BlockType.WidgetRange)
       let blocks = cm.viewportLineBlocks
       ist(blocks.length, 4)
