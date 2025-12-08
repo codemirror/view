@@ -456,8 +456,8 @@ export class DocView {
       this.tile.dom.appendChild(dummy)
       let rect = clientRectsFor(dummy.firstChild!)[0]
       lineHeight = dummy.getBoundingClientRect().height
-      charWidth = rect ? rect.width / 27 : 7
-      textHeight = rect ? rect.height : lineHeight
+      charWidth = rect && rect.width ? rect.width / 27 : 7
+      textHeight = rect && rect.height ? rect.height : lineHeight
       dummy.remove()
     })
     return {lineHeight, charWidth, textHeight}
