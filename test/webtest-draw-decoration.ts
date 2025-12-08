@@ -42,7 +42,7 @@ function decoEditor(doc: string, decorations: any = []) {
   return tempView(doc, decos(Decoration.set(decorations, true)))
 }
 
-function near(a: number, b: number) { return Math.abs(a - b) < 1 }
+function near(a: number, b: number) { return Math.abs(a - b) < 0.1 }
 
 describe("EditorView decoration", () => {
   it("renders tag names", () => {
@@ -931,7 +931,7 @@ describe("EditorView decoration", () => {
 
     it("represents wrapper padding and borders as ghost widgets", () => {
       let cm = wrapEditor("a\nb\nc\nd", [
-        BlockWrapper.create({tagName: "div", attributes: {style: "border: 2px solid blue; padding: 1px"}}).range(2, 5)
+        BlockWrapper.create({tagName: "div", attributes: {style: "padding: 3px"}}).range(2, 5)
       ])
       let eltTop = cm.elementAtHeight(cm.coordsAtPos(1)!.bottom + 2 - cm.documentTop)
       ist(eltTop.type, BlockType.WidgetRange)
@@ -951,9 +951,9 @@ describe("EditorView decoration", () => {
 
     it("properly measures nested wrapper padding", () => {
       let cm = wrapEditor("a\nb\nc\nd", [
-        BlockWrapper.create({tagName: "div", attributes: {style: "border: 2px solid blue"}}).range(2, 5),
-        BlockWrapper.create({tagName: "div", attributes: {style: "border: 3px solid red"}}).range(2, 2),
-        BlockWrapper.create({tagName: "div", attributes: {style: "border: 1px solid orange"}}).range(4, 4)
+        BlockWrapper.create({tagName: "div", attributes: {style: "padding: 2px"}}).range(2, 5),
+        BlockWrapper.create({tagName: "div", attributes: {style: "padding: 3px"}}).range(2, 2),
+        BlockWrapper.create({tagName: "div", attributes: {style: "padding: 1px"}}).range(4, 4)
       ])
       cm.measure()
       let gapAbove = (line: BlockInfo) => Array.isArray(line.type) ? line.type[0].height : 0
