@@ -1,3 +1,17 @@
+## 6.39.0 (2025-12-08)
+
+### Bug fixes
+
+Properly handle bidirectional text in `posAtCoords`.
+
+Avoid computing a zero character width (leading to divisions by zero) when the editor is hidden and the browser doesn't have a layout for it.
+
+### New features
+
+The `posAndSideAtCoords` method is an extended version of `posAtCoords` that also tells you which side of the position the coordinates are associated with.
+
+Add support for block wrappers, decoration-like things that allow extension code to create DOM nodes around groups of lines.
+
 ## 6.38.8 (2025-11-17)
 
 ### Bug fixes
