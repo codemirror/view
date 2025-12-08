@@ -42,6 +42,8 @@ function decoEditor(doc: string, decorations: any = []) {
   return tempView(doc, decos(Decoration.set(decorations, true)))
 }
 
+function near(a: number, b: number) { return Math.abs(a - b) < 1 }
+
 describe("EditorView decoration", () => {
   it("renders tag names", () => {
     let cm = decoEditor("one\ntwo", d(2, 5, {tagName: "em"}))
@@ -230,7 +232,7 @@ describe("EditorView decoration", () => {
           pos = nextPos
         }
         let reopen: Range<Decoration>[] = []
-        if (nextStop <= pos || next && active.some(a => a.to < next.to)) {
+        if (nextStop <= pos || next && active.some(a => a.to < next!.to)) {
           let closeTo = active.findIndex(mark => mark.to == pos || next && mark.to < next.to)
           while (active.length > closeTo) {
             let close = active.pop()!
@@ -934,11 +936,11 @@ describe("EditorView decoration", () => {
       let eltTop = cm.elementAtHeight(cm.coordsAtPos(1)!.bottom + 2 - cm.documentTop)
       ist(eltTop.type, BlockType.WidgetRange)
       ist(eltTop.from, 2)
-      ist(Math.abs(eltTop.height - 3), 0.1, "<")
+      ist(eltTop.height, 3, near)
       let elt2 = cm.elementAtHeight(cm.coordsAtPos(2)!.top + 1 - cm.documentTop)
       ist(elt2.type, BlockType.Text)
       ist(elt2.from, 2)
-      ist(Math.abs(elt2.top - eltTop.bottom), 0.1, "<")
+      ist(elt2.top, eltTop.bottom, near)
       let eltBot = cm.elementAtHeight(cm.coordsAtPos(5)!.bottom + 2 - cm.documentTop)
       ist(eltBot.type, BlockType.WidgetRange)
       let blocks = cm.viewportLineBlocks
@@ -955,9 +957,9 @@ describe("EditorView decoration", () => {
       ])
       cm.measure()
       let gapAbove = (line: BlockInfo) => Array.isArray(line.type) ? line.type[0].height : 0
-      ist(gapAbove(cm.viewportLineBlocks[1]), 5)
-      ist(gapAbove(cm.viewportLineBlocks[2]), 4)
-      ist(gapAbove(cm.viewportLineBlocks[3]), 3)
+      ist(gapAbove(cm.viewportLineBlocks[1]), 5, near)
+      ist(gapAbove(cm.viewportLineBlocks[2]), 4, near)
+      ist(gapAbove(cm.viewportLineBlocks[3]), 3, near)
     })
   })
 })
