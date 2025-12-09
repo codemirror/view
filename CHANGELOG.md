@@ -1,3 +1,9 @@
+## 6.39.2 (2025-12-09)
+
+### Bug fixes
+
+Fix an issue where `moveVertially` was sometimes unable to escape lines with thick borders or padding.
+
 ## 6.39.1 (2025-12-09)
 
 ### Bug fixes
