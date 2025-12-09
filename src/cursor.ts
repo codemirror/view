@@ -183,12 +183,18 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
   let content = view.contentDOM.getBoundingClientRect(), docTop = content.top + view.viewState.paddingTop
   let {x, y} = coords, yOffset = y - docTop, block
   // First find the block at the given Y position, if any. If scanY is
-  // given (used for vertical cursor motion), try to skip widgets.
+  // given (used for vertical cursor motion), try to skip widgets and
+  // line padding.
   for (;;) {
     if (yOffset < 0) return new PosAssoc(0, 1)
     if (yOffset > view.viewState.docHeight) return new PosAssoc(view.state.doc.length, -1)
     block = view.elementAtHeight(yOffset)
-    if (scanY == null || block.type == BlockType.Text) break
+    if (scanY == null) break
+    if (block.type == BlockType.Text) {
+      // Check whether we aren't landing the top/bottom padding of the line
+      let rect = view.docView.coordsAt(scanY < 0 ? block.from : block.to, scanY)
+      if (rect && (scanY < 0 ? rect.top <= yOffset + docTop : rect.bottom >= yOffset + docTop)) break
+    }
     let halfLine = view.viewState.heightOracle.textHeight / 2
     yOffset = scanY > 0 ? block.bottom + halfLine : block.top - halfLine
   }
