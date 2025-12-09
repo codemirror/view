@@ -1,3 +1,9 @@
+## 6.39.1 (2025-12-09)
+
+### Bug fixes
+
+Restore a workaround for a Chrome selection bug that had regressed in the previous release.
+
 ## 6.39.0 (2025-12-08)
 
 ### Bug fixes
