@@ -66,7 +66,7 @@ export abstract class Tile {
 
   get domAttrs(): Attrs | null { return null }
 
-  sync() {
+  sync(track?: {node: Node, written: boolean}) {
     this.flags |= TileFlag.Synced
     if (this.flags & TileFlag.AttrsDirty) {
       this.flags &= ~TileFlag.AttrsDirty
@@ -154,15 +154,17 @@ export abstract class CompositeTile extends Tile {
     child.parent = this
   }
 
-  sync() {
+  sync(track?: {node: Node, written: boolean}) {
     if (this.flags & TileFlag.Synced) return
-    super.sync()
+    super.sync(track)
     let parent = this.dom, prev: Node | null = null, next
+    let tracking = track?.node == parent ? track : null
     let length = 0
     for (let child of this.children) {
-      child.sync()
+      child.sync(track)
       length += child.length + child.breakAfter
       next = prev ? prev.nextSibling : parent.firstChild
+      if (tracking && next != child.dom) tracking.written = true
       if (child.dom!.parentNode == parent) {
         while (next && next != child.dom) next = rm(next)
       } else {
@@ -171,6 +173,7 @@ export abstract class CompositeTile extends Tile {
       prev = child.dom!
     }
     next = prev ? prev.nextSibling : parent.firstChild
+    if (tracking && next) tracking.written = true
     while (next) next = rm(next)
     this.length = length
   }
@@ -383,10 +386,13 @@ export class TextTile extends Tile {
     super(dom, text.length)
   }
 
-  sync() {
+  sync(track?: {node: Node, written: boolean}) {
     if (this.flags & TileFlag.Synced) return
-    super.sync()
-    if (this.dom.nodeValue != this.text) this.dom.nodeValue = this.text
+    super.sync(track)
+    if (this.dom.nodeValue != this.text) {
+      if (track && track.node == this.dom) track.written = true
+      this.dom.nodeValue = this.text
+    }
   }
 
   isText(): this is TextTile { return true }

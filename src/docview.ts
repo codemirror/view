@@ -137,8 +137,9 @@ export class DocView {
       // selection from the one it displays (issue #218). This tries
       // to detect that situation.
       let track = browser.chrome || browser.ios ? {node: observer.selectionRange.focusNode!, written: false} : undefined
-      this.tile.sync()
-      if (track && (track.written || observer.selectionRange.focusNode != track.node)) this.forceSelection = true
+      this.tile.sync(track)
+      if (track && (track.written || observer.selectionRange.focusNode != track.node || !this.tile.dom.contains(track.node)))
+        this.forceSelection = true
       this.tile.dom.style.height = ""
     })
     let gaps = []
