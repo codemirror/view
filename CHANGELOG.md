@@ -1,3 +1,9 @@
+## 6.39.3 (2025-12-11)
+
+### Bug fixes
+
+Fix a bug that could corrupt the rendered document in some situations involving adjacent mark decorations of the same type.
+
 ## 6.39.2 (2025-12-09)
 
 ### Bug fixes
