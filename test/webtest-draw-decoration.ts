@@ -131,6 +131,13 @@ describe("EditorView decoration", () => {
     ist(cm.contentDOM.querySelectorAll(".w").length, 1)
   })
 
+  it("keeps identical but separate decorations separate", () => {
+    let m = Decoration.mark({tagName: "em"})
+    let cm = decoEditor("aaabbb", [m.range(0, 3), m.range(3, 6)])
+    cm.dispatch({changes: {from: 6, insert: "!"}})
+    ist(cm.contentDOM.children[0].innerHTML, '<em>aaa</em><em>bbb</em>!')
+  })
+
   it("merges stacked decorations", () => {
     let cm = tempView("one", [
       decos(Decoration.set([], true)),
