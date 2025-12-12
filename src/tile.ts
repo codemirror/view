@@ -339,7 +339,7 @@ export class LineTile extends CompositeTile {
       let {tile, offset} = found
       if (this.dom.contains(tile.dom)) {
         if (tile.isText()) return new DOMPos(tile.dom, Math.min(tile.dom.nodeValue!.length, offset))
-        return tile.domPosFor(offset, side)
+        return tile.domPosFor(offset, tile.flags & TileFlag.Before ? 1 : tile.flags & TileFlag.After ? -1 : side)
       }
       let parent = found.tile.parent!, saw = false, last: Tile | undefined
       for (let ch of parent.children) {
