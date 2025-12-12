@@ -6,7 +6,7 @@ import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as 
 import {Tile} from "./tile"
 import browser from "./browser"
 import {groupAt, skipAtomsForSelection} from "./cursor"
-import {getSelection, focusPreventScroll, Rect, dispatchKey, scrollableParents} from "./dom"
+import {getSelection, focusPreventScroll, dispatchKey, scrollableParents} from "./dom"
 import {applyDOMChangeInner} from "./domchange"
 
 export class InputState {
@@ -544,39 +544,11 @@ function rangeForClick(view: EditorView, pos: number, bias: -1 | 1, type: number
   } else if (type == 2) { // Double click
     return groupAt(view.state, pos, bias)
   } else { // Triple click
-    let visual = view.docView.lineAt(pos), line = view.state.doc.lineAt(visual ? visual.posAtEnd : pos)
+    let visual = view.docView.lineAt(pos, bias), line = view.state.doc.lineAt(visual ? visual.posAtEnd : pos)
     let from = visual ? visual.posAtStart : line.from, to = visual ? visual.posAtEnd : line.to
     if (to < view.state.doc.length && to == line.to) to++
     return EditorSelection.range(from, to)
   }
-}
-
-let inside = (x: number, y: number, rect: Rect) => y >= rect.top && y <= rect.bottom && x >= rect.left && x <= rect.right
-
-// Try to determine, for the given coordinates, associated with the
-// given position, whether they are related to the element before or
-// the element after the position.
-function findPositionSide(view: EditorView, pos: number, x: number, y: number) {
-  let line = view.docView.lineAt(pos)
-  if (!line) return 1
-  let off = pos - line.posAtStart
-  // Line boundaries point into the line
-  if (off == 0) return 1
-  if (off == line.length) return -1
-
-  // Positions on top of an element point at that element
-  let before = line.coordsIn(off, -1)
-  if (before && inside(x, y, before)) return -1
-  let after = line.coordsIn(off, 1)
-  if (after && inside(x, y, after)) return 1
-  // This is probably a line wrap point. Pick before if the point is
-  // above its bottom.
-  return before && before.bottom >= y ? -1 : 1
-}
-
-function queryPos(view: EditorView, event: MouseEvent): {pos: number, bias: 1 | -1} {
-  let pos = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
-  return {pos, bias: findPositionSide(view, pos, event.clientX, event.clientY)}
 }
 
 const BadMouseDetail = browser.ie && browser.ie_version <= 11
@@ -592,7 +564,7 @@ function getClickType(event: MouseEvent) {
 }
 
 function basicMouseSelection(view: EditorView, event: MouseEvent) {
-  let start = queryPos(view, event), type = getClickType(event)
+  let start = view.posAndSideAtCoords({x: event.clientX, y: event.clientY}, false), type = getClickType(event)
   let startSel = view.state.selection
   return {
     update(update) {
@@ -602,10 +574,10 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
       }
     },
     get(event, extend, multiple) {
-      let cur = queryPos(view, event), removed
-      let range = rangeForClick(view, cur.pos, cur.bias, type)
+      let cur = view.posAndSideAtCoords({x: event.clientX, y: event.clientY}, false), removed
+      let range = rangeForClick(view, cur.pos, cur.assoc, type)
       if (start.pos != cur.pos && !extend) {
-        let startRange = rangeForClick(view, start.pos, start.bias, type)
+        let startRange = rangeForClick(view, start.pos, start.assoc, type)
         let from = Math.min(startRange.from, range.from), to = Math.max(startRange.to, range.to)
         range = from < range.from ? EditorSelection.range(from, to) : EditorSelection.range(to, from)
       }

@@ -260,7 +260,7 @@ export class DocView {
     let sel = getSelection(view.root)
     let {anchorNode, anchorOffset} = view.observer.selectionRange
     if (!sel || !cursor.empty || !cursor.assoc || !sel.modify) return
-    let line = this.lineAt(cursor.head)
+    let line = this.lineAt(cursor.head, cursor.assoc)
     if (!line) return
     let lineStart = line.posAtStart
     if (cursor.head == lineStart || cursor.head == lineStart + line.length) return
@@ -350,8 +350,8 @@ export class DocView {
     return tile.coordsIn(offset, side)
   }
 
-  lineAt(pos: number) {
-    let {tile} = this.tile.resolveBlock(pos, 1)
+  lineAt(pos: number, side: number) {
+    let {tile} = this.tile.resolveBlock(pos, side)
     return tile.isLine() ? tile : null
   }
 

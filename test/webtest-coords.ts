@@ -141,6 +141,22 @@ describe("EditorView coords", () => {
     ist(near(cm.coordsAtPos(2, 1)!.left, cm.coordsAtPos(2, -1)!.left + 10))
     ist(near(cm.coordsAtPos(3, -1)!.left, cm.coordsAtPos(3, 1)!.left - 10))
   })
+
+  it("can find coordinates around a side=1 block widget", () => {
+    let cm = tempView("a\nb", [deco(Decoration.widget({widget: block, side: 1, block: true}).range(2))])
+    let c2 = cm.coordsAtPos(2)!, c3 = cm.coordsAtPos(3)!
+    ist(c2.top, c3.top, "<")
+    ist(cm.posAtCoords({x: c2.left, y: c2.top + 1}), 2)
+    ist(cm.posAtCoords({x: c3.left, y: c3.top + 1}), 3)
+  })
+
+  it("can find coordinates around a side=-1 block widget", () => {
+    let cm = tempView("a\nb", [deco(Decoration.widget({widget: block, side: -1, block: true}).range(1))])
+    let c0 = cm.coordsAtPos(0)!, c1 = cm.coordsAtPos(1)!
+    ist(c0.top, c1.top, "<")
+    ist(cm.posAtCoords({x: c0.left, y: c0.top + 1}), 0)
+    ist(cm.posAtCoords({x: c1.left, y: c1.top + 1}), 1)
+  })
 })
 
 describe("coordsForChar", () => {

@@ -211,7 +211,9 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
     return yOffset < (block.top + block.bottom) / 2 ? new PosAssoc(block.from, 1) : new PosAssoc(block.to, -1)
 
   // Here we know we're in a line, so run the logic for inline layout
-  return posAtCoordsInline(view, view.docView.lineAt(block.from)!, block.from, x, y)
+  let line = view.docView.lineAt(block.from, 2)
+  if (!line || line.length != block.length) line = view.docView.lineAt(block.from, -2)!
+  return posAtCoordsInline(view, line, block.from, x, y)
 }
 
 // Scan through the rectangles for the content of a tile, finding the
