@@ -427,7 +427,8 @@ function eventBelongsToEditor(view: EditorView, event: Event): boolean {
   if (!event.bubbles) return true
   if (event.defaultPrevented) return false
   for (let node: Node | null = event.target as Node, tile; node != view.contentDOM; node = node.parentNode)
-    if (!node || node.nodeType == 11 || ((tile = Tile.get(node)) && tile.isWidget() && tile.widget.ignoreEvent(event)))
+    if (!node || node.nodeType == 11 ||
+        ((tile = Tile.get(node)) && tile.isWidget() && !tile.isHidden && tile.widget.ignoreEvent(event)))
       return false
   return true
 }
