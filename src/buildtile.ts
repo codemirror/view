@@ -426,11 +426,13 @@ export class TileUpdate {
               widget.flags &= ~TileFlag.BreakAfter
               this.builder.addBlockWidget(widget)
             } else {
+              this.builder.ensureLine(null)
               this.builder.addInlineWidget(widget, activeMarks, openMarks)
               openMarks = activeMarks.length
             }
           }
         } else if (tile.isText()) {
+          this.builder.ensureLine(null)
           if (!from && to == tile.length) {
             this.builder.addText(tile.text, activeMarks, openMarks, this.cache.reuse(tile))
           } else {
@@ -445,6 +447,7 @@ export class TileUpdate {
         } else if (tile instanceof WidgetBufferTile) {
           this.cache.add(tile)
         } else if (tile instanceof MarkTile) {
+          this.builder.ensureLine(null)
           this.builder.addMark(tile, activeMarks, openMarks)
           this.cache.reused.set(tile, Reused.Full)
           openMarks = activeMarks.length
