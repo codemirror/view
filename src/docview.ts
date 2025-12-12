@@ -326,7 +326,7 @@ export class DocView {
     let after: LineTile | undefined | null, afterOff = -1, afterBad = false
     this.tile.blockTiles((tile, off) => {
       if (tile.isWidget()) {
-        if ((tile.flags & TileFlag.After) && before) return true
+        if ((tile.flags & TileFlag.After) && off >= pos) return true
         if (tile.flags & TileFlag.Before) beforeBad = true
       } else {
         let end = off + tile.length
