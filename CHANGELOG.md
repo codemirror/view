@@ -1,3 +1,15 @@
+## 6.39.4 (2025-12-12)
+
+### Bug fixes
+
+Fix a bug where paste events handlers on Chrome could fail to run when pasting on a blank line.
+
+Fix a regression causing the native cursor to get stuck before block widgets with side>0.
+
+Fix a crash in content DOM building after a block widget.
+
+Fix a bug in `posAtCoords` that would in some circumstances make it return positions on the wrong side of a block widget.
+
 ## 6.39.3 (2025-12-11)
 
 ### Bug fixes
