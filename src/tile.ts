@@ -568,7 +568,7 @@ export class TilePointer {
   get root() { return (this.parents.length ? this.parents[0].tile : this.tile) as DocTile }
 }
 
-interface TileWalker {
+export interface TileWalker {
   enter(tile: CompositeTile): void
   leave(tile: CompositeTile): void
   skip(tile: Tile, from: number, to: number): boolean | void

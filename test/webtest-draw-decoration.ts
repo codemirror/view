@@ -361,6 +361,13 @@ describe("EditorView decoration", () => {
       ist(nodes.every(n => cm.contentDOM.contains(n)))
     })
 
+    it("reuses widgets on empty lines", () => {
+      let cm = decoEditor("a\n\nb", [w(2, new WordWidget("x"))])
+      let dom = cm.contentDOM.querySelector("strong")
+      cm.dispatch({effects: [filterDeco.of(() => false), addDeco.of([w(2, new WordWidget("x"))])]})
+      ist(cm.contentDOM.querySelector("strong"), dom)
+    })
+
     it("can update widgets in an empty document", () => {
       let cm = decoEditor("", [w(0, new WordWidget("A"))])
       cm.dispatch({effects: addDeco.of([w(0, new WordWidget("B"))])})

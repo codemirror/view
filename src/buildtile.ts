@@ -1,5 +1,5 @@
 import {Tile, CompositeTile, DocTile, LineTile, MarkTile, BlockWrapperTile,
-        WidgetTile, WidgetBufferTile, TextTile, TileFlag, TilePointer} from "./tile"
+        WidgetTile, WidgetBufferTile, TextTile, TileFlag, TilePointer, TileWalker} from "./tile"
 import {ChangedRange} from "./extension"
 import {Attrs, getAttrs, combineAttrs} from "./attributes"
 import {DecorationSet, MarkDecoration, PointDecoration, LineDecoration, WidgetType,
@@ -357,6 +357,7 @@ export class TileUpdate {
   openWidget = false
   openMarks = 0
   cache: TileCache
+  reuseWalker: TileWalker
 
   constructor(
     readonly view: EditorView,
@@ -370,6 +371,15 @@ export class TileUpdate {
     this.builder = new TileBuilder(this.cache, new DocTile(view, view.contentDOM), RangeSet.iter(blockWrappers))
     this.cache.reused.set(old, Reused.DOM)
     this.old = new TilePointer(old)
+    this.reuseWalker = {
+      skip: (tile, from, to) => {
+        this.cache.add(tile)
+        if (tile.isComposite()) return false
+      },
+      enter: tile => this.cache.add(tile),
+      leave: () => {},
+      break: () => {}
+    }
   }
 
   run(changes: readonly ChangedRange[], composition: Composition | null) {
@@ -538,14 +548,13 @@ export class TileUpdate {
   }
 
   forward(from: number, to: number) {
-    this.old.advance(to - from, 1, {
-      skip: (tile, from, to) => {
-        if (tile.isText() || to == tile.length) this.cache.add(tile)
-      },
-      enter: tile => this.cache.add(tile),
-      leave: () => {},
-      break: () => {}
-    })
+    if (to - from <= 10) {
+      this.old.advance(to - from, 1, this.reuseWalker)
+    } else {
+      this.old.advance(5, -1, this.reuseWalker)
+      this.old.advance(to - from - 10, -1)
+      this.old.advance(5, 1, this.reuseWalker)
+    }
   }
 
   getCompositionContext(text: Text) {
