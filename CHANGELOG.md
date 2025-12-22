@@ -1,3 +1,11 @@
+## 6.39.5 (2025-12-22)
+
+### Bug fixes
+
+Fix an issue where replaced widgets alone on a line weren't reused and didn't get their `updateDOM` method called.
+
+Fix a bug where, when selecting full lines at the end of the document and inserting a character on Chrome, an inappropriate extra newline was inserted.
+
 ## 6.39.4 (2025-12-12)
 
 ### Bug fixes
