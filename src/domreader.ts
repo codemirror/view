@@ -1,5 +1,6 @@
 import {Tile} from "./tile"
 import {domIndex, maxOffset, isBlockElement} from "./dom"
+import {EditorView} from "./editorview"
 import {EditorState} from "@codemirror/state"
 
 export const LineBreakPlaceholder = "\uffff"
@@ -8,8 +9,8 @@ export class DOMReader {
   text: string = ""
   lineSeparator: string | undefined
 
-  constructor(private points: DOMPoint[], state: EditorState) {
-    this.lineSeparator = state.facet(EditorState.lineSeparator)
+  constructor(private points: DOMPoint[], private view: EditorView) {
+    this.lineSeparator = view.state.facet(EditorState.lineSeparator)
   }
 
   append(text: string) {
@@ -29,7 +30,7 @@ export class DOMReader {
       this.readNode(cur)
       let tile = Tile.get(cur), next: Node | null = cur.nextSibling
       if (next == end) {
-        if (tile?.breakAfter && !next) this.lineBreak()
+        if (tile?.breakAfter && !next && parent != this.view.contentDOM) this.lineBreak()
         break
       }
       let nextTile = Tile.get(next!)

@@ -27,7 +27,7 @@ export class DOMChange {
       this.newSel = null
     } else if (start > -1 && (this.bounds = domBoundsAround(view.docView.tile, start, end, 0))) {
       let selPoints = iHead || iAnchor ? [] : selectionPoints(view)
-      let reader = new DOMReader(selPoints, view.state)
+      let reader = new DOMReader(selPoints, view)
       reader.readRange(this.bounds.startDOM, this.bounds.endDOM)
       this.text = reader.text
       this.newSel = selectionFromPoints(selPoints, this.bounds.from)
