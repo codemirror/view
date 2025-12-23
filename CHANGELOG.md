@@ -1,3 +1,9 @@
+## 6.39.6 (2025-12-23)
+
+### Bug fixes
+
+Fix an issue when composing on the boundary of a decoration, where the text after the composition would get garbled.
+
 ## 6.39.5 (2025-12-22)
 
 ### Bug fixes
