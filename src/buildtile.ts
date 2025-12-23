@@ -407,6 +407,7 @@ export class TileUpdate {
         LOG_builder && console.log("Emit composition", posB, "to", next.toB, "over", posA, "to", next.toA)
         this.emit(posB, composition.range.fromB)
         this.builder.addComposition(composition, compositionContext!)
+        this.text.skip(composition.range.toB - composition.range.fromB)
         this.emit(composition.range.toB, next.toB)
       } else {
         LOG_builder && console.log("Emit", posB, "to", next.toB, "over", posA, "to", next.toA)
