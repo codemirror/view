@@ -1,3 +1,9 @@
+## 6.39.7 (2025-12-24)
+
+### Bug fixes
+
+Fix a bug that could sometimes cause the document to become mangled during composition.
+
 ## 6.39.6 (2025-12-23)
 
 ### Bug fixes
