@@ -90,6 +90,8 @@ class TileBuilder {
       }
       this.cache.reused.set(mark, Reused.DOM)
     }
+    let oldTile = Tile.get(composition.text)
+    if (oldTile) this.cache.reused.set(oldTile, Reused.DOM)
     let text = new TextTile(composition.text, composition.text.nodeValue!)
     text.flags |= TileFlag.Composition
     head.append(text)
