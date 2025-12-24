@@ -495,7 +495,7 @@ export class WidgetBufferTile extends Tile {
     super(img, 0, flags)
   }
 
-  get isHidden() { return false }
+  get isHidden() { return true }
 
   get overrideDOMText() { return DocText.empty }
 
