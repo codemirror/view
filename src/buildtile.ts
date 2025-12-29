@@ -327,10 +327,13 @@ class TileCache {
             : tile.widget.constructor == widget.constructor && widget.updateDOM(tile.dom, this.view))) {
         widgets.splice(i, 1)
         if (i < this.index[0]) this.index[0]--
-        this.reused.set(tile, Reused.Full)
-        tile.length = length
-        tile.flags = (tile.flags & ~(TileFlag.Widget | TileFlag.BreakAfter)) | flags
-        return tile
+        if (tile.length == length && (tile.flags & (TileFlag.Widget | TileFlag.BreakAfter)) == flags) {
+          this.reused.set(tile, Reused.Full)
+          return tile
+        } else {
+          this.reused.set(tile, Reused.DOM)
+          return new WidgetTile(tile.dom, length, widget, (tile.flags & ~(TileFlag.Widget | TileFlag.BreakAfter)) | flags)
+        }
       }
     }
   }
