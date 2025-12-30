@@ -1,3 +1,11 @@
+## 6.39.8 (2025-12-30)
+
+### Bug fixes
+
+Fix a bug that cause `coordsAtPos` to use the dimensions of widget buffers when there were more meaningful elements to use nearby.
+
+Fix a data structure corruption that could cause crashes during viewport changes.
+
 ## 6.39.7 (2025-12-24)
 
 ### Bug fixes
