@@ -252,7 +252,7 @@ export class ViewState {
 
     if (scrollTarget) this.scrollTarget = scrollTarget
 
-    if (!this.mustEnforceCursorAssoc && update.selectionSet && update.view.lineWrapping &&
+    if (!this.mustEnforceCursorAssoc && (update.selectionSet || update.focusChanged) && update.view.lineWrapping &&
         update.state.selection.main.empty && update.state.selection.main.assoc &&
         !update.state.facet(nativeSelectionHidden))
       this.mustEnforceCursorAssoc = true
