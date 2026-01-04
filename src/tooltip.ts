@@ -728,6 +728,7 @@ class HoverPlugin {
 
   destroy() {
     clearTimeout(this.hoverTimeout)
+    clearTimeout(this.restartTimeout)
     this.view.dom.removeEventListener("mouseleave", this.mouseleave)
     this.view.dom.removeEventListener("mousemove", this.mousemove)
   }
