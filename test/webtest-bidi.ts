@@ -8,6 +8,7 @@ function queryBrowserOrder(strings: readonly string[]) {
   for (let str of strings) {
     let wrap = scratch.appendChild(document.createElement("div"))
     wrap.style.whiteSpace = "pre"
+    if (/Mac/.test(navigator.platform)) wrap.style.fontFamily = "Al Bayan"
     for (let ch of str) {
       let span = document.createElement("span")
       span.textContent = ch
