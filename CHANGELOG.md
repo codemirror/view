@@ -1,3 +1,15 @@
+## 6.39.9 (2026-01-06)
+
+### Bug fixes
+
+Fix a bug where `EditorSelection.cursor()` with a non-zero `assoc` value would not be visually respected at soft-wrap boundaries on initial view creation.
+
+Fix error caused by hover tooltips running a scheduled timeout after their editor has been destroyed.
+
+Fix a bug that caused `EditorView.outerDecorations` to not affect the content height map.
+
+Fix an issue where composition near a widget could get unnecessarily interrupted.
+
 ## 6.39.8 (2025-12-30)
 
 ### Bug fixes
