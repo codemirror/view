@@ -10,7 +10,6 @@ import {TileFlag, CompositeTile, TextTile} from "./tile"
 
 declare global {
   interface Selection { modify(action: string, direction: string, granularity: string): void }
-  interface Document { caretPositionFromPoint(x: number, y: number): {offsetNode: Node, offset: number} }
 }
 
 export function groupAt(state: EditorState, pos: number, bias: 1 | -1 = 1) {
