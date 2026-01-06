@@ -348,6 +348,11 @@ class TileCache {
     this.reused.set(tile, type)
     return tile.dom
   }
+
+  clear() {
+    for (let i = 0; i < this.buckets.length; i++)
+      this.buckets[i].length = this.index[i] = 0
+  }
 }
 
 // This class organizes a pass over the document, guided by the array
@@ -404,18 +409,21 @@ export class TileUpdate {
         posB += len
       }
       if (!next) break
-      this.forward(next.fromA, next.toA)
       // Compositions need to be handled specially, forcing the
       // focused text node and its parent nodes to remain stable at
       // that point in the document.
       if (composition && next.fromA <= composition.range.fromA && next.toA >= composition.range.toA) {
         LOG_builder && console.log("Emit composition", posB, "to", next.toB, "over", posA, "to", next.toA)
+        this.forward(next.fromA, composition.range.fromA)
         this.emit(posB, composition.range.fromB)
+        this.cache.clear() // Must not reuse DOM across composition
         this.builder.addComposition(composition, compositionContext!)
         this.text.skip(composition.range.toB - composition.range.fromB)
+        this.forward(composition.range.fromA, next.toA)
         this.emit(composition.range.toB, next.toB)
       } else {
         LOG_builder && console.log("Emit", posB, "to", next.toB, "over", posA, "to", next.toA)
+        this.forward(next.fromA, next.toA)
         this.emit(posB, next.toB)
       }
       posB = next.toB
