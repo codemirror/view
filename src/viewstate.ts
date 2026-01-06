@@ -2,7 +2,7 @@ import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} fro
 import {Rect, isScrolledToBottom, getScale} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges,
         clearHeightChangeFlag, heightChangeFlag} from "./heightmap"
-import {decorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
+import {decorations, outerDecorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
         contentAttributes} from "./extension"
 import {WidgetType, Decoration, DecorationSet, BlockType} from "./decoration"
 import {EditorView} from "./editorview"
@@ -172,7 +172,7 @@ export class ViewState {
   constructor(public state: EditorState) {
     let guessWrapping = state.facet(contentAttributes).some(v => typeof v != "function" && v.class == "cm-lineWrapping")
     this.heightOracle = new HeightOracle(guessWrapping)
-    this.stateDeco = state.facet(decorations).filter(d => typeof d != "function") as readonly DecorationSet[]
+    this.stateDeco = staticDeco(state)
     this.heightMap = HeightMap.empty().applyChanges(this.stateDeco, Text.empty, this.heightOracle.setDoc(state.doc),
                                                     [new ChangedRange(0, 0, 0, state.doc.length)])
     for (let i = 0; i < 2; i++) {
@@ -216,9 +216,9 @@ export class ViewState {
   update(update: ViewUpdate, scrollTarget: ScrollTarget | null = null) {
     this.state = update.state
     let prevDeco = this.stateDeco
-    this.stateDeco = this.state.facet(decorations).filter(d => typeof d != "function") as readonly DecorationSet[]
+    this.stateDeco = staticDeco(this.state)
     let contentChanges = update.changedRanges
-    
+
     let heightChanges = ChangedRange.extendWithRanges(contentChanges, heightRelevantDecoChanges(
       prevDeco, this.stateDeco, update ? update.changes : ChangeSet.empty(this.state.doc.length)))
     let prevHeight = this.heightMap.height
@@ -662,6 +662,13 @@ const IdScaler: YScaler = {
   fromDOM(n: number) { return n },
   scale: 1,
   eq(other: YScaler) { return other == this }
+}
+
+function staticDeco(state: EditorState) {
+  let deco = state.facet(decorations).filter(d => typeof d != "function") as DecorationSet[]
+  let outer = state.facet(outerDecorations).filter(d => typeof d != "function") as DecorationSet[]
+  if (outer.length) deco.push(RangeSet.join(outer))
+  return deco
 }
 
 // When the height is too big (> VP.MaxDOMHeight), scale down the
