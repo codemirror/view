@@ -165,12 +165,12 @@ export abstract class CompositeTile extends Tile {
       length += child.length + child.breakAfter
       next = prev ? prev.nextSibling : parent.firstChild
       if (tracking && next != child.dom) tracking.written = true
-      if (child.dom!.parentNode == parent) {
+      if (child.dom.parentNode == parent) {
         while (next && next != child.dom) next = rm(next)
       } else {
-        parent.insertBefore(child.dom!, next)
+        parent.insertBefore(child.dom, next)
       }
-      prev = child.dom!
+      prev = child.dom
     }
     next = prev ? prev.nextSibling : parent.firstChild
     if (tracking && next) tracking.written = true
@@ -449,7 +449,7 @@ export class WidgetTile extends Tile {
     if (block) {
       return flattenRect(this.dom.getBoundingClientRect(), this.length ? pos == 0 : side <= 0)
     } else {
-      let rects = this.dom!.getClientRects(), rect: Rect | null = null
+      let rects = this.dom.getClientRects(), rect: Rect | null = null
       if (!rects.length) return null
       let fromBack = (this.flags & TileFlag.Before) ? true : (this.flags & TileFlag.After) ? false : pos > 0
       for (let i = fromBack ? rects.length - 1 : 0;; i += (fromBack ? -1 : 1)) {
