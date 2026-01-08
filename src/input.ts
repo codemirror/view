@@ -85,7 +85,8 @@ export class InputState {
   }
 
   handleEvent(event: Event) {
-    if (!eventBelongsToEditor(this.view, event) || this.ignoreDuringComposition(event)) return
+    if (!eventBelongsToEditor(this.view, event) || this.ignoreDuringComposition(event) ||
+      this.ignoreDuringTransientFocus(event)) return
     if (event.type == "keydown" && this.keydown(event as KeyboardEvent)) return
     if (this.view.updateState != UpdateState.Idle) Promise.resolve().then(() => this.runHandlers(event.type, event))
     else this.runHandlers(event.type, event)
@@ -176,6 +177,23 @@ export class InputState {
     if (browser.safari && !browser.ios && this.compositionPendingKey && Date.now() - this.compositionEndedAt < 100) {
       this.compositionPendingKey = false
       return true
+    }
+    return false
+  }
+
+  ignoreDuringTransientFocus(event: Event): boolean {
+    // Detect transient focus from parent editor selection operations. When a
+    // parent contentEditable (like ProseMirror) performs a selection using
+    // Selection.collapse() + Selection.extend() [1], and Selection.collapse()
+    // collapses to a position where CodeMirror is, the browser will fire a focus
+    // event on this CodeMirror. This focus is transient and should be ignored;
+    // otherwise, our focus logic will undo the parent’s selection.
+    // [1] https://github.com/ProseMirror/prosemirror-view/blob/76c7c47f03730b18397b94bd269ece8a9cb7f486/src/viewdesc.ts#L464-L468
+    if (event.type === "focus") {
+      let sel = getSelection(this.view.root)
+      if (sel && sel.anchorNode && !this.view.contentDOM.contains(sel.anchorNode)) {
+        return true
+      }
     }
     return false
   }
