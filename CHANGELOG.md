@@ -1,3 +1,13 @@
+## 6.39.10 (2026-01-13)
+
+### Bug fixes
+
+Fix a regression in the way widget are reused when content next to them changes.
+
+Make sure font metrics get recomputed on `fonts.ready` even if the line height doesn't change.
+
+Fix an issue where compositions next to a widget that create a new text node could get needlessly interrupted during an editor update.
+
 ## 6.39.9 (2026-01-06)
 
 ### Bug fixes
