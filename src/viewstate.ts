@@ -264,7 +264,7 @@ export class ViewState {
     let whiteSpace = style.whiteSpace!
     this.defaultTextDirection = style.direction == "rtl" ? Direction.RTL : Direction.LTR
 
-    let refresh = this.heightOracle.mustRefreshForWrapping(whiteSpace)
+    let refresh = this.heightOracle.mustRefreshForWrapping(whiteSpace) || this.mustMeasureContent
     let domRect = dom.getBoundingClientRect()
     let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != domRect.height
     this.contentDOMHeight = domRect.height

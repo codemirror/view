@@ -55,7 +55,8 @@ export class HeightOracle {
   refresh(whiteSpace: string, lineHeight: number, charWidth: number, textHeight: number,
           lineLength: number, knownHeights: number[]): boolean {
     let lineWrapping = wrappingWhiteSpace.indexOf(whiteSpace) > -1
-    let changed = Math.round(lineHeight) != Math.round(this.lineHeight) || this.lineWrapping != lineWrapping
+    let changed = Math.abs(lineHeight - this.lineHeight) > 0.3 || this.lineWrapping != lineWrapping ||
+      Math.abs(charWidth - this.charWidth) > 0.1
     this.lineWrapping = lineWrapping
     this.lineHeight = lineHeight
     this.charWidth = charWidth

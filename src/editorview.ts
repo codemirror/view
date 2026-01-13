@@ -215,7 +215,10 @@ export class EditorView {
     this.updateState = UpdateState.Idle
 
     this.requestMeasure()
-    if (document.fonts?.ready) document.fonts.ready.then(() => this.requestMeasure())
+    if (document.fonts?.ready) document.fonts.ready.then(() => {
+      this.viewState.mustMeasureContent = true
+      this.requestMeasure()
+    })
   }
 
   /// All regular editor state updates should go through this. It
