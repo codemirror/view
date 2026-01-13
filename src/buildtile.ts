@@ -414,7 +414,7 @@ export class TileUpdate {
       // that point in the document.
       if (composition && next.fromA <= composition.range.fromA && next.toA >= composition.range.toA) {
         LOG_builder && console.log("Emit composition", posB, "to", next.toB, "over", posA, "to", next.toA)
-        this.forward(next.fromA, composition.range.fromA)
+        this.forward(next.fromA, composition.range.fromA, composition.range.fromA < composition.range.toA ? 1 : -1)
         this.emit(posB, composition.range.fromB)
         this.cache.clear() // Must not reuse DOM across composition
         this.builder.addComposition(composition, compositionContext!)
@@ -561,13 +561,13 @@ export class TileUpdate {
     this.openMarks = openEnd
   }
 
-  forward(from: number, to: number) {
+  forward(from: number, to: number, side: -1 | 1 = 1) {
     if (to - from <= 10) {
-      this.old.advance(to - from, 1, this.reuseWalker)
+      this.old.advance(to - from, side, this.reuseWalker)
     } else {
       this.old.advance(5, -1, this.reuseWalker)
       this.old.advance(to - from - 10, -1)
-      this.old.advance(5, 1, this.reuseWalker)
+      this.old.advance(5, side, this.reuseWalker)
     }
   }
 
