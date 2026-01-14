@@ -1,3 +1,9 @@
+## 6.39.11 (2026-01-14)
+
+### Bug fixes
+
+Avoid handling copy events for parent editors.
+
 ## 6.39.10 (2026-01-13)
 
 ### Bug fixes
