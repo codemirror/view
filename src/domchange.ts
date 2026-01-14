@@ -4,7 +4,7 @@ import {contains, dispatchKey} from "./dom"
 import browser from "./browser"
 import {DOMReader, DOMPoint, LineBreakPlaceholder} from "./domreader"
 import {findCompositionNode} from "./docview"
-import {EditorSelection, Text, Transaction, TransactionSpec} from "@codemirror/state"
+import {EditorSelection, SelectionRange, Text, Transaction, TransactionSpec} from "@codemirror/state"
 import {skipAtomsForSelection, skipAtomicRanges} from "./cursor"
 import {Tile} from "./tile"
 
@@ -121,7 +121,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       change = {from: from + diff.from, to: from + diff.toA,
                 insert: Text.of(domChange.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
     }
-  } else if (newSel && (!view.hasFocus && view.state.facet(editable) || newSel.main.eq(sel))) {
+  } else if (newSel && (!view.hasFocus && view.state.facet(editable) || sameSelPos(newSel, sel))) {
     newSel = null
   }
 
@@ -168,7 +168,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
 
   if (change) {
     return applyDOMChangeInner(view, change, newSel, lastKey)
-  } else if (newSel && !newSel.main.eq(sel)) {
+  } else if (newSel && !sameSelPos(newSel, sel)) {
     let scrollIntoView = false, userEvent = "select"
     if (view.inputState.lastSelectionTime > Date.now() - 50) {
       if (view.inputState.lastSelectionOrigin == "select") scrollIntoView = true
@@ -337,4 +337,8 @@ function selectionFromPoints(points: DOMPoint[], base: number): EditorSelection 
   if (points.length == 0) return null
   let anchor = points[0].pos, head = points.length == 2 ? points[1].pos : anchor
   return anchor > -1 && head > -1 ? EditorSelection.single(anchor + base, head + base) : null
+}
+
+export function sameSelPos(selection: EditorSelection, range: SelectionRange) {
+  return range.head == selection.main.head && range.anchor == selection.main.anchor
 }

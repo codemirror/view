@@ -3,7 +3,7 @@ import {Tile} from "./tile"
 import {EditorView} from "./editorview"
 import {editable, ViewUpdate, setEditContextFormatting, MeasureRequest} from "./extension"
 import {hasSelection, getSelection, DOMSelectionState, isEquivalentPosition, dispatchKey, atElementStart} from "./dom"
-import {DOMChange, applyDOMChange, applyDOMChangeInner, findDiff} from "./domchange"
+import {DOMChange, applyDOMChange, applyDOMChangeInner, findDiff, sameSelPos} from "./domchange"
 import type {EditContext} from "./editcontext"
 import {Decoration} from "./decoration"
 import {Text, EditorSelection, EditorState} from "@codemirror/state"
@@ -394,7 +394,7 @@ export class DOMObserver {
     let handled = applyDOMChange(this.view, domChange)
     // The view wasn't updated but DOM/selection changes were seen. Reset the view.
     if (this.view.state == startState &&
-        (domChange.domChanged || domChange.newSel && !domChange.newSel.main.eq(this.view.state.selection.main)))
+        (domChange.domChanged || domChange.newSel && !sameSelPos(this.view.state.selection, domChange.newSel.main)))
       this.view.update([])
     return handled
   }
@@ -566,7 +566,7 @@ class EditContextManager {
       // Edit contexts sometimes fire empty changes
       if (!diff) {
         let newSel = EditorSelection.single(this.toEditorPos(e.selectionStart), this.toEditorPos(e.selectionEnd))
-        if (!newSel.main.eq(main)) view.dispatch({selection: newSel, userEvent: "select"})
+        if (!sameSelPos(newSel, main)) view.dispatch({selection: newSel, userEvent: "select"})
         return
       }
 
