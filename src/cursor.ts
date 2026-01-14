@@ -125,11 +125,8 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
   }
   let resolvedGoal = rect.left + goal
   let dist = distance ?? (view.viewState.heightOracle.textHeight >> 1)
-  for (let extra = 0;; extra += 10) {
-    let curY = startY + (dist + extra) * dir
-    let pos = posAtCoords(view, {x: resolvedGoal, y: curY}, false, dir)!
-    return EditorSelection.cursor(pos.pos, pos.assoc, undefined, goal)
-  }
+  let pos = posAtCoords(view, {x: resolvedGoal, y: startY + dist * dir}, false, dir)!
+  return EditorSelection.cursor(pos.pos, pos.assoc, undefined, goal)
 }
 
 export function skipAtomicRanges(atoms: readonly RangeSet<any>[], pos: number, bias: -1 | 0 | 1) {
