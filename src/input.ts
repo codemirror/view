@@ -6,7 +6,7 @@ import {ViewUpdate, PluginValue, clickAddsSelectionRange, dragMovesSelection as 
 import {Tile} from "./tile"
 import browser from "./browser"
 import {groupAt, skipAtomsForSelection} from "./cursor"
-import {getSelection, focusPreventScroll, dispatchKey, scrollableParents} from "./dom"
+import {getSelection, focusPreventScroll, dispatchKey, scrollableParents, hasSelection} from "./dom"
 import {applyDOMChangeInner} from "./domchange"
 
 export class InputState {
@@ -736,6 +736,14 @@ function copiedRange(state: EditorState) {
 let lastLinewiseCopy: string | null = null
 
 handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
+  // If the DOM selection is outside this editor, don't intercept.
+  // This happens when a parent editor (like ProseMirror) selects content that
+  // spans multiple elements including this CodeMirror. The copy event may
+  // bubble through CodeMirror (e.g. when CodeMirror is the first or the last
+  // element in the selection), but we should let the parent handle it.
+  let domSel = getSelection(view.root)
+  if (domSel && !hasSelection(view.contentDOM, domSel)) return false
+
   let {text, ranges, linewise} = copiedRange(view.state)
   if (!text && !linewise) return false
   lastLinewiseCopy = linewise ? text : null
