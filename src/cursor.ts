@@ -187,7 +187,8 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
     block = view.elementAtHeight(yOffset)
     if (scanY == null) break
     if (block.type == BlockType.Text) {
-      // Check whether we aren't landing the top/bottom padding of the line
+      if (scanY < 0 ? block.to < view.viewport.from : block.from > view.viewport.to) break
+      // Check whether we aren't landing on the top/bottom padding of the line
       let rect = view.docView.coordsAt(scanY < 0 ? block.from : block.to, scanY)
       if (rect && (scanY < 0 ? rect.top <= yOffset + docTop : rect.bottom >= yOffset + docTop)) break
     }
