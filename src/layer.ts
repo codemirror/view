@@ -133,7 +133,7 @@ function rectanglesForRange(view: EditorView, className: string, range: Selectio
 
   function piece(left: number, top: number, right: number, bottom: number) {
     return new RectangleMarker(className, left - base.left, top - base.top,
-                               right - left, bottom - top)
+                               Math.max(0, right - left), bottom - top)
   }
   function pieces({top, bottom, horizontal}: {top: number, bottom: number, horizontal: number[]}) {
     let pieces = []
