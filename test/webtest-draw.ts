@@ -355,4 +355,13 @@ describe("EditorView drawing", () => {
     cm.dispatch({changes: {from: 0, to: 1}})
     ist(cm.contentDOM.firstChild, line2)
   })
+
+  it("splits long stretches of text into chunks", () => {
+    let cm = tempView("a".repeat(800), [
+      EditorView.decorations.of(Decoration.set(Decoration.mark({class: "x"}).range(0, 800)))
+    ])
+    let spans = cm.contentDOM.querySelectorAll("span")
+    ist(spans.length, 1)
+    ist(spans[0].childNodes.length, 2)
+  })
 })

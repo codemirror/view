@@ -54,7 +54,7 @@ class TileBuilder {
     this.flushBuffer()
     let parent = this.ensureMarks(marks, openStart)
     let prev = parent.lastChild
-    if (prev && prev.isText() && !(prev.flags & TileFlag.Composition)) {
+    if (prev && prev.isText() && !(prev.flags & TileFlag.Composition) && prev.length + text.length < C.Chunk) {
       this.cache.reused.set(prev, Reused.DOM)
       let tile = parent.children[parent.children.length - 1] = new TextTile(prev.dom, prev.text + text)
       tile.parent = parent
@@ -549,7 +549,7 @@ export class TileUpdate {
             pos++
           } else {
             b.ensureLine(pendingLineAttrs)
-            b.addText(chars, active, openStart)
+            b.addText(chars, active, pos == from ? openStart : active.length)
             pos += chars.length
           }
           pendingLineAttrs = null
