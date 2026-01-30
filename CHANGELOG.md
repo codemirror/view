@@ -1,3 +1,13 @@
+## 6.39.12 (2026-01-30)
+
+### Bug fixes
+
+Fix a bug where the visual selection drawn by `drawSelection` could fail to update properly in some circumstances.
+
+Fix a bug where PageUp/PageDown near the edge of the viewport might completely skip to the start/end of the document.
+
+Fix a regression that caused mark decorations to be split on text node chunk boundaries again.
+
 ## 6.39.11 (2026-01-14)
 
 ### Bug fixes
