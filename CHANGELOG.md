@@ -1,3 +1,11 @@
+## 6.39.13 (2026-02-08)
+
+### Bug fixes
+
+Fix an issue where a widget at start or end of line, when wrapped to cover that whole line, could block vertical cursor motion.
+
+Fix an issue `EditorView.moveVertically` that would sometimes cause selection-extending vertical motion to get stuck on line wrapping points.
+
 ## 6.39.12 (2026-01-30)
 
 ### Bug fixes
