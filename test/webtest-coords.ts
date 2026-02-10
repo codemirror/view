@@ -24,6 +24,8 @@ function deco(...deco: Range<Decoration>[]) {
   return EditorView.decorations.of(Decoration.set(deco))
 }
 
+const cls = Decoration.mark({class: "c"})
+
 describe("EditorView coords", () => {
   it("can find coordinates for simple text", () => {
     let cm = tempView("one two\n\nthree"), prev = null
@@ -42,6 +44,83 @@ describe("EditorView coords", () => {
     let right = cm.posAtCoords({x: rect.right - 2, y: line2})
     cm.scrollDOM.scrollLeft = (rect.right - rect.left) - 10
     ist(cm.posAtCoords({x: rect.right - 2, y: line2}), right, ">")
+  })
+
+  it("can find coordinates in decorated text", () => {
+    let cm = tempView("ab cd efg\nkl nop", deco(cls.range(0, 2), cls.range(3, 5), cls.range(6, 9), cls.range(10, 12),
+                                                cls.range(13, 16)))
+    for (let i = 0; i < cm.state.doc.length; i++) {
+      let coords = cm.coordsAtPos(i)!
+      ist(cm.posAtCoords({x: coords.left, y: coords.top + 1}), i)
+    }
+  })
+
+  it("can find coordinates in line-wrapped text", () => {
+    let cm = tempView("abcd ".repeat(30) + "e", [EditorView.lineWrapping, EditorView.theme({"&": {width: "10em"}})])
+    for (let i = 0; i < cm.state.doc.length; i++) {
+      let coords = cm.coordsAtPos(i)!
+      ist(cm.posAtCoords({x: coords.left, y: coords.top + 1}), i)
+    }
+  })
+
+  it("can find coordinates in decorated line-wrapped text", () => {
+    let d: Range<Decoration>[] = []
+    for (let i = 0; i < 30; i++) d.push(cls.range(i * 5, i * 5 + 4))
+    let cm = tempView("abcd ".repeat(30) + "e", [
+      EditorView.lineWrapping,
+      EditorView.theme({"&": {width: "10em"}}),
+      deco(...d)
+    ])
+    for (let i = 0; i < cm.state.doc.length; i++) {
+      let coords = cm.coordsAtPos(i)!
+      ist(cm.posAtCoords({x: coords.left, y: coords.top + 1}), i)
+    }
+  })
+
+  it("can find coordinates in RTL text", () => {
+    let cm = tempView("واحد اثنان ثلاثة 444 خمسة\n".repeat(3), [
+      EditorView.theme({".cm-content": {direction: "rtl"}}),
+      deco(cls.range(0, 4), cls.range(17, 20))
+    ])
+    for (let i = 0; i < cm.state.doc.length; i++) {
+      let coords = cm.coordsForChar(i)!
+      if (coords) {
+        let [left, right] = [coords.left + 1, coords.right - 1]
+        let [before, after] = cm.state.doc.sliceString(i, i + 1) == "4" ? [left, right] : [right, left]
+        ist(cm.posAtCoords({x: before, y: coords.top + 1}), i)
+        ist(cm.posAtCoords({x: after, y: coords.top + 1}), i + 1)
+      }
+    }
+  })
+
+  it("can find coordinates in bidi text", () => {
+    let cm = tempView("one اثنان three 444 خمسة\n".repeat(3))
+    for (let i = 0; i < cm.state.doc.length; i++) {
+      let coords = cm.coordsForChar(i)!
+      if (coords) {
+        let [left, right] = [coords.left + 1, coords.right - 1]
+        let [before, after] = /[a-z\d ]/.test(cm.state.doc.sliceString(i, i + 1)) ? [left, right] : [right, left]
+        ist(cm.posAtCoords({x: before, y: coords.top + 1}), i)
+        ist(cm.posAtCoords({x: after, y: coords.top + 1}), i + 1)
+      }
+    }
+  })
+
+  it("can find coordinates in wrapped bidi text", () => {
+    let cm = tempView("one اثنان three 444 خمسة ".repeat(3), [
+      EditorView.lineWrapping,
+      EditorView.theme({"&": {width: "10em"}}),
+      deco(cls.range(0, 3), cls.range(20, 25))
+    ])
+    for (let i = 0; i < cm.state.doc.length; i++) {
+      let coords = cm.coordsForChar(i)!
+      if (coords) {
+        let [left, right] = [coords.left + 1, coords.right - 1]
+        let [before, after] = /[a-z\d ]/.test(cm.state.doc.sliceString(i, i + 1)) ? [left, right] : [right, left]
+        ist(cm.posAtCoords({x: before, y: coords.top + 1}), i)
+        ist(cm.posAtCoords({x: after, y: coords.top + 1}), i + 1)
+      }
+    }
   })
 
   function near(a: number, b: any) {
@@ -156,6 +235,13 @@ describe("EditorView coords", () => {
     ist(c0.top, c1.top, "<")
     ist(cm.posAtCoords({x: c0.left, y: c0.top + 1}), 0)
     ist(cm.posAtCoords({x: c1.left, y: c1.top + 1}), 1)
+  })
+
+  it("can handle positions between non-uniform lines", () => {
+    let cm = tempView("abcd\nefgh", [deco(Decoration.mark({attributes: {style: "font-size: 150%"}}).range(6, 7)),
+                                     EditorView.theme({".cm-line": {padding: "4px"}})])
+    let c4 = cm.coordsAtPos(4)!
+    ist(cm.posAtCoords({x: c4.left + 5, y: c4.bottom + 6}), 9)
   })
 })
 
