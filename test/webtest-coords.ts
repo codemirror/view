@@ -241,7 +241,7 @@ describe("EditorView coords", () => {
     let cm = tempView("abcd\nefgh", [deco(Decoration.mark({attributes: {style: "font-size: 150%"}}).range(6, 7)),
                                      EditorView.theme({".cm-line": {padding: "4px"}})])
     let c4 = cm.coordsAtPos(4)!
-    ist(cm.posAtCoords({x: c4.left + 5, y: c4.bottom + 6}), 9)
+    ist(cm.posAtCoords({x: c4.left + 5, y: c4.bottom + 7}), 9)
   })
 })
 
