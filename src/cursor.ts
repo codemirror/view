@@ -1,5 +1,5 @@
 import {EditorState, EditorSelection, SelectionRange, RangeSet,
-        CharCategory, findColumn, findClusterBreak} from "@codemirror/state"
+        CharCategory, findColumn, findClusterBreak, Line} from "@codemirror/state"
 import {EditorView} from "./editorview"
 import {BlockType} from "./decoration"
 import {atomicRanges} from "./extension"
@@ -210,79 +210,150 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
   // Here we know we're in a line, so run the logic for inline layout
   let line = view.docView.lineAt(block.from, 2)
   if (!line || line.length != block.length) line = view.docView.lineAt(block.from, -2)!
-  return posAtCoordsInline(view, line, block.from, x, y)
+  return new InlineCoordsScan(view, x, y, view.textDirectionAt(block.from)).scanTile(line, block.from)
 }
 
-// Scan through the rectangles for the content of a tile, finding the
-// one closest to the given coordinates, prefering closeness in Y over
-// closeness in X.
-//
-// If this is a text tile, go character-by-character. For line or mark
-// tiles, check each non-point-widget child, and descend text or mark
-// tiles with a recursive call.
-//
-// For non-wrapped, purely left-to-right text, this could use a binary
-// search. But because this seems to be fast enough, for how often it
-// is called, there's not currently a specialized implementation for
-// that.
-function posAtCoordsInline(view: EditorView, tile: CompositeTile | TextTile, offset: number, x: number, y: number) {
-  let closest = -1, closestRect: Rect | null = null
-  let dxClosest = 1e9, dyClosest = 1e9
-  let rowTop = y, rowBot = y
-  let checkRects = (rects: DOMRectList, index: number) => {
-    for (let i = 0; i < rects.length; i++) {
-      let rect = rects[i]
-      if (rect.top == rect.bottom) continue
-      let dx = rect.left > x ? rect.left - x : rect.right < x ? x - rect.right : 0
-      let dy = rect.top > y ? rect.top - y : rect.bottom < y ? y - rect.bottom : 0
-      if (rect.top <= rowBot && rect.bottom >= rowTop) {
-        // Rectangle is in the current row
-        rowTop = Math.min(rect.top, rowTop)
-        rowBot = Math.max(rect.bottom, rowBot)
-        dy = 0
-      }
-      if (closest < 0 || (dy - dyClosest || dx - dxClosest) < 0) {
-        if (closest >= 0 && dyClosest && dxClosest < dx &&
-          closestRect!.top <= rowBot - 2 && closestRect!.bottom >= rowTop + 2) {
-          // Retroactively set dy to 0 if the current match is in this row.
-          dyClosest = 0
-        } else {
-          closest = index
-          dxClosest = dx
-          dyClosest = dy
-          closestRect = rect
+class InlineCoordsScan {
+  // Cached bidi info
+  line: Line | null = null
+  spans: readonly BidiSpan[] | null = null
+
+  constructor(readonly view: EditorView, readonly x: number, public y: number, readonly baseDir: Direction) {}
+
+  bidiSpansAt(pos: number): {line: Line, spans: readonly BidiSpan[]} {
+    if (!this.line || this.line.from > pos || this.line.to < pos) {
+      this.line = this.view.state.doc.lineAt(pos)
+      this.spans = this.view.bidiSpans(this.line)
+    }
+    return this as any
+  }
+
+  baseDirAt(pos: number, side: -1 | 1) {
+    let {line, spans} = this.bidiSpansAt(pos)
+    let level = spans[BidiSpan.find(spans, pos - line.from, -1, side)].level
+    return level == this.baseDir
+  }
+
+  dirAt(pos: number, side: -1 | 1) {
+    let {line, spans} = this.bidiSpansAt(pos)
+    return spans[BidiSpan.find(spans, pos - line.from, -1, side)].dir
+  }
+
+  // Used to short-circuit bidi tests for content with a uniform direction
+  bidiIn(from: number, to: number) {
+    let {spans, line} = this.bidiSpansAt(from)
+    return spans.length > 1 || spans.length && (spans[0].level != this.baseDir || spans[0].to + line.from < to)
+  }
+
+  // Scan through the rectangles for the content of a tile with inline
+  // content, looking for one that overlaps the queried position
+  // vertically andis
+  // closest horizontally. The caller is responsible for dividing its
+  // content into N pieces, and pass an array with N+1 positions
+  // (including the position after the last piece). For a text tile,
+  // these will be character clusters, for a composite tile, these
+  // will be child tiles.
+  scan(positions: readonly number[], getRects: (i: number) => DOMRectList | null): {i: number, after: boolean} {
+    let lo = 0, hi = positions.length - 1, seen = new Set<number>()
+    let bidi = this.bidiIn(positions[0], positions[hi])
+
+    let above: DOMRect | undefined, below: DOMRect | undefined
+    let closestI = -1, closestDx = 1e9, closestRect: DOMRect | undefined
+    // Because, when the content is bidirectional, a regular binary
+    // search is hard to perform (the content order does not
+    // correspond to visual order), this loop does something between a
+    // regular binary search and a full scan, depending on what it can
+    // get away with. The outer hi/lo bounds are only adjusted for
+    // elements that are part of the base order.
+    //
+    // To make sure all elements inside those bounds are visited,
+    // eventually, we keep a set of seen indices, and if the midpoint
+    // has already been handled, we start in a random index within the
+    // current bounds and scan forward until we find an index that
+    // hasn't been seen yet.
+    search: while (lo < hi) {
+      let dist = hi - lo, mid = (lo + hi) >> 1
+      adjust: if (seen.has(mid)) {
+        let scan = lo + Math.floor(Math.random() * dist)
+        for (let i = 0; i < dist; i++) {
+          if (!seen.has(scan)) {
+            mid = scan
+            break adjust
+          }
+          scan++
+          if (scan == hi) scan = lo // Wrap around
         }
+        break search // No index found, we're done
+      }
+      seen.add(mid)
+      let rects = getRects(mid)
+      if (rects) for (let i = 0; i < rects.length; i++) {
+        let rect = rects[i], side = 0
+        if (rect.bottom < this.y) {
+          if (!above || above.bottom < rect.bottom) above = rect
+          side = 1
+        } else if (rect.top > this.y) {
+          if (!below || below.top > rect.top) below = rect
+          side = -1
+        } else {
+          let off = rect.left > this.x ? this.x - rect.left : rect.right < this.x ? this.x - rect.right : 0
+          let dx = Math.abs(off)
+          if (dx < closestDx) {
+            closestI = mid
+            closestDx = dx
+            closestRect = rect
+          }
+          if (off) side = (off < 0) == (this.baseDir == Direction.LTR) ? -1 : 1
+        }
+        // Narrow binary search when it is safe to do so
+        if (side == -1 && (!bidi || this.baseDirAt(positions[mid], 1))) hi = mid
+        else if (side == 1 && (!bidi || this.baseDirAt(positions[mid + 1], -1))) lo = mid + 1
       }
     }
+    // If no element with y overlap is found, find the nearest element
+    // on the y axis, move this.y into it, and retry the scan.
+    if (!closestRect) {
+      let side = above && (!below || (this.y - above.bottom < below.top - this.y)) ? above : below!
+      this.y = (side.top + side.bottom) / 2
+      return this.scan(positions, getRects)
+    }
+    let ltr = (bidi ? this.dirAt(positions[closestI], 1) : this.baseDir) == Direction.LTR
+    return {
+      i: closestI,
+      // Test whether x is closes to the start or end of this element
+      after: (this.x > (closestRect.left + closestRect.right) / 2) == ltr
+    }
   }
 
-  if (tile.isText()) {
-    for (let i = 0; i < tile.length;) {
-      let next = findClusterBreak(tile.text, i)
-      checkRects(textRange(tile.dom, i, next).getClientRects(), i)
-      if (!dxClosest && !dyClosest) break
-      i = next
-    }
-    let after = (x > (closestRect!.left + closestRect!.right) / 2) == (dirAt(view, closest + offset) == Direction.LTR)
-    return after ? new PosAssoc(offset + findClusterBreak(tile.text, closest), -1) : new PosAssoc(offset + closest, 1)
-  } else {
+  scanText(tile: TextTile, offset: number): PosAssoc {
+    let positions: number[] = []
+    for (let i = 0; i < tile.length; i = findClusterBreak(tile.text, i)) positions.push(offset + i)
+    positions.push(offset + tile.length)
+    let scan = this.scan(positions, i => {
+      let off = positions[i] - offset, end = positions[i + 1] - offset
+      return textRange(tile.dom, off, end).getClientRects()
+    })
+    return scan.after ? new PosAssoc(positions[scan.i + 1], -1) : new PosAssoc(positions[scan.i], 1)
+  }
+
+  scanTile(tile: CompositeTile, offset: number): PosAssoc {
     if (!tile.length) return new PosAssoc(offset, 1)
-    for (let i = 0; i < tile.children.length; i++) {
-      let child = tile.children[i]
-      if (child.flags & TileFlag.PointWidget) continue
-      let rects = (child.dom.nodeType == 1 ? child.dom as HTMLElement : textRange(child.dom as Text, 0, child.length)).getClientRects()
-      checkRects(rects, i)
-      if (!dxClosest && !dyClosest) break
+    if (tile.children.length == 1) { // Short-circuit single-child tiles
+      let child = tile.children[0]
+      if (child.isText()) return this.scanText(child, offset)
+      else if (child.isComposite()) return this.scanTile(child, offset)
     }
-    let inner = tile.children[closest], innerOff = tile.posBefore(inner, offset)
-    if (inner.isComposite() || inner.isText())
-      return posAtCoordsInline(view, inner, innerOff, Math.max(closestRect!.left, Math.min(closestRect!.right, x)), y)
-    let after = (x > (closestRect!.left + closestRect!.right) / 2) == (dirAt(view, closest + offset) == Direction.LTR)
-    return after ? new PosAssoc(innerOff + inner.length, -1) : new PosAssoc(innerOff, 1)
+    let positions = [offset]
+    for (let i = 0, pos = offset; i < tile.children.length; i++)
+      positions.push(pos += tile.children[i].length)
+    let scan = this.scan(positions, i => {
+      let child = tile.children[i]
+      if (child.flags & TileFlag.PointWidget) return null
+      return (child.dom.nodeType == 1 ? child.dom as HTMLElement : textRange(child.dom as Text, 0, child.length)).getClientRects()
+    })
+    let child = tile.children[scan.i], pos = positions[scan.i]
+    if (child.isText()) return this.scanText(child, pos)
+    if (child.isComposite()) return this.scanTile(child, pos)
+    return scan.after ? new PosAssoc(positions[scan.i + 1], -1) : new PosAssoc(pos, 1)
   }
-}
-
-function dirAt(view: EditorView, pos: number) {
-  let line = view.state.doc.lineAt(pos), spans = view.bidiSpans(line)
-  return spans[BidiSpan.find(view.bidiSpans(line), pos - line.from, -1, 1)].dir
 }
