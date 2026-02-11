@@ -741,8 +741,7 @@ handlers.copy = handlers.cut = (view, event: ClipboardEvent) => {
   // spans multiple elements including this CodeMirror. The copy event may
   // bubble through CodeMirror (e.g. when CodeMirror is the first or the last
   // element in the selection), but we should let the parent handle it.
-  let domSel = getSelection(view.root)
-  if (domSel && !hasSelection(view.contentDOM, domSel)) return false
+  if (!hasSelection(view.contentDOM, view.observer.selectionRange)) return false
 
   let {text, ranges, linewise} = copiedRange(view.state)
   if (!text && !linewise) return false
