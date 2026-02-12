@@ -1,3 +1,11 @@
+## 6.39.14 (2026-02-12)
+
+### Bug fixes
+
+Improve performance of `posAtCoords` on long lines.
+
+Fix a regression where copy and cut in a shadow DOM on Safari would fall back to the native behavior, often copying the wrong text.
+
 ## 6.39.13 (2026-02-08)
 
 ### Bug fixes
