@@ -143,7 +143,7 @@ export class ViewState {
   printing = false
   // Flag set when editor content was redrawn, so that the next
   // measure stage knows it must read DOM layout
-  mustMeasureContent = true
+  mustMeasureContent: boolean | "refresh" = true
 
   stateDeco: readonly DecorationSet[]
   declare viewportLines: BlockInfo[]
@@ -264,7 +264,7 @@ export class ViewState {
     let whiteSpace = style.whiteSpace!
     this.defaultTextDirection = style.direction == "rtl" ? Direction.RTL : Direction.LTR
 
-    let refresh = this.heightOracle.mustRefreshForWrapping(whiteSpace) || this.mustMeasureContent
+    let refresh = this.heightOracle.mustRefreshForWrapping(whiteSpace) || this.mustMeasureContent === "refresh"
     let domRect = dom.getBoundingClientRect()
     let measureContent = refresh || this.mustMeasureContent || this.contentDOMHeight != domRect.height
     this.contentDOMHeight = domRect.height

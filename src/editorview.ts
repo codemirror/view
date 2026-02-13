@@ -216,7 +216,7 @@ export class EditorView {
 
     this.requestMeasure()
     if (document.fonts?.ready) document.fonts.ready.then(() => {
-      this.viewState.mustMeasureContent = true
+      this.viewState.mustMeasureContent = "refresh"
       this.requestMeasure()
     })
   }
