@@ -540,6 +540,18 @@ export class DocView {
                        Math.max(Math.min(target.xMargin, offsetWidth), -offsetWidth),
                        Math.max(Math.min(target.yMargin, offsetHeight), -offsetHeight),
                        this.view.textDirection == Direction.LTR)
+    // On mobile browsers, the visual viewport may be smaller than the
+    // actual reported viewport, causing scrollRectIntoView to fail to
+    // scroll properly. Unfortunately, this visual viewport cannot be
+    // updated directly, and scrollIntoView is the only way a script
+    // can affect it. So this tries to kludge around the problem by
+    // calling scrollIntoView on the scroll target's line.
+    if (window.visualViewport && window.innerHeight - window.visualViewport.height > 1 &&
+        (rect.top > window.pageYOffset + window.visualViewport.offsetTop + window.visualViewport.height ||
+         rect.bottom < window.pageYOffset + window.visualViewport.offsetTop)) {
+      let line = this.view.docView.lineAt(range.head, 1)
+      if (line) line.dom.scrollIntoView({block: "nearest"})
+    }
   }
 
   lineHasWidget(pos: number) {
