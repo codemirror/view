@@ -1,3 +1,13 @@
+## 6.39.15 (2026-02-20)
+
+### Bug fixes
+
+Fix a regression where the editor would forget previously measured line heights without good reason.
+
+Fix an issue where scrolling the cursor into view sometimes wouldn't work on Chrome Android.
+
+Fix a bug that broke composition inside of block wrappers.
+
 ## 6.39.14 (2026-02-12)
 
 ### Bug fixes
