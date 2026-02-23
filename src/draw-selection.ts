@@ -1,7 +1,8 @@
-import {EditorSelection, Extension, Facet, combineConfig, Prec, EditorState} from "@codemirror/state"
+import {EditorSelection, SelectionRange, Extension, Facet, combineConfig, Prec, EditorState} from "@codemirror/state"
 import {ViewUpdate, nativeSelectionHidden} from "./extension"
 import {EditorView} from "./editorview"
-import {layer, RectangleMarker} from "./layer"
+import {layer, RectangleMarker, getBase} from "./layer"
+import browser from "./browser"
 
 type SelectionConfig = {
   /// The length of a full cursor blink cycle, in milliseconds.
@@ -93,11 +94,27 @@ function setBlinkRate(state: EditorState, dom: HTMLElement) {
   dom.style.animationDuration = state.facet(selectionConfig).cursorBlinkRate + "ms"
 }
 
+const enum Handle { Size = 8, Half = Size >> 1 }
+
+function iosSelectionHandles(view: EditorView, range: SelectionRange) {
+  let handles: RectangleMarker[] = [], base = getBase(view)
+  let start = view.coordsAtPos(range.from, 1)
+  if (start) handles.push(new RectangleMarker("cm-selectionHandle", start.left - base.left - Handle.Half,
+                                              start.top - base.top - Handle.Size, Handle.Size, Handle.Size))
+  let end = view.coordsAtPos(range.to, -1)
+  if (end) handles.push(new RectangleMarker("cm-selectionHandle", end.left - base.left - Handle.Half,
+                                            end.bottom - base.top, Handle.Size, Handle.Size))
+  return handles
+}
+
 const selectionLayer = layer({
   above: false,
   markers(view) {
-    return view.state.selection.ranges.map(r => r.empty ? [] : RectangleMarker.forRange(view, "cm-selectionBackground", r))
+    let {selection} = view.state
+    let markers = selection.ranges.map(r => r.empty ? [] : RectangleMarker.forRange(view, "cm-selectionBackground", r))
       .reduce((a, b) => a.concat(b))
+    if (browser.ios && !selection.main.empty) markers = markers.concat(iosSelectionHandles(view, selection.main))
+    return markers
   },
   update(update, dom) {
     return update.docChanged || update.selectionSet || update.viewportChanged || configChanged(update)

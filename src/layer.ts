@@ -82,7 +82,7 @@ export class RectangleMarker implements LayerMarker {
   }
 }
 
-function getBase(view: EditorView) {
+export function getBase(view: EditorView) {
   let rect = view.scrollDOM.getBoundingClientRect()
   let left = view.textDirection == Direction.LTR ? rect.left : rect.right - view.scrollDOM.clientWidth * view.scaleX
   return {left: left - view.scrollDOM.scrollLeft * view.scaleX, top: rect.top - view.scrollDOM.scrollTop * view.scaleY}

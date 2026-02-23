@@ -108,6 +108,10 @@ export const baseTheme = buildTheme("." + baseThemeID, {
   "&dark.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
     background: "#233"
   },
+  "&.cm-focused .cm-selectionHandle": {
+    backgroundColor: "currentColor",
+    borderRadius: "50%"
+  },
 
   ".cm-cursorLayer": {
     pointerEvents: "none"
