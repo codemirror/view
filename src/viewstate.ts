@@ -1,5 +1,5 @@
 import {Text, EditorState, ChangeSet, ChangeDesc, RangeSet, EditorSelection} from "@codemirror/state"
-import {Rect, isScrolledToBottom, getScale} from "./dom"
+import {Rect, isScrolledToBottom, getScale, scrollableParents} from "./dom"
 import {HeightMap, HeightOracle, BlockInfo, MeasuredHeights, QueryType, heightRelevantDecoChanges,
         clearHeightChangeFlag, heightChangeFlag} from "./heightmap"
 import {decorations, outerDecorations, ViewUpdate, UpdateFlag, ChangedRange, ScrollTarget, nativeSelectionHidden,
@@ -120,12 +120,17 @@ export class ViewState {
   contentDOMHeight = 0 // contentDOM.getBoundingClientRect().height
   editorHeight = 0 // scrollDOM.clientHeight, unscaled
   editorWidth = 0 // scrollDOM.clientWidth, unscaled
-  scrollTop = 0 // Last seen scrollDOM.scrollTop, scaled
-  scrolledToBottom = false
   // The CSS-transformation scale of the editor (transformed size /
   // concrete size)
   scaleX = 1
   scaleY = 1
+
+  // The nearest vertically-scrollable parent. null means window is nearest
+  scrollParent: HTMLElement | null
+  // Last seen vertical offset of the element at the top of the scroll
+  // container, or top of the window if there's no wrapping scroller
+  scrollOffset = 0
+  scrolledToBottom = false
   // The vertical position (document-relative) to which to anchor the
   // scroll position. -1 means anchor to the end of the document.
   scrollAnchorPos = 0
@@ -169,7 +174,7 @@ export class ViewState {
   // the right place.
   mustEnforceCursorAssoc = false
 
-  constructor(public state: EditorState) {
+  constructor(public view: EditorView, public state: EditorState) {
     let guessWrapping = state.facet(contentAttributes).some(v => typeof v != "function" && v.class == "cm-lineWrapping")
     this.heightOracle = new HeightOracle(guessWrapping)
     this.stateDeco = staticDeco(state)
@@ -182,6 +187,7 @@ export class ViewState {
     this.updateViewportLines()
     this.lineGaps = this.ensureLineGaps([])
     this.lineGapDeco = Decoration.set(this.lineGaps.map(gap => gap.draw(this, false)))
+    this.scrollParent = view.scrollDOM
     this.computeVisibleRanges()
   }
 
@@ -222,7 +228,7 @@ export class ViewState {
     let heightChanges = ChangedRange.extendWithRanges(contentChanges, heightRelevantDecoChanges(
       prevDeco, this.stateDeco, update ? update.changes : ChangeSet.empty(this.state.doc.length)))
     let prevHeight = this.heightMap.height
-    let scrollAnchor = this.scrolledToBottom ? null : this.scrollAnchorAt(this.scrollTop)
+    let scrollAnchor = this.scrolledToBottom ? null : this.scrollAnchorAt(this.scrollOffset)
     clearHeightChangeFlag()
     this.heightMap = this.heightMap.applyChanges(this.stateDeco, update.startState.doc,
                                                  this.heightOracle.setDoc(this.state.doc), heightChanges)
@@ -258,8 +264,8 @@ export class ViewState {
       this.mustEnforceCursorAssoc = true
   }
 
-  measure(view: EditorView) {
-    let dom = view.contentDOM, style = window.getComputedStyle(dom)
+  measure() {
+    let {view} = this, dom = view.contentDOM, style = window.getComputedStyle(dom)
     let oracle = this.heightOracle
     let whiteSpace = style.whiteSpace!
     this.defaultTextDirection = style.direction == "rtl" ? Direction.RTL : Direction.LTR
@@ -294,12 +300,18 @@ export class ViewState {
       this.editorWidth = view.scrollDOM.clientWidth
       result |= UpdateFlag.Geometry
     }
-    let scrollTop = view.scrollDOM.scrollTop * this.scaleY
-    if (this.scrollTop != scrollTop) {
+    let scrollParent = scrollableParents(this.view.contentDOM, false).y
+    if (scrollParent != this.scrollParent) {
+      this.scrollParent = scrollParent
       this.scrollAnchorHeight = -1
-      this.scrollTop = scrollTop
+      this.scrollOffset = 0
     }
-    this.scrolledToBottom = isScrolledToBottom(view.scrollDOM)
+    let scrollOffset = this.getScrollOffset()
+    if (this.scrollOffset != scrollOffset) {
+      this.scrollAnchorHeight = -1
+      this.scrollOffset = scrollOffset
+    }
+    this.scrolledToBottom = isScrolledToBottom(this.scrollParent || view.win)
 
     // Pixel viewport
     let pixelViewport = (this.printing ? fullPixelRange : visiblePixelRange)(dom, this.paddingTop)
@@ -581,9 +593,15 @@ export class ViewState {
                  this.scaler)
   }
 
-  scrollAnchorAt(scrollTop: number) {
-    let block = this.lineBlockAtHeight(scrollTop + 8)
-    return block.from >= this.viewport.from || this.viewportLines[0].top - scrollTop > 200 ? block : this.viewportLines[0]
+  getScrollOffset() {
+    let base = this.scrollParent == this.view.scrollDOM ? this.scrollParent.scrollTop
+      : (this.scrollParent ? this.scrollParent.getBoundingClientRect().top : 0) - this.view.contentDOM.getBoundingClientRect().top
+    return base * this.scaleY
+  }
+
+  scrollAnchorAt(scrollOffset: number) {
+    let block = this.lineBlockAtHeight(scrollOffset + 8)
+    return block.from >= this.viewport.from || this.viewportLines[0].top - scrollOffset > 200 ? block : this.viewportLines[0]
   }
 
   elementAtHeight(height: number): BlockInfo {

@@ -125,7 +125,7 @@ export class EditorView {
   get root() { return this._root }
 
   /// @internal
-  get win() { return this.dom.ownerDocument.defaultView || window }
+  get win(): Window { return this.dom.ownerDocument.defaultView || window }
 
   /// The DOM element that wraps the entire editor view.
   readonly dom: HTMLElement
@@ -200,7 +200,7 @@ export class EditorView {
     this.dispatch = this.dispatch.bind(this)
     this._root = (config.root || getRoot(config.parent) || document) as DocumentOrShadowRoot
 
-    this.viewState = new ViewState(config.state || EditorState.create(config))
+    this.viewState = new ViewState(this, config.state || EditorState.create(config))
     if (config.scrollTo && config.scrollTo.is(scrollIntoView))
       this.viewState.scrollTarget = config.scrollTo.value.clip(this.viewState.state)
     this.plugins = this.state.facet(viewPlugin).map(spec => new PluginInstance(spec))
@@ -358,7 +358,7 @@ export class EditorView {
     let hadFocus = this.hasFocus
     try {
       for (let plugin of this.plugins) plugin.destroy(this)
-      this.viewState = new ViewState(newState)
+      this.viewState = new ViewState(this, newState)
       this.plugins = newState.facet(viewPlugin).map(spec => new PluginInstance(spec))
       this.pluginMap.clear()
       for (let plugin of this.plugins) plugin.update(this)
@@ -421,25 +421,25 @@ export class EditorView {
     if (flush) this.observer.forceFlush()
 
     let updated: ViewUpdate | null = null
-    let sDOM = this.scrollDOM, scrollTop = sDOM.scrollTop * this.scaleY
+    let scroll = this.viewState.scrollParent, scrollOffset = this.viewState.getScrollOffset()
     let {scrollAnchorPos, scrollAnchorHeight} = this.viewState
-    if (Math.abs(scrollTop - this.viewState.scrollTop) > 1) scrollAnchorHeight = -1
+    if (Math.abs(scrollOffset - this.viewState.scrollOffset) > 1) scrollAnchorHeight = -1
     this.viewState.scrollAnchorHeight = -1
 
     try {
       for (let i = 0;; i++) {
         if (scrollAnchorHeight < 0) {
-          if (isScrolledToBottom(sDOM)) {
+          if (isScrolledToBottom(scroll || this.win)) {
             scrollAnchorPos = -1
             scrollAnchorHeight = this.viewState.heightMap.height
           } else {
-            let block = this.viewState.scrollAnchorAt(scrollTop)
+            let block = this.viewState.scrollAnchorAt(scrollOffset)
             scrollAnchorPos = block.from
             scrollAnchorHeight = block.top
           }
         }
         this.updateState = UpdateState.Measuring
-        let changed = this.viewState.measure(this)
+        let changed = this.viewState.measure()
         if (!changed && !this.measureRequests.length && this.viewState.scrollTarget == null) break
         if (i > 5) {
           console.warn(this.measureRequests.length
@@ -484,10 +484,13 @@ export class EditorView {
             } else {
               let newAnchorHeight = scrollAnchorPos < 0 ? this.viewState.heightMap.height :
                 this.viewState.lineBlockAt(scrollAnchorPos).top
-              let diff = newAnchorHeight - scrollAnchorHeight
-              if (diff > 1 || diff < -1) {
-                scrollTop = scrollTop + diff
-                sDOM.scrollTop = scrollTop / this.scaleY
+              let diff = (newAnchorHeight - scrollAnchorHeight) / this.scaleY
+              if ((diff > 1 || diff < -1) &&
+                  (scroll == this.scrollDOM || this.hasFocus ||
+                   Math.max(this.inputState.lastWheelEvent, this.inputState.lastTouchTime) > Date.now() - 100)) {
+                scrollOffset = scrollOffset + diff
+                if (scroll) scroll.scrollTop += diff
+                else this.win.scrollBy(0, diff)
                 scrollAnchorHeight = -1
                 continue
               }

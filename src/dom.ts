@@ -208,14 +208,14 @@ export function scrollRectIntoView(dom: HTMLElement, rect: Rect, side: -1 | 1,
   }
 }
 
-export function scrollableParents(dom: HTMLElement) {
-  let doc = dom.ownerDocument, x: HTMLElement | undefined, y: HTMLElement | undefined
+export function scrollableParents(dom: HTMLElement, getX = true) {
+  let doc = dom.ownerDocument, x: HTMLElement | null = null, y: HTMLElement | null = null
   for (let cur = dom.parentNode as HTMLElement | null; cur;) {
-    if (cur == doc.body || (x && y)) {
+    if (cur == doc.body || ((!getX || x) && y)) {
       break
     } else if (cur.nodeType == 1) {
       if (!y && cur.scrollHeight > cur.clientHeight) y = cur
-      if (!x && cur.scrollWidth > cur.clientWidth) x = cur
+      if (getX && !x && cur.scrollWidth > cur.clientWidth) x = cur
       cur = cur.assignedSlot || cur.parentNode as HTMLElement | null
     } else if (cur.nodeType == 11) {
       cur = (cur as any).host
@@ -340,7 +340,8 @@ export function atElementStart(doc: HTMLElement, selection: SelectionRange) {
   }
 }
 
-export function isScrolledToBottom(elt: HTMLElement) {
+export function isScrolledToBottom(elt: HTMLElement | Window) {
+  if (elt instanceof Window) return elt.pageYOffset > Math.max(0, elt.document.documentElement.scrollHeight - elt.innerHeight - 4)
   return elt.scrollTop > Math.max(1, elt.scrollHeight - elt.clientHeight - 4)
 }
 

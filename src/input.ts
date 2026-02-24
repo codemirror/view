@@ -16,6 +16,7 @@ export class InputState {
   lastFocusTime = 0
   lastScrollTop = 0
   lastScrollLeft = 0
+  lastWheelEvent = 0
 
   // On iOS, some keys need to have their default behavior happen
   // (after which we retroactively handle them and reset the DOM) to
@@ -493,6 +494,10 @@ function doPaste(view: EditorView, input: string) {
 observers.scroll = view => {
   view.inputState.lastScrollTop = view.scrollDOM.scrollTop
   view.inputState.lastScrollLeft = view.scrollDOM.scrollLeft
+}
+
+observers.wheel = observers.mousewheel = view => {
+  view.inputState.lastWheelEvent = Date.now()
 }
 
 handlers.keydown = (view, event: KeyboardEvent) => {
