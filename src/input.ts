@@ -293,7 +293,7 @@ class MouseSelection {
   extend: boolean
   multiple: boolean
   lastEvent: MouseEvent
-  scrollParents: {x?: HTMLElement, y?: HTMLElement}
+  scrollParents: {x: HTMLElement | null, y: HTMLElement | null}
   scrollSpeed = {x: 0, y: 0}
   scrolling = -1
   atoms: readonly RangeSet<any>[]
