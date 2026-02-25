@@ -457,7 +457,7 @@ export class TileUpdate {
           }
         } else if (tile.isText()) {
           this.builder.ensureLine(null)
-          if (!from && to == tile.length) {
+          if (!from && to == tile.length && !this.cache.reused.has(tile)) {
             this.builder.addText(tile.text, activeMarks, openMarks, this.cache.reuse(tile))
           } else {
             this.cache.add(tile)

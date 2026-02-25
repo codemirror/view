@@ -122,6 +122,8 @@ export class DocView {
       if (composition || changes.length) {
         let oldTile = this.tile
         let builder = new TileUpdate(this.view, oldTile, this.blockWrappers, this.decorations, this.dynamicDecorationMap)
+        if (composition && Tile.get(composition.text))
+          builder.cache.reused.set(Tile.get(composition.text)!, Reused.DOM)
         this.tile = builder.run(changes, composition)
         destroyDropped(oldTile, builder.cache.reused)
       }
