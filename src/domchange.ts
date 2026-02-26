@@ -98,7 +98,7 @@ function domBoundsAround(tile: Tile, from: number, to: number, offset: number): 
 
 export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean {
   let change: undefined | {from: number, to: number, insert: Text}
-  let {newSel} = domChange, sel = view.state.selection.main
+  let {newSel} = domChange, {state} = view, sel = state.selection.main
   let lastKey = view.inputState.lastKeyTime > Date.now() - 100 ? view.inputState.lastKeyCode : -1
   if (domChange.bounds) {
     let {from, to} = domChange.bounds
@@ -109,44 +109,36 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       preferredPos = sel.to
       preferredSide = "end"
     }
-    let diff = findDiff(view.state.doc.sliceString(from, to, LineBreakPlaceholder), domChange.text,
-                        preferredPos - from, preferredSide)
-    if (diff) {
+    let cmp = state.doc.sliceString(from, to, LineBreakPlaceholder), selEnd, diff
+    if (!sel.empty && sel.from >= from && sel.to <= to && (domChange.typeOver || cmp != domChange.text) &&
+        cmp.slice(0, sel.from - from) == domChange.text.slice(0, sel.from - from) &&
+        cmp.slice(sel.to - from) == domChange.text.slice(selEnd = domChange.text.length - (cmp.length - (sel.to - from)))) {
+      // This looks like a selection replacement
+      change = {from: sel.from, to: sel.to,
+                insert: Text.of(domChange.text.slice(sel.from - from, selEnd).split(LineBreakPlaceholder))}
+    } else if (diff = findDiff(cmp, domChange.text, preferredPos - from, preferredSide)) {
       // Chrome inserts two newlines when pressing shift-enter at the
       // end of a line. DomChange drops one of those.
       if (browser.chrome && lastKey == 13 &&
-        diff.toB == diff.from + 2 && domChange.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
+          diff.toB == diff.from + 2 && domChange.text.slice(diff.from, diff.toB) == LineBreakPlaceholder + LineBreakPlaceholder)
         diff.toB--
 
       change = {from: from + diff.from, to: from + diff.toA,
                 insert: Text.of(domChange.text.slice(diff.from, diff.toB).split(LineBreakPlaceholder))}
     }
-  } else if (newSel && (!view.hasFocus && view.state.facet(editable) || sameSelPos(newSel, sel))) {
+  } else if (newSel && (!view.hasFocus && state.facet(editable) || sameSelPos(newSel, sel))) {
     newSel = null
   }
 
   if (!change && !newSel) return false
 
-  if (!change && domChange.typeOver && !sel.empty && newSel && newSel.main.empty) {
-    // Heuristic to notice typing over a selected character
-    change = {from: sel.from, to: sel.to, insert: view.state.doc.slice(sel.from, sel.to)}
-  } else if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
+  if ((browser.mac || browser.android) && change && change.from == change.to && change.from == sel.head - 1 &&
              /^\. ?$/.test(change.insert.toString()) && view.contentDOM.getAttribute("autocorrect") == "off") {
     // Detect insert-period-on-double-space Mac and Android behavior,
     // and transform it into a regular space insert.
     if (newSel && change.insert.length == 2) newSel = EditorSelection.single(newSel.main.anchor - 1, newSel.main.head - 1)
     change = {from: change.from, to: change.to, insert: Text.of([change.insert.toString().replace(".", " ")])}
-  } else if (change && change.from >= sel.from && change.to <= sel.to &&
-             (change.from != sel.from || change.to != sel.to) &&
-             (sel.to - sel.from) - (change.to - change.from) <= 4) {
-    // If the change is inside the selection and covers most of it,
-    // assume it is a selection replace (with identical characters at
-    // the start/end not included in the diff)
-    change = {
-      from: sel.from, to: sel.to,
-      insert: view.state.doc.slice(sel.from, change.from).append(change.insert).append(view.state.doc.slice(change.to, sel.to))
-    }
-  } else if (view.state.doc.lineAt(sel.from).to < sel.to && view.docView.lineHasWidget(sel.to) &&
+  } else if (state.doc.lineAt(sel.from).to < sel.to && view.docView.lineHasWidget(sel.to) &&
              view.inputState.insertingTextAt > Date.now() - 50) {
     // For a cross-line insertion, Chrome and Safari will crudely take
     // the text of the line after the selection, flattening any
@@ -155,7 +147,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
     // replace of the text provided by the beforeinput event.
     change = {
       from: sel.from, to: sel.to,
-      insert: view.state.toText(view.inputState.insertingText)
+      insert: state.toText(view.inputState.insertingText)
     }
   } else if (browser.chrome && change && change.from == change.to && change.from == sel.head &&
              change.insert.toString() == "\n " && view.lineWrapping) {
@@ -174,7 +166,7 @@ export function applyDOMChange(view: EditorView, domChange: DOMChange): boolean 
       if (view.inputState.lastSelectionOrigin == "select") scrollIntoView = true
       userEvent = view.inputState.lastSelectionOrigin!
       if (userEvent == "select.pointer")
-        newSel = skipAtomsForSelection(view.state.facet(atomicRanges).map(f => f(view)), newSel)
+        newSel = skipAtomsForSelection(state.facet(atomicRanges).map(f => f(view)), newSel)
     }
     view.dispatch({selection: newSel, scrollIntoView, userEvent})
     return true
