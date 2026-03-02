@@ -1,3 +1,13 @@
+## 6.39.16 (2026-03-02)
+
+### Bug fixes
+
+Perform scroll stabilization on the document or wrapping scrollable elements, when the user scrolls the editor.
+
+Fix an issue where changing decorations right before a composition could end up corrupting the visible DOM.
+
+Fix an issue where some types of text input over a selection would be read as happening in wrong position.
+
 ## 6.39.15 (2026-02-20)
 
 ### Bug fixes
