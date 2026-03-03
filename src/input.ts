@@ -13,6 +13,8 @@ export class InputState {
   lastKeyCode: number = 0
   lastKeyTime: number = 0
   lastTouchTime = 0
+  lastTouchX = 0
+  lastTouchY = 0
   lastFocusTime = 0
   lastScrollTop = 0
   lastScrollLeft = 0
@@ -506,9 +508,14 @@ handlers.keydown = (view, event: KeyboardEvent) => {
   return false
 }
 
-observers.touchstart = (view, e) => {
-  view.inputState.lastTouchTime = Date.now()
-  view.inputState.setSelectionOrigin("select.pointer")
+observers.touchstart = (view, e: TouchEvent) => {
+  let iState = view.inputState, touch = e.targetTouches[0]
+  iState.lastTouchTime = Date.now()
+  if (touch) {
+    iState.lastTouchX = touch.clientX
+    iState.lastTouchY = touch.clientY
+  }
+  iState.setSelectionOrigin("select.pointer")
 }
 
 observers.touchmove = view => {

@@ -21,7 +21,7 @@ export class DOMChange {
 
   constructor(view: EditorView, start: number, end: number, readonly typeOver: boolean) {
     this.domChanged = start > -1
-    let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView
+    let {impreciseHead: iHead, impreciseAnchor: iAnchor} = view.docView, curSel = view.state.selection
     if (view.state.readOnly && start > -1) {
       // Ignore changes when the editor is read-only
       this.newSel = null
@@ -35,18 +35,18 @@ export class DOMChange {
       let domSel = view.observer.selectionRange
       let head = iHead && iHead.node == domSel.focusNode && iHead.offset == domSel.focusOffset ||
         !contains(view.contentDOM, domSel.focusNode)
-        ? view.state.selection.main.head
+        ? curSel.main.head
         : view.docView.posFromDOM(domSel.focusNode!, domSel.focusOffset)
       let anchor = iAnchor && iAnchor.node == domSel.anchorNode && iAnchor.offset == domSel.anchorOffset ||
         !contains(view.contentDOM, domSel.anchorNode)
-        ? view.state.selection.main.anchor
+        ? curSel.main.anchor
         : view.docView.posFromDOM(domSel.anchorNode!, domSel.anchorOffset)
       // iOS will refuse to select the block gaps when doing
       // select-all.
       // Chrome will put the selection *inside* them, confusing
       // posFromDOM
       let vp = view.viewport
-      if ((browser.ios || browser.chrome) && view.state.selection.main.empty && head != anchor &&
+      if ((browser.ios || browser.chrome) && curSel.main.empty && head != anchor &&
           (vp.from > 0 || vp.to < view.state.doc.length)) {
         let from = Math.min(head, anchor), to = Math.max(head, anchor)
         let offFrom = vp.from - from, offTo = vp.to - to
@@ -55,10 +55,19 @@ export class DOMChange {
           anchor = view.state.doc.length
         }
       }
-      if (view.inputState.composing > -1 && view.state.selection.ranges.length > 1)
-        this.newSel = view.state.selection.replaceRange(EditorSelection.range(anchor, head))
-      else
+      if (view.inputState.composing > -1 && curSel.ranges.length > 1) {
+        this.newSel = curSel.replaceRange(EditorSelection.range(anchor, head))
+      } else if (view.lineWrapping && anchor == head && !(curSel.main.empty && curSel.main.head == head) &&
+                 view.inputState.lastTouchTime > Date.now() - 100) {
+        // If this is a cursor selection change in a line-wrapping
+        // editor that may have been a touch, use the last touch
+        // position to assign a side to the cursor.
+        let before = view.coordsAtPos(head, -1), assoc = 0
+        if (before) assoc = view.inputState.lastTouchY <= before.bottom ? -1 : 1
+        this.newSel = EditorSelection.create([EditorSelection.cursor(head, assoc)])
+      } else {
         this.newSel = EditorSelection.single(anchor, head)
+      }
     }
   }
 }
