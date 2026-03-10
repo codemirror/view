@@ -1,3 +1,13 @@
+## 6.39.17 (2026-03-10)
+
+### Bug fixes
+
+Improve touch tap-selection on line wrapping boundaries.
+
+Make `drawSelection` draw our own selection handles on iOS.
+
+Fix an issue where `posAtCoords`, when querying line wrapping points, got confused by extra empty client rectangles produced by Safari.
+
 ## 6.39.16 (2026-03-02)
 
 ### Bug fixes
