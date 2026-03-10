@@ -289,6 +289,8 @@ class InlineCoordsScan {
       let rects = getRects(mid)
       if (rects) for (let i = 0; i < rects.length; i++) {
         let rect = rects[i], side = 0
+        // Ignore empty rectangles when there are other rectangles
+        if (rect.width == 0 && rects.length > 1) continue
         if (rect.bottom < this.y) {
           if (!above || above.bottom < rect.bottom) above = rect
           side = 1
