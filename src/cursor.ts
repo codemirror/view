@@ -114,7 +114,7 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
   if (startPos == (forward ? view.state.doc.length : 0)) return EditorSelection.cursor(startPos, start.assoc)
   let goal = start.goalColumn, startY
   let rect = view.contentDOM.getBoundingClientRect()
-  let startCoords = view.coordsAtPos(startPos, (start.empty ? start.assoc : 0) || (forward ? 1 : -1)), docTop = view.documentTop
+  let startCoords = view.coordsAtPos(startPos, (start.empty ? start.assoc || 1 : 0) || ((forward ? 1 : -1) as -1 | 1)), docTop = view.documentTop
   if (startCoords) {
     if (goal == null) goal = startCoords.left - rect.left
     startY = dir < 0 ? startCoords.top : startCoords.bottom
@@ -124,8 +124,29 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
     startY = (dir < 0 ? line.top : line.bottom) + docTop
   }
   let resolvedGoal = rect.left + goal
-  let dist = distance ?? (view.viewState.heightOracle.textHeight >> 1)
+  let dist = distance ?? (view.viewState.heightOracle.lineHeight >> 1)
   let pos = posAtCoords(view, {x: resolvedGoal, y: startY + dist * dir}, false, dir)!
+  // When extending a non-empty selection at a wrap boundary, the
+  // default assoc may resolve to the wrong visual line. If the
+  // result didn't move or overshot, try the other assoc direction.
+  if (!start.empty && startCoords) {
+    let altCoords = view.coordsAtPos(startPos, -dir as -1 | 1)
+    if (altCoords && (forward ? altCoords.bottom < startCoords.bottom : altCoords.top > startCoords.top)) {
+      let altY = dir < 0 ? altCoords.top : altCoords.bottom
+      let altPos = posAtCoords(view, {x: resolvedGoal, y: altY + dist * dir}, false, dir)!
+      // Pick the result with minimal forward progress (but that still moves)
+      if (pos.pos == startPos || (altPos.pos != startPos && (altPos.pos - startPos) * dir < (pos.pos - startPos) * dir))
+        pos = altPos
+    }
+  }
+  // When posAtCoords finds a position on the boundary line at the
+  // goal X but doesn't actually move, fall back to the document
+  // boundary so that select commands can extend to the start/end.
+  if (pos.pos == startPos) {
+    let boundary = forward ? view.state.doc.length : 0
+    if (boundary != startPos)
+      return EditorSelection.cursor(boundary, forward ? -1 : 1)
+  }
   return EditorSelection.cursor(pos.pos, pos.assoc, undefined, goal)
 }
 
@@ -182,8 +203,18 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
   // given (used for vertical cursor motion), try to skip widgets and
   // line padding.
   for (;;) {
-    if (yOffset < 0) return new PosAssoc(0, 1)
-    if (yOffset > view.viewState.docHeight) return new PosAssoc(view.state.doc.length, -1)
+    if (yOffset < 0) {
+      if (!scanY) return new PosAssoc(0, 1)
+      // During vertical cursor motion, find position at X on the
+      // first line rather than ignoring X and returning pos 0.
+      block = view.elementAtHeight(0)
+      break
+    }
+    if (yOffset > view.viewState.docHeight) {
+      if (!scanY) return new PosAssoc(view.state.doc.length, -1)
+      block = view.elementAtHeight(view.viewState.docHeight - 0.5)
+      break
+    }
     block = view.elementAtHeight(yOffset)
     if (scanY == null) break
     if (block.type == BlockType.Text) {
@@ -192,7 +223,7 @@ export function posAtCoords(view: EditorView, coords: {x: number, y: number}, pr
       let rect = view.docView.coordsAt(scanY < 0 ? block.from : block.to, scanY > 0 ? -1 : 1)
       if (rect && (scanY < 0 ? rect.top <= yOffset + docTop : rect.bottom >= yOffset + docTop)) break
     }
-    let halfLine = view.viewState.heightOracle.textHeight / 2
+    let halfLine = view.viewState.heightOracle.lineHeight / 2
     yOffset = scanY > 0 ? block.bottom + halfLine : block.top - halfLine
   }
   // If outside the viewport, return null if precise==true, an
