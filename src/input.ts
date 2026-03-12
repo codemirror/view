@@ -147,9 +147,9 @@ export class InputState {
     // applyDOMChange, notify key handlers of it and reset to
     // the state they produce.
     let pending
-    if (browser.ios && !(event as any).synthetic && !event.altKey && !event.metaKey &&
+    if (browser.ios && !(event as any).synthetic && !event.altKey && !event.metaKey && !event.shiftKey &&
         ((pending = PendingKeys.find(key => key.keyCode == event.keyCode)) && !event.ctrlKey ||
-         EmacsyPendingKeys.indexOf(event.key) > -1 && event.ctrlKey && !event.shiftKey)) {
+         EmacsyPendingKeys.indexOf(event.key) > -1 && event.ctrlKey)) {
       this.pendingIOSKey = pending || event
       setTimeout(() => this.flushIOSKey(), 250)
       return true
