@@ -114,7 +114,8 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
   if (startPos == (forward ? view.state.doc.length : 0)) return EditorSelection.cursor(startPos, start.assoc)
   let goal = start.goalColumn, startY
   let rect = view.contentDOM.getBoundingClientRect()
-  let startCoords = view.coordsAtPos(startPos, (start.empty ? start.assoc : 0) || (forward ? 1 : -1)), docTop = view.documentTop
+  let startCoords = view.coordsAtPos(startPos, start.assoc || ((start.empty ? forward : start.head == start.from) ? 1 : -1))
+  let docTop = view.documentTop
   if (startCoords) {
     if (goal == null) goal = startCoords.left - rect.left
     startY = dir < 0 ? startCoords.top : startCoords.bottom
@@ -124,9 +125,16 @@ export function moveVertically(view: EditorView, start: SelectionRange, forward:
     startY = (dir < 0 ? line.top : line.bottom) + docTop
   }
   let resolvedGoal = rect.left + goal
-  let dist = distance ?? (view.viewState.heightOracle.textHeight >> 1)
-  let pos = posAtCoords(view, {x: resolvedGoal, y: startY + dist * dir}, false, dir)!
-  return EditorSelection.cursor(pos.pos, pos.assoc, undefined, goal)
+  let halfText = view.viewState.heightOracle.textHeight >> 1, dist = distance ?? halfText
+  for (let scan = 0;; scan += halfText) {
+    let y = startY + (dist + scan) * dir
+    let pos = posAtCoords(view, {x: resolvedGoal, y}, false, dir)!
+    if (forward ? y > rect.bottom : y < rect.top)
+      return EditorSelection.cursor(pos.pos, pos.assoc)
+    let posCoords = view.coordsAtPos(pos.pos, pos.assoc), mid = posCoords ? (posCoords.top + posCoords.bottom) / 2 : 0
+    if (!posCoords || (forward ? mid > startY : mid < startY))
+      return EditorSelection.cursor(pos.pos, pos.assoc, undefined, goal)
+  }
 }
 
 export function skipAtomicRanges(atoms: readonly RangeSet<any>[], pos: number, bias: -1 | 0 | 1) {
