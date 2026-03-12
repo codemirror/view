@@ -1,3 +1,17 @@
+## 6.40.0 (2026-03-12)
+
+### Bug fixes
+
+Fix a bug that caused Shift-Enter/Backspace/Delete on iOS to lose the shift modifier when delivered to key event handlers.
+
+Fix an issue where `EditorView.moveVertically` could move to the wrong place in wrapped lines with a large line height.
+
+Make sure the selection head associativity is properly set for mouse selections made with shift held down.
+
+### New features
+
+`WidgetType.updateDOM` is now called with the previous widget value as third argument.
+
 ## 6.39.17 (2026-03-10)
 
 ### Bug fixes
