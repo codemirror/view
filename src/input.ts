@@ -591,10 +591,10 @@ function basicMouseSelection(view: EditorView, event: MouseEvent) {
       if (start.pos != cur.pos && !extend) {
         let startRange = rangeForClick(view, start.pos, start.assoc, type)
         let from = Math.min(startRange.from, range.from), to = Math.max(startRange.to, range.to)
-        range = from < range.from ? EditorSelection.range(from, to) : EditorSelection.range(to, from)
+        range = from < range.from ? EditorSelection.range(from, to, range.assoc) : EditorSelection.range(to, from, range.assoc)
       }
       if (extend)
-        return startSel.replaceRange(startSel.main.extend(range.from, range.to))
+        return startSel.replaceRange(startSel.main.extend(range.from, range.to, range.assoc))
       else if (multiple && type == 1 && startSel.ranges.length > 1 && (removed = removeRangeAround(startSel, cur.pos)))
         return removed
       else if (multiple)

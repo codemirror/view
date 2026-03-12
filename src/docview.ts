@@ -525,7 +525,7 @@ export class DocView {
     }
 
     let {range} = target
-    let rect = this.coordsAt(range.head, range.empty ? range.assoc : range.head > range.anchor ? -1 : 1), other
+    let rect = this.coordsAt(range.head, range.assoc ?? (range.empty ? 0 : range.head > range.anchor ? -1 : 1)), other
     if (!rect) return
     if (!range.empty && (other = this.coordsAt(range.anchor, range.anchor > range.head ? -1 : 1)))
       rect = {left: Math.min(rect.left, other.left), top: Math.min(rect.top, other.top),

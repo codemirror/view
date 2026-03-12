@@ -76,7 +76,7 @@ const cursorLayer = layer({
       let prim = r == state.selection.main
       if (r.empty || conf.drawRangeCursor && !(prim && browser.ios && conf.iosSelectionHandles)) {
         let className = prim ? "cm-cursor cm-cursor-primary" : "cm-cursor cm-cursor-secondary"
-        let cursor = r.empty ? r : EditorSelection.cursor(r.head, r.head > r.anchor ? -1 : 1)
+        let cursor = r.empty ? r : EditorSelection.cursor(r.head, r.assoc)
         for (let piece of RectangleMarker.forRange(view, className, cursor)) cursors.push(piece)
       }
     }
