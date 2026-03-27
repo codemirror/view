@@ -305,8 +305,10 @@ export class EditorView {
         if (scrollTarget) scrollTarget = scrollTarget.map(tr.changes)
         if (tr.scrollIntoView) {
           let {main} = tr.state.selection
+          let {x, y} = this.state.facet(EditorView.cursorScrollMargin)
           scrollTarget = new ScrollTarget(
-            main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1))
+            main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1),
+            "nearest", "nearest", y, x)
         }
         for (let e of tr.effects)
           if (e.is(scrollIntoView)) scrollTarget = e.value.clip(this.state)
@@ -908,7 +910,8 @@ export class EditorView {
     xMargin?: number,
   } = {}): StateEffect<unknown> {
     return scrollIntoView.of(new ScrollTarget(typeof pos == "number" ? EditorSelection.cursor(pos) : pos,
-                                              options.y, options.x, options.yMargin, options.xMargin))
+                                              options.y ?? "nearest", options.x ?? "nearest",
+                                              options.yMargin ?? 5, options.xMargin ?? 5))
   }
 
   /// Return an effect that resets the editor to its current (at the
@@ -1100,11 +1103,27 @@ export class EditorView {
   /// supported.)
   static bidiIsolatedRanges = bidiIsolatedRanges
 
+  /// Can be used to specify the distance that scrolling cursor into
+  /// view keeps it away from the sides of the editor, either as a
+  /// single pixel number or two different values for the different
+  /// axes. Defaults to 5 pixels on both axes.
+  static cursorScrollMargin = Facet.define<number | {x: number, y: number}, {x: number, y: number}>({
+    combine: inputs => {
+      let x = 5, y = 5
+      for (let i of inputs) {
+        if (typeof i == "number") x = y = i
+        else ({x, y} = i)
+      }
+      return {x, y}
+    }
+  })
+
   /// Facet that allows extensions to provide additional scroll
   /// margins (space around the sides of the scrolling element that
   /// should be considered invisible). This can be useful when the
   /// plugin introduces elements that cover part of that element (for
-  /// example a horizontally fixed gutter).
+  /// example a horizontally fixed gutter). Not to be confused with
+  /// [`cursorScrollMargin`](#view.EditorView^cursorScrollMargin).
   static scrollMargins = scrollMargins
 
   /// Create a theme extension. The first argument can be a
