@@ -327,6 +327,18 @@ class InlineCoordsScan {
       this.y = (side.top + side.bottom) / 2
       return this.scan(positions, getRects)
     }
+    // Handle the case where closest matched a higher element on the
+    // same line as an element below/above the coords
+    if (closestDx) {
+      if (above && above.bottom > closestRect.top) {
+        this.y = above.bottom - 1
+        return this.scan(positions, getRects)
+      }
+      if (below && below.top < closestRect.bottom) {
+        this.y = below.top + 1
+        return this.scan(positions, getRects)
+      }
+    }
     let ltr = (bidi ? this.dirAt(positions[closestI], 1) : this.baseDir) == Direction.LTR
     return {
       i: closestI,

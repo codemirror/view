@@ -243,6 +243,12 @@ describe("EditorView coords", () => {
     let c4 = cm.coordsAtPos(4)!
     ist(cm.posAtCoords({x: c4.left + 5, y: c4.bottom + 7}), 9)
   })
+
+  it("can handle coordinates above small text in a non-uniform line", () => {
+    let cm = tempView("abcdefgh", [deco(Decoration.mark({attributes: {style: "font-size: 200%"}}).range(6, 7))])
+    let c4 = cm.coordsAtPos(4)!
+    ist(cm.posAtCoords({x: c4.left, y: c4.top - 4}), 4)
+  })
 })
 
 describe("coordsForChar", () => {
