@@ -1,3 +1,15 @@
+## 6.41.0 (2026-04-01)
+
+### Bug fixes
+
+Fix an issue where `EditorView.posAtCoords` could incorrectly return a position near a higher element on the line, in mixed-font-size lines.
+
+Expand the workaround for the Webkit bug that causes nonexistent selections to stay visible to be active on non-Safari Webkit browsers.
+
+### New features
+
+The new `EditorView.cursorScrollMargin` facet can now be used to configure the extra space used when scrolling the cursor into view.
+
 ## 6.40.0 (2026-03-12)
 
 ### Bug fixes
